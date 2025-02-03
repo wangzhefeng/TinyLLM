@@ -82,19 +82,23 @@ def create_dataloader(text,
 # 测试代码 main 函数
 def main():
     import tiktoken
-    from tiny_model.TinyLLM.data_load_pretrain import data_download, data_load
+    from data_provider.data_load_pretrain import data_load
 
     # ------------------------------
     # data download & load
     # ------------------------------
-    raw_text = data_load()
+    raw_text = data_load(url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt")
+    
     # ------------------------------
     # tokenization test
     # ------------------------------
     tokenizer = tiktoken.get_encoding("gpt2")
     enc_text = tokenizer.encode(raw_text)
-    logger.info(f"len(enc_text): {len(enc_text)}")
+    logger.info(f"Pre-train token size: {len(enc_text)}")
     
+    # ------------------------------
+    # data sampling
+    # ------------------------------
     # data sampling
     enc_sample = enc_text[50:]
     context_size = 4
@@ -120,7 +124,7 @@ def main():
     dataloader = create_dataloader(
         raw_text,
         batch_size=1,
-        max_length=4,
+        max_length=10,
         stride=1,
         shuffle=False,
         drop_last=True,

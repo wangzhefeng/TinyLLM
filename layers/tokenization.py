@@ -30,38 +30,37 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def build_vocab(text: str):
-    """
-    Converting tokens into token IDs
-
-    Args:
-        tokenization_set (List): _description_
-    """
-    logger.info("Build Vocab: Converting tokens into token IDs...")
-    # 训练数据分词
-    token_list = re.split(r'([,.:;?_!"()\']|--|\s)', text)
-    token_list = [item.strip() for item in token_list if item.strip()]
-    # 训练数据所有 token(不重复)
-    all_tokens = sorted(set(token_list))
-    all_tokens.extend(["<|endoftext|>", "<|unk|>"])
-    logger.info(f"Vocab size: {len(all_tokens)}")
-    # 构建词典
-    vocab = {
-        token: integer
-        for integer, token in enumerate(all_tokens)
-    }
-    
-    return vocab
-
-
 class SimpleTokenizer:
 
-    def __init__(self, vocab: Dict):
-        self.str_to_int = vocab
-        self.int_to_str = {
-            i: s 
-            for s, i in vocab.items()
+    def __init__(self, raw_text: str):
+        self.vocab = self._build_vocab(raw_text)
+        self.str_to_int = self.vocab
+        self.int_to_str = {i: s for s, i in self.vocab.items()}
+
+    def _build_vocab(self, text: str):
+        """
+        Build vocab
+        Converting tokens into token IDs
+        """
+        logger.info("Build Vocab: Converting tokens into token IDs...")
+        # 训练数据分词
+        token_list = re.split(r'([,.:;?_!"()\']|--|\s)', text)
+        token_list = [item.strip() for item in token_list if item.strip()]
+        self.n_token = len(token_list)
+        # logger.info(f"Token size: {self.n_token}")
+        # 训练数据所有 token(不重复)
+        all_tokens = sorted(set(token_list))
+        # special tokens: [BOS], [EOS], [PAD], [UNK], [endoftext], <UNK>
+        all_tokens.extend(["<|endoftext|>", "<|unk|>"])
+        self.n_vocab = len(all_tokens)
+        # logger.info(f"Vocab size: {self.n_vocab}")
+        # 构建词典
+        vocab = {
+            token: integer
+            for integer, token in enumerate(all_tokens)
         }
+        
+        return vocab
 
     def encode(self, text: str):
         """
@@ -70,19 +69,19 @@ class SimpleTokenizer:
         tokens = re.split(r'([,.:;?_!"()\']|--|\s)', text)
         tokens = [item.strip() for item in tokens if item.strip()]
         tokens = [
-            item 
-            if item in self.str_to_int else "<|unk|>" 
+            item
+            if item in self.str_to_int else "<|unk|>"
             for item in tokens
         ]
         token_ids = [self.str_to_int[s] for s in tokens]
 
         return token_ids
 
-    def decode(self, token_ids: List):
+    def decode(self, tokens: List):
         """
         token IDs decode to text
         """
-        text = " ".join([self.int_to_str[i] for i in token_ids])
+        text = " ".join([self.int_to_str[i] for i in tokens])
         # Replace spaces before the specified punctuations
         text = re.sub(r'\s+([,.?!"()\'])', r'\1', text)
         
@@ -98,30 +97,27 @@ def main():
         "Hello, do you like tea? <|endoftext|> In the sunlit terraces"
         "of someunknownPlace."
     )
-    input_text_2 = """It's the last he painted, you know," 
+    input_text_2 = "Hello, do you like tea? <|endoftext|> In the sunlit terraces of someunknownPlace."
+    input_text_3 = """It's the last he painted, you know," 
                     Mrs. Gisburn said with pardonable pride."""
-    input_text_3 = "Hello, do you like tea. Is this-- a test?"
+    input_text_4 = "Hello, do you like tea. Is this-- a test?"
 
     # 训练数据下载、加载
-    from tiny_model.TinyLLM.data_load_pretrain import data_download, data_load
-    file_path = data_download()
-    raw_text = data_load(file_path=file_path)
-
-    # 构建数据词典
-    from tiny_model.TinyLLM.tokenization import build_vocab, SimpleTokenizer
-    vocab = build_vocab(text=raw_text)
-    logger.info(f"vocab: {vocab}")
+    from data_provider.data_load_pretrain import data_load
+    raw_text = data_load(url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt")
 
     # method 1: simple tokenizer
-    tokenizer = SimpleTokenizer(vocab=vocab)
-    token_ids = tokenizer.encode(text=input_text_1)
+    tokenizer = SimpleTokenizer(raw_text=raw_text)
+    logger.info(f"tokenizer.n_vocab: {tokenizer.n_vocab}")
+    token_ids = tokenizer.encode(text=input_text_2)
     logger.info(f"token_ids: {token_ids}")
-    decoded_text = tokenizer.decode(token_ids=token_ids)
-    logger.info(f"decoded_text: {decoded_text}") 
+    decoded_text = tokenizer.decode(tokens=token_ids)
+    logger.info(f"decoded_text: {decoded_text}")
     
     # method 2: BPE: tiktoken
     import tiktoken
     tokenizer = tiktoken.get_encoding("gpt2")
+    logger.info(f"tokenizer.n_vocab: {tokenizer.n_vocab}")
     token_ids = tokenizer.encode(text=input_text_1, allowed_special={"<|endoftext|>"})
     logger.info(f"token_ids: {token_ids}")
     decoded_text = tokenizer.decode(tokens=token_ids)

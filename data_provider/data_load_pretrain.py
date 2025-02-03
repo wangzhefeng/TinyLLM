@@ -28,61 +28,61 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def data_download_url(url: str, data_dir: str = "dataset/tiny_llm"):
+def _data_download(url: str, file_path: str):
     """
     data download
     """
-    logger.info(f"Download data...")
+    # version 1
+    urllib.request.urlretrieve(url, file_path)
+    # version 2
+    '''
+    # download
+    with urllib.request.urlopen(url) as response:
+        text_data = response.read().decode("utf-8")
+    # write
+    with open(file_path, "w", encoding="utf-8") as file:
+        file.write(text_data)
+    '''
+
+
+def data_load(url: str = None, data_dir: str = "dataset/pretrain"):
+    """
+    data load
+    """
     # 数据路径
     data_path = os.path.join(ROOT, data_dir)
     if not os.path.exists(data_path):
         os.makedirs(data_path)
-    
     # 数据文件路径
-    file_name = url.split("/")[-1]
-    file_path = os.path.join(data_path, file_name)
+    file_path = os.path.join(data_path, url.split("/")[-1])
+    # 数据下载、数据加载
     if not os.path.exists(file_path):
-        urllib.request.urlretrieve(url, file_path)    
-        logger.info(f"Data 'the-verdict.txt' has downloaded into '{data_path}'")
-    
-    return file_path
-
-
-def data_load(url = None):
-    """
-    data load
-
-    Args:
-        file_path (str): _description_
-    """
-    # 数据下载
-    file_path = data_download_url(url)
-    # logger.info(f"file_path: {file_path}")
-    # 数据加载
-    logger.info(f"Load data...")
-    if not os.path.exists(file_path):
-        with urllib.request.urlopen(url) as response:
-            text_data = response.read().decode("utf-8")
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(text_data)
+        # download
+        logger.info(f"Download data...")
+        _data_download(url, file_path)
+        logger.info(f"Data has downloaded into '{data_path}'")
+        # read
+        logger.info(f"Load data...")
+        with open(file_path, "r", encoding="utf-8") as file:
+            raw_text = file.read()
+        logger.info(f"Total number of character: {len(raw_text)}")
     else:
+        logger.info(f"Load data...")
         with open(file_path, "r", encoding="utf-8") as f:
             raw_text = f.read()
-            # logger.info(f"Total number of character: {len(raw_text)}")
+        logger.info(f"Total number of character: {len(raw_text)}")
 
     return raw_text
 
 
 
 
-
-
 # 测试代码 main 函数
 def main():
-    # ------------------------------
     # llm pretrain data
-    # ------------------------------
-    raw_text = data_load(url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt",)
+    raw_text = data_load(
+        url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
+    )
     logger.info(f"raw_text[:99]: {raw_text[:99]}")
     logger.info(f"raw_text[:99]: {raw_text[-99:]}")
 
