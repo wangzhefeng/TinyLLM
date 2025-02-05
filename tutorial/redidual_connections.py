@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
 import torch
 import torch.nn as nn
 
-from tiny_model.TinyLLM.utils.activation import GELU
+from utils.activation import GELU
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]

@@ -6,7 +6,7 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-01-23
 # * Version     : 1.0.012323
-# * Description : description
+# * Description : https://github.com/rasbt/LLMs-from-scratch/blob/2dc46bedc6e86b79a16c4099e557564cd23e03ef/ch02/04_bonus_dataloader-intuition/dataloader-intuition.ipynb
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # * TODO        : 1.
@@ -88,21 +88,25 @@ def main():
     # ------------------------------
     # data download & load
     # ------------------------------
-    raw_text = data_load(url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt")
+    raw_text = data_load(
+        url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
+    )
     
     # ------------------------------
-    # tokenization test
+    # data sampling
     # ------------------------------
+    # tokenization
     tokenizer = tiktoken.get_encoding("gpt2")
-    enc_text = tokenizer.encode(raw_text)
+    enc_text = tokenizer.encode(raw_text) 
     logger.info(f"Pre-train token size: {len(enc_text)}")
     
-    # ------------------------------
-    # data sampling
-    # ------------------------------
-    # data sampling
+    # token id
     enc_sample = enc_text[50:]
+
+    # context size
     context_size = 4
+ 
+    # data sampling
     x = enc_sample[:context_size]
     y = enc_sample[1:context_size]
     logger.info(f"x: {x}")
@@ -119,11 +123,14 @@ def main():
         context = enc_sample[:i]
         desired = enc_sample[i]
         logger.info(f"{tokenizer.decode(context)} ----> {tokenizer.decode([desired])}")
+    
     # ------------------------------
     # dataset and dataloader test
     # ------------------------------
+    # params
     batch_size = 8
     max_length = 4
+    # data loader
     dataloader = create_dataloader(
         raw_text,
         batch_size=batch_size,
@@ -132,24 +139,12 @@ def main():
         shuffle=False,
         drop_last=True,
     )
-
-    # embedding
-    vocab_size = 50257
-    output_dim = 256
-    context_length = 1024
-    token_embedding_layer = nn.Embedding(vocab_size, output_dim)
-    pos_embedding_layer = nn.Embedding(context_length, output_dim)
-    
     # data loader test
     for batch in dataloader:
-        x, y = batch
-
-        token_embeddings = token_embedding_layer(x)
-        pos_embeddings = pos_embedding_layer(torch.arange(max_length))
-        input_embeddings = token_embeddings + pos_embeddings
-        logger.info(f"x: {x}")
-        logger.info(f"y: {y}")
-        logger.info(f"input_embedding.shape: {input_embeddings.shape}")
+        # data batch
+        x, y = batch 
+        logger.info(f"x: \n{x}")
+        logger.info(f"y: \n{y}")
         break
 
 if __name__ == "__main__":

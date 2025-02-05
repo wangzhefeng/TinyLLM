@@ -176,3 +176,4 @@ cython_debug/
 dataset/
 .vscode/
 logs/
+download_models/

@@ -26,7 +26,9 @@ from utils.log_util import logger
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
-
+# ------------------------------
+# input text -> tokenization -> token IDs embedding
+# ------------------------------
 # input text
 input_strings = "Your journey starts with one step."
 
@@ -43,9 +45,9 @@ logger.info(f"inputs: \n{inputs}")
 logger.info(f"inputs.shape: {inputs.shape}")
 
 # ------------------------------
-# query x(2)
-# ------------------------------
+# Step 1: attention scores w
 # attention scores(query x(2) with other x(i), i=1,...,6)
+# ------------------------------
 query = inputs[1]
 attn_scores_2 = torch.empty(inputs.shape[0])
 for i, x_i in enumerate(inputs):
@@ -55,7 +57,9 @@ for i, x_i in enumerate(inputs):
 logger.info(f"attn_scores_2: \n{attn_scores_2}")
 logger.info(f"attn_scores_2.shape: {attn_scores_2.shape}")
 
-# attention weights
+# ------------------------------
+# Step 2: attention weights
+# ------------------------------
 attn_weights_2_tmp = attn_scores_2 / attn_scores_2.sum()
 logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
 # or
@@ -67,7 +71,9 @@ logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
 attn_weights_2_tmp = torch.softmax(attn_scores_2, dim=0)
 logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
 
-# context vector
+# ------------------------------
+# Step 3: context vector
+# ------------------------------
 context_vec_2 = torch.zeros(query.shape)
 for i, x_i in enumerate(inputs):
     logger.info(f"attn_weights_2_tmp[i]: {attn_weights_2_tmp[i]}")
@@ -78,7 +84,7 @@ logger.info(f"context_vec_2: \n{context_vec_2}")
 # ------------------------------
 # all context vectors
 # ------------------------------
-# attention scores for all inputs tokens
+# attention scores
 attn_scores = torch.empty(inputs.shape[0], inputs.shape[0])
 # for i, x_i in enumerate(inputs):
 #     for j, x_j in enumerate(inputs):
@@ -212,6 +218,7 @@ sa_v2 = SelfAttention_V2(d_in, d_out)
 sa_v2_output = sa_v2(inputs)
 logger.info(f"sa_v2_output: \n{sa_v2_output}")
 
+
 # ------------------------------
 # causal attention mask
 # ------------------------------
@@ -255,6 +262,7 @@ logger.info(f"masked: \n{masked}")
 attn_weights = torch.softmax(masked / keys.shape[-1] ** 0.5, dim=-1)
 logger.info(f"attn_weights: \n{attn_weights}")
 
+
 # ------------------------------
 # attention mask with dropout
 # ------------------------------
@@ -264,8 +272,6 @@ example = torch.ones(6, 6)
 logger.info(f"dropout(example): {dropout(example)}")
 torch.manual_seed(123)
 logger.info(f"dropout(attn_weights): {dropout(attn_weights)}")
-
-
 
 
 

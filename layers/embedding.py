@@ -6,7 +6,7 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-01-24
 # * Version     : 1.0.012400
-# * Description : description
+# * Description : https://github.com/rasbt/LLMs-from-scratch/blob/2dc46bedc6e86b79a16c4099e557564cd23e03ef/ch02/03_bonus_embedding-vs-matmul/embeddings-and-linear-layers.ipynb
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # * TODO        : 1.
@@ -46,37 +46,41 @@ def main():
     # input example(after tokenization)
     input_ids = torch.tensor([2, 3, 5, 1])
     # vocabulary of 6 words
-    vocab_size = 6
+    vocab_size = 6  # max(input_ids) + 1
     # embedding size 3
     output_dim = 3
     # embedding layer
     torch.manual_seed(123)
     embedding_layer = torch.nn.Embedding(num_embeddings=vocab_size, embedding_dim=output_dim)
-    logger.info(embedding_layer.weight)
-    logger.info(embedding_layer(torch.tensor([3])))
-    logger.info(embedding_layer(input_ids))
+    logger.info(f"embedding_layer.weight: \n{embedding_layer.weight}")
+    logger.info(f"embedding_layer(torch.tensor([3])): \n{embedding_layer(torch.tensor([3]))}")
+    logger.info(f"embedding_layer(input_ids): \n{embedding_layer(input_ids)}")
+    
     # ------------------------------
     # encoding word positions
     # ------------------------------
-    from data_provider.data_load_pretrain import data_download, data_load
+    from data_provider.data_load_pretrain import data_load
     from data_provider.data_loader import create_dataloader
 
     # params
     vocab_size = 50257
     output_dim = 256
-    max_length = 4
+    batch_size = 8
+    max_length = 4  # 1024
     
     # data download & load
-    file_path = data_download()
-    raw_text = data_load(file_path=file_path)
+    raw_text = data_load(
+        url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
+    )
 
-    # dataloader
+    # dataloader 
     dataloader = create_dataloader(
         raw_text,
-        batch_size = 8,
+        batch_size=batch_size,
         max_length=max_length,
         stride=max_length,
         shuffle=False,
+        drop_last=True,
     )
     data_iter = iter(dataloader)
     inputs, targets = next(data_iter)
