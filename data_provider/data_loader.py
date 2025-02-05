@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 from utils.log_util import logger
@@ -121,18 +122,34 @@ def main():
     # ------------------------------
     # dataset and dataloader test
     # ------------------------------
+    batch_size = 8
+    max_length = 4
     dataloader = create_dataloader(
         raw_text,
-        batch_size=1,
-        max_length=10,
-        stride=1,
+        batch_size=batch_size,
+        max_length=max_length,
+        stride=max_length,
         shuffle=False,
         drop_last=True,
     )
+
+    # embedding
+    vocab_size = 50257
+    output_dim = 256
+    context_length = 1024
+    token_embedding_layer = nn.Embedding(vocab_size, output_dim)
+    pos_embedding_layer = nn.Embedding(context_length, output_dim)
+    
+    # data loader test
     for batch in dataloader:
         x, y = batch
+
+        token_embeddings = token_embedding_layer(x)
+        pos_embeddings = pos_embedding_layer(torch.arange(max_length))
+        input_embeddings = token_embeddings + pos_embeddings
         logger.info(f"x: {x}")
         logger.info(f"y: {y}")
+        logger.info(f"input_embedding.shape: {input_embeddings.shape}")
         break
 
 if __name__ == "__main__":

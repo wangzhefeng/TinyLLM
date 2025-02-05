@@ -27,6 +27,14 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
+def token_embedding():
+    pass
+
+
+def position_embedding():
+    pass
+
+
 
 
 # 测试代码 main 函数
@@ -50,8 +58,8 @@ def main():
     # ------------------------------
     # encoding word positions
     # ------------------------------
-    from tiny_model.TinyLLM.data_load_pretrain import data_download, data_load
-    from tiny_model.TinyLLM.data_loader import create_dataloader
+    from data_provider.data_load_pretrain import data_download, data_load
+    from data_provider.data_loader import create_dataloader
 
     # params
     vocab_size = 50257
