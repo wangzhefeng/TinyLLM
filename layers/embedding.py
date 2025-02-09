@@ -35,6 +35,10 @@ def position_embedding():
     pass
 
 
+def embedding():
+    pass
+
+
 
 
 # 测试代码 main 函数
