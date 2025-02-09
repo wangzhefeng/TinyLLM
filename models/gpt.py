@@ -24,8 +24,8 @@ if str(ROOT) not in sys.path:
 import torch
 import torch.nn as nn
 
-from tiny_model.TinyLLM.utils.activation import GELU
-from tiny_model.TinyLLM.attention import MultiHeadAttention
+from utils.activation import GELU
+from layers.attention import MultiHeadAttention
 from utils.log_util import logger
 
 # set options

@@ -25,8 +25,8 @@ import numpy as np
 import torch
 import tiktoken
 
-from tiny_model.TinyLLM.gpt import GPTModel, generate
-from tiny_model.TinyLLM.utils.gtp_download import download_and_load_gpt2
+from models.gpt import GPTModel, generate
+from tutorial.gtp_download import download_and_load_gpt2
 from utils.log_util import logger
 
 # global variable
