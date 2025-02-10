@@ -26,92 +26,123 @@ from utils.log_util import logger
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
+
 # ------------------------------
 # input text -> tokenization -> token IDs embedding
 # ------------------------------
 # input text
 input_strings = "Your journey starts with one step."
+logger.info(f"input_strings: {input_strings}")
 
 # tokens embeddings
-inputs = torch.tensor(
-    [[0.43, 0.15, 0.89], # Your     (x^1)
-    [0.55, 0.87, 0.66], # journey  (x^2)
-    [0.57, 0.85, 0.64], # starts   (x^3)
-    [0.22, 0.58, 0.33], # with     (x^4)
-    [0.77, 0.25, 0.10], # one      (x^5)
-    [0.05, 0.80, 0.55]] # step     (x^6)
+inputs_embed = torch.tensor(
+    [[0.43, 0.15, 0.89],  # Your     (x^1)
+    [0.55, 0.87, 0.66],  # journey  (x^2)
+    [0.57, 0.85, 0.64],  # starts   (x^3)
+    [0.22, 0.58, 0.33],  # with     (x^4)
+    [0.77, 0.25, 0.10],  # one      (x^5)
+    [0.05, 0.80, 0.55]]  # step     (x^6)
 )
-logger.info(f"inputs: \n{inputs}")
-logger.info(f"inputs.shape: {inputs.shape}")
+logger.info(f"inputs_embed: \n{inputs_embed}")
+logger.info(f"inputs_embed.shape: {inputs_embed.shape}")
+
 
 # ------------------------------
 # Step 1: attention scores w
 # attention scores(query x(2) with other x(i), i=1,...,6)
 # ------------------------------
-query = inputs[1]
-attn_scores_2 = torch.empty(inputs.shape[0])
-for i, x_i in enumerate(inputs):
+logger.info("-" * 40)
+logger.info(f"Calculate Attention Scores...")
+logger.info("-" * 40)
+
+query_2 = inputs_embed[1, :]
+attn_scores_2 = torch.empty(inputs_embed.shape[0])
+for i, x_i in enumerate(inputs_embed):
     logger.info(f"x_i: {x_i}")
-    logger.info(f"query: {query}")
-    attn_scores_2[i] = torch.dot(x_i, query)
-logger.info(f"attn_scores_2: \n{attn_scores_2}")
+    logger.info(f"query_2: {query_2}")
+    attn_scores_2[i] = torch.dot(x_i, query_2)
+    logger.info(f"attn_scores_2[{i}]: {attn_scores_2[i]}")
+
+logger.info(f"attn_scores_2: {attn_scores_2}")
 logger.info(f"attn_scores_2.shape: {attn_scores_2.shape}")
+
 
 # ------------------------------
 # Step 2: attention weights
 # ------------------------------
+logger.info("-" * 40)
+logger.info(f"Calculate Attention Weights...")
+logger.info("-" * 40)
+
 attn_weights_2_tmp = attn_scores_2 / attn_scores_2.sum()
 logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
 # or
-def softmax_naive(x):
-    return torch.exp(x) / torch.sum(torch.exp(x))
-attn_weights_2_tmp = softmax_naive(attn_scores_2)
-logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
+# def softmax_naive(x):
+#     return torch.exp(x) / torch.sum(torch.exp(x))
+# attn_weights_2_tmp = softmax_naive(attn_scores_2)
+# logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
 # or
-attn_weights_2_tmp = torch.softmax(attn_scores_2, dim=0)
-logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
+# attn_weights_2_tmp = torch.softmax(attn_scores_2, dim=0)
+# logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
+
 
 # ------------------------------
 # Step 3: context vector
 # ------------------------------
-context_vec_2 = torch.zeros(query.shape)
-for i, x_i in enumerate(inputs):
+logger.info("-" * 40)
+logger.info(f"Calculate Context Vector...")
+logger.info("-" * 40)
+
+context_vec_2 = torch.zeros(query_2.shape)
+for i, x_i in enumerate(inputs_embed):
     logger.info(f"attn_weights_2_tmp[i]: {attn_weights_2_tmp[i]}")
     logger.info(f"x_i: {x_i}")
+    logger.info(f"attn_weights_2_tmp[i] * x_i: {attn_weights_2_tmp[i] * x_i}")
     context_vec_2 += attn_weights_2_tmp[i] * x_i
+    logger.info(f"context_vec_2: {context_vec_2}")
+
 logger.info(f"context_vec_2: \n{context_vec_2}")
+
 
 # ------------------------------
 # all context vectors
 # ------------------------------
+logger.info("-" * 40)
+logger.info(f"Calculate All Context Vector...")
+logger.info("-" * 40)
+
 # attention scores
-attn_scores = torch.empty(inputs.shape[0], inputs.shape[0])
-# for i, x_i in enumerate(inputs):
-#     for j, x_j in enumerate(inputs):
+# attn_scores = torch.empty(inputs_embed.shape[0], inputs_embed.shape[0])
+# for i, x_i in enumerate(inputs_embed):
+#     for j, x_j in enumerate(inputs_embed):
 #         attn_scores[i, j] = torch.dot(x_i, x_j)
 # logger.info(f"attn_scores: \n{attn_scores}")
 # or
-attn_scores = inputs @ inputs.T
+attn_scores = inputs_embed @ inputs_embed.T  # (6, 6)
+# logger.info(f"inputs_embed: \n{inputs_embed}")
+# logger.info(f"inputs_embed.T: \n{inputs_embed.T}")
 logger.info(f"attn_scores: \n{attn_scores}")
 
 # attention weights
-attn_weights = torch.softmax(attn_scores, dim = -1)
+attn_weights = torch.softmax(attn_scores, dim = -1)  # (6, 6)
 logger.info(f"attn_weights: \n{attn_weights}")
 
 # context vectors
-context_vecs = attn_weights @ inputs
+context_vecs = attn_weights @ inputs_embed  # (6, 6) @ (6, 3) -> (6, 3)
 logger.info(f"context_vecs: \n{context_vecs}")
 
 
 # ------------------------------
 # self-attention with trainable weights
 # ------------------------------
-# second input element
-x_2 = inputs[1]
-# the input embedding size, d=3
-d_in = inputs.shape[1]
-# the output embedding size, d=2
-d_out = 2
+logger.info("-" * 40)
+logger.info(f"Calculate Self-Attention with trainable weights...")
+logger.info("-" * 40)
+
+# params
+x_2 = inputs_embed[1]  # second input element
+d_in = inputs_embed.shape[1]  # the input embedding size, d=3
+d_out = 2  # the output embedding size, d=2
 
 # attention weights
 torch.manual_seed(123)
@@ -126,12 +157,12 @@ logger.info(f"W_value: \n{W_value}")
 query_2 = x_2 @ W_query
 key_2 = x_2 @ W_key
 value_2 = x_2 @ W_value
-logger.info(f"query_2: \n{query_2}")
-logger.info(f"key_2: \n{key_2}")
-logger.info(f"value_2: \n{value_2}")
+logger.info(f"query_2: {query_2}")
+logger.info(f"key_2: {key_2}")
+logger.info(f"value_2: {value_2}")
 
-keys = inputs @ W_key
-values = inputs @ W_value
+keys = inputs_embed @ W_key
+values = inputs_embed @ W_value
 logger.info(f"keys.shape: {keys.shape}")
 logger.info(f"values.shape: {values.shape}")
 
@@ -162,11 +193,10 @@ class SelfAttention_V1(nn.Module):
         self.W_value = nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
 
     def forward(self, x):
-        keys = x @ self.W_key
         queries = x @ self.W_query
+        keys = x @ self.W_key
         values = x @ self.W_value
 
-        # omega
         attn_scores = queries @ keys.T
         attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
         context_vec = attn_weights @ values
@@ -174,13 +204,11 @@ class SelfAttention_V1(nn.Module):
         return context_vec
 
 torch.manual_seed(123)
-# the input embedding size, d=3
-d_in = inputs.shape[1]
-# the output embedding size, d=2
-d_out = 2
+d_in = inputs_embed.shape[1]  # the input embedding size, d=3
+d_out = 2  # the output embedding size, d=2
 
 sa_v1 = SelfAttention_V1(d_in, d_out)
-sa_v1_output = sa_v1(inputs)
+sa_v1_output = sa_v1(inputs_embed)
 logger.info(f"sa_v1_output: \n{sa_v1_output}")
 
 
@@ -197,8 +225,8 @@ class SelfAttention_V2(nn.Module):
         self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
     
     def forward(self, x):
-        keys = self.W_key(x)
         queries = self.W_query(x)
+        keys = self.W_key(x)
         values = self.W_value(x)
     
         attn_scores = queries @ keys.T
@@ -209,13 +237,11 @@ class SelfAttention_V2(nn.Module):
 
 
 torch.manual_seed(789)
-# the input embedding size, d=3
-d_in = inputs.shape[1]
-# the output embedding size, d=2
-d_out = 2
+d_in = inputs_embed.shape[1]  # the input embedding size, d=3
+d_out = 2  # the output embedding size, d=2
 
 sa_v2 = SelfAttention_V2(d_in, d_out)
-sa_v2_output = sa_v2(inputs)
+sa_v2_output = sa_v2(inputs_embed)
 logger.info(f"sa_v2_output: \n{sa_v2_output}")
 
 
@@ -225,8 +251,8 @@ logger.info(f"sa_v2_output: \n{sa_v2_output}")
 # simple method
 # --------------
 # attention weights
-queries = sa_v2.W_query(inputs)
-keys = sa_v2.W_key(inputs)
+queries = sa_v2.W_query(inputs_embed)
+keys = sa_v2.W_key(inputs_embed)
 attn_scores = queries @ keys.T
 attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
 logger.info(f"attn_weights: \n{attn_weights}")
@@ -247,8 +273,8 @@ logger.info(f"mask_simple_norm: \n{mask_simple_norm}")
 # efficient approach
 # --------------
 # attention weights
-queries = sa_v2.W_query(inputs)
-keys = sa_v2.W_key(inputs)
+queries = sa_v2.W_query(inputs_embed)
+keys = sa_v2.W_key(inputs_embed)
 attn_scores = queries @ keys.T
 
 # masked attention scores

@@ -82,70 +82,7 @@ def create_dataloader(text,
 
 # 测试代码 main 函数
 def main():
-    import tiktoken
-    from data_provider.data_load_pretrain import data_load
-
-    # ------------------------------
-    # data download & load
-    # ------------------------------
-    raw_text = data_load(
-        url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
-    )
-    
-    # ------------------------------
-    # data sampling
-    # ------------------------------
-    # tokenization
-    tokenizer = tiktoken.get_encoding("gpt2")
-    enc_text = tokenizer.encode(raw_text) 
-    logger.info(f"Pre-train token size: {len(enc_text)}")
-    
-    # token id
-    enc_sample = enc_text[50:]
-
-    # context size
-    context_size = 4
- 
-    # data sampling
-    x = enc_sample[:context_size]
-    y = enc_sample[1:context_size]
-    logger.info(f"x: {x}")
-    logger.info(f"y:      {y}")
-    
-    # sliding window token ids
-    for i in range(1, context_size+1):
-        context = enc_sample[:i]
-        desired = enc_sample[i]
-        logger.info(f"{context} ----> {desired}")
-
-    # sliding window tokens
-    for i in range(1, context_size+1):
-        context = enc_sample[:i]
-        desired = enc_sample[i]
-        logger.info(f"{tokenizer.decode(context)} ----> {tokenizer.decode([desired])}")
-    
-    # ------------------------------
-    # dataset and dataloader test
-    # ------------------------------
-    # params
-    batch_size = 8
-    max_length = 4
-    # data loader
-    dataloader = create_dataloader(
-        raw_text,
-        batch_size=batch_size,
-        max_length=max_length,
-        stride=max_length,
-        shuffle=False,
-        drop_last=True,
-    )
-    # data loader test
-    for batch in dataloader:
-        # data batch
-        x, y = batch 
-        logger.info(f"x: \n{x}")
-        logger.info(f"y: \n{y}")
-        break
+    pass
 
 if __name__ == "__main__":
     main()

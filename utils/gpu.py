@@ -25,6 +25,7 @@ from utils.log_util import logger
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
+
 # 设置设备参数
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 使用 CUDA
 DEVICE_ID = "0"  # CUDA 设备 ID，如果未设置则为空
