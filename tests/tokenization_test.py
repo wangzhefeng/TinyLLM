@@ -69,7 +69,7 @@ def main():
 
     # method 3: BPE: original implementation used in GPT-2
     # ---------------------------------------
-    from tutorial.bpe_openai_gpt2 import get_encoder, download_vocab
+    from tests.bpe_openai_gpt2 import get_encoder, download_vocab
     models_dir = "download_models"
     # donwload model
     download_vocab(models_dir = models_dir)

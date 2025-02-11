@@ -29,11 +29,15 @@ import torch.nn as nn
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
+# ------------------------------
+# method 1
+# ------------------------------
 class CasualAttention(nn.Module):
     """
     Casual Self Attention
     """
-    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, qkv_bias=False):
+    def __init__(self, d_in: int, d_out: int, context_length: int, 
+                 dropout: float, qkv_bias=False):
         super().__init__()
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -65,20 +69,26 @@ class CasualAttention(nn.Module):
 
 class MultiHeadAttentionWrapper(nn.Module):
     
-    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias=False):
+    def __init__(self, d_in: int, d_out: int, context_length: int, 
+                 dropout: float, num_heads: int, qkv_bias=False):
         super().__init__()
         
         self.heads = nn.ModuleList([
             CasualAttention(d_in, d_out, context_length, dropout, qkv_bias) 
             for _ in range(num_heads)
         ])
+        self.out_proj = nn.Linear(d_out * num_heads, d_out * num_heads)
 
     def forward(self, x):
-        x = torch.cat([head(x) for head in self.heads], dim=-1)
+        context_vector = torch.cat([head(x) for head in self.heads], dim=-1)
+        projection = self.out_proj(context_vector)
 
-        return x
+        return projection
 
 
+# ------------------------------
+# method 2
+# ------------------------------
 class MultiHeadAttention(nn.Module):
     
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias=False):
@@ -130,6 +140,9 @@ class MultiHeadAttention(nn.Module):
         return context_vec
 
 
+# ------------------------------
+# method 3
+# ------------------------------
 class MultiHeadAttentionCombinedQKV(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):

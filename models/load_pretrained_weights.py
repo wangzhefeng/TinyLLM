@@ -26,7 +26,7 @@ import torch
 import tiktoken
 
 from models.gpt import GPTModel, generate
-from tutorial.gtp_download import download_and_load_gpt2
+from tests.gtp_download import download_and_load_gpt2
 from utils.log_util import logger
 
 # global variable
