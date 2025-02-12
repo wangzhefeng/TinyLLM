@@ -30,7 +30,6 @@ import torch.nn as nn
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-
 class GELU(nn.Module):
     
     def __init__(self):

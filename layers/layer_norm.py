@@ -46,11 +46,24 @@ class LayerNorm(nn.Module):
 
 
 
-
-
 # 测试代码 main 函数
 def main():
-    pass
+    from utils.log_util import logger
+    # ------------------------------
+    # Layer Norm test
+    # ------------------------------
+    # data
+    torch.manual_seed(123)
+    batch_example = torch.randn(2, 5)
+    logger.info(f"batch_example: \n{batch_example}")
+    # layer norm
+    ln = LayerNorm(emb_dim=5)
+    out_ln = ln(batch_example)
+    logger.info(f"out_ln: \n{out_ln}")
+    mean = out_ln.mean(dim=-1, keepdim=True)
+    var = out_ln.var(dim=-1, unbiased=False, keepdim=True)
+    logger.info(f"Mean: \n{mean}")
+    logger.info(f"Variance: \n{var}")
 
 if __name__ == "__main__":
     main()

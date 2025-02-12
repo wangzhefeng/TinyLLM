@@ -110,30 +110,41 @@ class MultiHeadAttention(nn.Module):
     def forward(self, x):
         # shape: [batch_size, num_tokens, d_in]
         batch_size, num_tokens, d_in = x.shape
-        
+        # ------------------------------
+        # Query, Key, Value
+        # ------------------------------
         # shape: [batch_size, num_tokens, d_out]
         queries = self.W_query(x)
         keys = self.W_key(x)
         values = self.W_value(x)
-        
-        # split the matrix by adding a "num_heads" dimension, 
-        # unroll last dim: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, num_heads, head_dim)
+        # split the matrix by adding a "num_heads" dimension, unroll last dim
+        # shape: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, num_heads, head_dim)
         queries = queries.view(batch_size, num_tokens, self.num_heads, self.head_dim)
         keys = keys.view(batch_size, num_tokens, self.num_heads, self.head_dim)
         values = values.view(batch_size, num_tokens, self.num_heads, self.head_dim)
-        # transpose: (b, num_tokens, num_heads, head_dim) -> (b, num_heads, num_tokens, head_dim)
-        keys = keys.transpose(1, 2)
+        # transpose
+        # shape: (batch_size, num_tokens, num_heads, head_dim) -> (batch_size, num_heads, num_tokens, head_dim)
         queries = queries.transpose(1, 2)
+        keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
-        # compute scaled dot-product attention(aka self-attention) with a causal mask
-        attn_scores = queries @ keys.transpose(2, 3)  # dot product for each head
-        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        # ------------------------------
+        # scaled dot-product attention(aka self-attention) with a causal mask
+        # ------------------------------
+        # dot product for each head
+        attn_scores = queries @ keys.transpose(2, 3)
         # mask to fill attention scores
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        # use the mask to fill attention scores
         attn_scores.masked_fill_(mask_bool, -torch.inf)
-        # compute attention weights
+        # ------------------------------
+        # attention weights
+        # ------------------------------
         attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
-        # context vector, shape: (b, num_tokens, num_heads, head_dim)
+        # ------------------------------
+        # context vector
+        # ------------------------------
+        # shape: (batch_size, num_tokens, num_heads, head_dim)
         context_vec = (attn_weights @ values).transpose(1, 2)
         # combine heads, where self.d_out = self.num_heads * self.head_dim
         context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)

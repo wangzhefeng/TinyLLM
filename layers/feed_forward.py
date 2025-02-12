@@ -45,11 +45,27 @@ class FeedForward(nn.Module):
 
 
 
-
-
 # 测试代码 main 函数
 def main():
-    pass
+    import torch
+    from utils.log_util import logger
+    # ------------------------------
+    # Feed Forward test
+    # ------------------------------
+    GPT_CONFIG_124M = {
+        "vocab_size": 50257,
+        "context_length": 1024,
+        "emb_dim": 768,
+        "n_heads": 12,
+        "n_layers": 12,
+        "dropout": 0.1,
+        "qkv_bias": False,
+    }
+    ffn = FeedForward(GPT_CONFIG_124M)
+    x = torch.rand(2, 3, 768)
+    out = ffn(x)
+    logger.info(f"out: {out}")
+    logger.info(f"out.shape: {out.shape}")
 
 if __name__ == "__main__":
     main()

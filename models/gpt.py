@@ -26,17 +26,13 @@ import torch.nn as nn
 
 from layers.transformer_block import TransformerBlock
 from layers.layer_norm import LayerNorm
-from layers.feed_forward import FeedForward
 from utils.log_util import logger
-
-# set options
-# torch.set_printoptions(sci_mode=False)
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-class GPTModel(nn.Module):
+class GPT(nn.Module):
 
     def __init__(self, cfg):
         super().__init__()
@@ -72,16 +68,33 @@ class GPTModel(nn.Module):
         return logits
 
 
-def generate_text_simple(model, idx: torch.tensor, max_new_tokens: int, context_size: int):
-    # idx is (batch, n_tokens) array of indices in the current contex
+def generate_text_simple(model, 
+                         idx: torch.tensor, 
+                         max_new_tokens: int, 
+                         context_size: int):
+    """
+    generate text
+
+    Args:
+        model (_type_): LLM model
+        idx (torch.tensor): idx is array of indices in the current contex. shape: (batch, n_tokens)
+        max_new_tokens (int): maximum length new tokens
+        context_size (int): start context length
+
+    Returns:
+        _type_: _description_
+    """
     for _ in range(max_new_tokens):
         # crop current context if it exceeds the supported context size
+        logger.info(f"idx before crop: {idx}")
         idx_cond = idx[:, -context_size:]
+        logger.info(f"idx after crop: {idx_cond}")
         # get the predictions
         with torch.no_grad():
             logits = model(idx_cond)
+        logger.info(f"logits: {logits}")
         # focus only on the last time step
-        # (batch, n_tokens, vocab_size) -> (batch, vocab_size)
+        # shape: (batch, n_tokens, vocab_size) -> (batch, vocab_size)
         logits = logits[:, -1, :]
         logger.info(f"logits: {logits}")
         # softmax
@@ -97,17 +110,40 @@ def generate_text_simple(model, idx: torch.tensor, max_new_tokens: int, context_
     return idx
 
 
-def generate(model, idx, max_new_tokens, context_size, 
-             temperature=0.0, top_k=None, eos_id=None):
-    # for-loop is the same as before: get logits, and only focus on last time step
+def generate(model, 
+             idx: torch.tensor, 
+             max_new_tokens: int, 
+             context_size: int, 
+             temperature: float=0.0, 
+             top_k: float=None, 
+             eos_id: int=None):
+    """
+    get logits, and only focus on last time step
+
+    Args:
+        model (_type_): _description_
+        idx (torch.tensor): _description_
+        max_new_tokens (int): _description_
+        context_size (int): _description_
+        temperature (float, optional): _description_. Defaults to 0.0.
+        top_k (float, optional): _description_. Defaults to None.
+        eos_id (int, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
     for _ in range(max_new_tokens):
         # crop current context if it exceeds the supported context size
+        logger.info(f"idx before crop: {idx}")
         idx_cond = idx[:, -context_size:]
+        logger.info(f"idx after crop: {idx_cond}")
         # get the predictions
         with torch.no_grad():
             logits = model(idx_cond)
+        logger.info(f"logits: {logits}")
         # focus only on the last time step
-        logits = logits[:, -1, :]  # (batch, n_tokens, vocab_size) -> (batch, vocab_size)
+        # shape: (batch, n_tokens, vocab_size) -> (batch, vocab_size)
+        logits = logits[:, -1, :]
         # filter logits with top_k sampling
         if top_k is not None:
             top_logits, _ = torch.topk(logits, top_k)
@@ -138,130 +174,52 @@ def generate(model, idx, max_new_tokens, context_size,
 
 
 
-
-
 # 测试代码 main 函数
 def main():
-    GPT_CONFIG_124M = {
-        "vocab_size": 50257,
-        "context_length": 1024,
-        "emb_dim": 768,
-        "n_heads": 12,
-        "n_layers": 12,
-        "dropout": 0.1,
-        "qkv_bias": False,
-    }
-    
-    # tokenizer
     import tiktoken
-    tokenizer = tiktoken.get_encoding("gpt2")
+
+    # model params
+    GPT_CONFIG_124M = {
+        "vocab_size": 50257,     # Vocabular size
+        "context_length": 1024,  # Context length
+        "max_new_toknes": 10,    # Maximum new tokens to generate
+        "emb_dim": 768,          # Embedding dimension
+        "n_heads": 12,           # Number of attention heads
+        "n_layers": 12,          # Number of transformer layers
+        "dropout": 0.1,          # Dropout rate
+        "qkv_bias": False,       # Query-Key-Value bias
+    } 
     
     # input data
-    batch = []
-    text1 = "Every effort moves you"
-    text2 = "Every day hold a"
-    batch.append(torch.tensor(tokenizer.encode(text1)))
-    batch.append(torch.tensor(tokenizer.encode(text2)))
-    batch = torch.stack(batch, dim=0)
-    logger.info(f"batch: \n{batch}")
-    logger.info(f"batch.shape: {batch.shape}")
-
-    # ------------------------------
-    # Layer Norm test
-    # ------------------------------
-    # data
-    torch.manual_seed(123)
-    batch_example = torch.randn(2, 5)
-    logger.info(f"batch_example: \n{batch_example}")
-
-    ln = LayerNorm(emb_dim=5)
-    out_ln = ln(batch_example)
-    logger.info(f"out_ln: \n{out_ln}")
-    mean = out_ln.mean(dim=-1, keepdim=True)
-    var = out_ln.var(dim=-1, unbiased=False, keepdim=True)
-    logger.info(f"Mean: \n{mean}")
-    logger.info(f"Variance: \n{var}")
-    
-    # ------------------------------
-    # Feed Forward test
-    # ------------------------------
-    ffn = FeedForward(GPT_CONFIG_124M)
-    x = torch.rand(2, 3, 768)
-    out = ffn(x)
-    logger.info(out.shape)
-
-    # ------------------------------
-    # Transformer Block test
-    # ------------------------------
-    # shape: [batch_size, num_tokens, emb_dim]
-    torch.manual_seed(123)
-    x = torch.rand(2, 4, 768)
-    block = TransformerBlock(GPT_CONFIG_124M)
-    output = block(x)
-    logger.info(f"Input shape: {x.shape}")
-    logger.info(f"Output shape: {output.shape}")
-
-    # ------------------------------
-    # GPT model
-    # ------------------------------
-    torch.manual_seed(123)
-    # model
-    model = GPTModel(GPT_CONFIG_124M)
-    # model forward
-    logits = model(batch)
-    logger.info(f"Input: \n{batch}")
-    logger.info(f"Output: \n{logits}")
-    logger.info(f"Output shape: {logits.shape}")
-    # model params
-    total_params = sum(p.numel() for p in model.parameters())
-    logger.info(f"Total number of parameters: {total_params:,}")
-    # logger.info(f"Token embedding layer shape: {model.tok_emb.weight.shape}")
-    # logger.info(f"Output layer shape: {model.out_head.weight.shape}")
-    total_params_gpt2 = total_params - sum(p.numel() for p in model.out_head.parameters())
-    logger.info(f"Number of trainable parameters considering weight tying: {total_params_gpt2:,}")
-    # compute memory demand of the model
-    total_size_bytes = total_params * 4  # total size in bytes(assuming float32, 4 bytes per parameter)
-    # convert to megabytes
-    total_size_mb = total_size_bytes / (1024 * 1024)
-    logger.info(f"Total size of the model: {total_size_mb:.2f} MB")
-
-    # ------------------------------
-    # generating text: v1
-    # ------------------------------
     start_context = "Hello, I am"
-    encoded = tokenizer.encode(start_context)
-    logger.info(f"encoded: {encoded}")
+
+    # tokenization
+    tokenizer = tiktoken.get_encoding("gpt2")
+    token_ids = tokenizer.encode(start_context)
+    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0)
+
+    logger.info(f"\n{50 * '='}\n{22 * ' '}IN\n{50 * '='}")
+    logger.info(f"Input text: {start_context}")
+    logger.info(f"Encoded input text: {token_ids_tensor}")
+    logger.info(f"Encoded input shape: {token_ids_tensor.shape}")
+
+    # model
+    torch.manual_seed(123)
+    model = GPT(GPT_CONFIG_124M)
+    model.eval()  # disable dropout
     
-    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-    logger.info(f"encoded_tensor.shape: {encoded_tensor.shape}")
-
-    # disable dropout
-    model.eval()
-
+    # generate text
     out = generate_text_simple(
         model = model,
-        idx = encoded_tensor,
-        max_new_tokens = 6,
-        context_size=GPT_CONFIG_124M["context_length"],
+        idx = token_ids_tensor,
+        max_new_tokens = GPT_CONFIG_124M["max_new_toknes"],
+        context_size = GPT_CONFIG_124M["context_length"],
     )
-    logger.info(f"Output: {out}")
-    logger.info(f"Output length: {len(out[0])}") 
-    
     decoded_text = tokenizer.decode(out.squeeze(0).tolist())
-    logger.info(decoded_text)
-    
-    # ------------------------------
-    # generating text: v2
-    # ------------------------------
-    # token_ids = generate(
-    #     model = model,
-    #     idx = text_to_token_ids("Every effort moves you", tokenizer),
-    #     max_new_toknes = 15,
-    #     context_size = GPT_CONFIG_124M["context_length"],
-    #     top_k = 25,
-    #     temperature = 1.4,
-    # )
-    # logger.info(f"Output text: \n{token_ids_to_text(token_ids, tokenizer)}")
+    logger.info(f"\n{50 * '='}\n{22 * ' '}OUT\n{50 * '='}")
+    logger.info(f"Output: {out}")
+    logger.info(f"Outout shape: {out.shape}")
+    logger.info(f"Output text: {decoded_text}")
 
 if __name__ == "__main__":
     main()
