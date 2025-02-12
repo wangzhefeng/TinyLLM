@@ -24,8 +24,9 @@ if str(ROOT) not in sys.path:
 import torch
 import torch.nn as nn
 
-from utils.activation import GELU
-from layers.attention import MultiHeadAttention
+from layers.transformer_block import TransformerBlock
+from layers.layer_norm import LayerNorm
+from layers.feed_forward import FeedForward
 from utils.log_util import logger
 
 # set options
@@ -41,9 +42,9 @@ class GPTModel(nn.Module):
         super().__init__()
 
         # Embedding
-        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])  #TODO
+        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
-        self.drop_emb = nn.Dropout(cfg["drop_rate"])
+        self.drop_emb = nn.Dropout(cfg["dropout"])
         # TransformerBlock
         self.trf_blocks = nn.Sequential(
             *[TransformerBlock(cfg) for _ in range(cfg["n_layers"])]
@@ -69,72 +70,6 @@ class GPTModel(nn.Module):
         logits = self.out_head(x)
 
         return logits
-
-
-class TransformerBlock(nn.Module):
-    
-    def __init__(self, cfg):
-        super().__init__()
-        
-        self.attn = MultiHeadAttention(
-            d_in = cfg["emb_dim"],
-            d_out = cfg["emb_dim"],
-            context_length = cfg["context_length"],
-            num_heads = cfg["n_heads"],
-            dropout = cfg["drop_rate"],
-            qkv_bias = cfg["qkv_bias"],
-        )
-        self.ff = FeedForward(cfg)
-        self.norm1 = LayerNorm(cfg["emb_dim"])
-        self.norm2 = LayerNorm(cfg["emb_dim"])
-        self.drop_shortcut = nn.Dropout(cfg["drop_rate"])
-    
-    def forward(self, x):
-        # shortcut connection for attention block
-        shortcut = x
-        x = self.norm1(x)
-        x = self.attn(x)
-        x = self.drop_shortcut(x)
-        x = shortcut + x
-        # shortcut connection for feed forward block
-        shortcut = x
-        x = self.norm2(x)
-        x = self.ff(x)
-        x = self.drop_shortcut(x)
-        x = shortcut + x
-        
-        return x
-
-
-class LayerNorm(nn.Module):
-    
-    def __init__(self, emb_dim, eps = 1e-5):
-        super().__init__()
-
-        self.eps = eps
-        self.scale = nn.Parameter(torch.ones(emb_dim))
-        self.shift = nn.Parameter(torch.zeros(emb_dim))
-
-    def forward(self, x):
-        mean = x.mean(dim=-1, keepdim=True)
-        var = x.var(dim=-1, keepdim=True, unbiased=False)
-        norm_x = (x - mean) / torch.sqrt(var + self.eps)
-        return self.scale * norm_x + self.shift
-
-
-class FeedForward(nn.Module):
-    
-    def __init__(self, cfg):
-        super().__init__()
-
-        self.layers = nn.Sequential(
-            nn.Linear(cfg["emb_dim"], 4 * cfg["emb_dim"]),
-            GELU(),
-            nn.Linear(4 * cfg["emb_dim"], cfg["emb_dim"]),
-        )
-    
-    def forward(self, x):
-        return self.layers(x)
 
 
 def generate_text_simple(model, idx: torch.tensor, max_new_tokens: int, context_size: int):
@@ -213,7 +148,7 @@ def main():
         "emb_dim": 768,
         "n_heads": 12,
         "n_layers": 12,
-        "drop_rate": 0.1,
+        "dropout": 0.1,
         "qkv_bias": False,
     }
     

@@ -35,7 +35,7 @@ import wandb
 
 from models.model import Transformer
 from config.Config import ModelConfig
-from data_provider.dataset import PretrainDataset
+from data_prepare.dataset import PretrainDataset
 
 warnings.filterwarnings("ignore")
 

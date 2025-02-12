@@ -21,11 +21,9 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
+import tiktoken
 import torch
-import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-
-from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -62,10 +60,14 @@ def create_dataloader(text,
                       drop_last=True, 
                       num_workers=0):
     # initialize the tokenizer
-    import tiktoken
     tokenizer = tiktoken.get_encoding("gpt2")
     # create dataset
-    dataset = LLMDataset(text, tokenizer, max_length, stride)
+    dataset = LLMDataset(
+        text=text, 
+        tokenizer=tokenizer, 
+        max_length=max_length, 
+        stride=stride
+    )
     # create dataloader
     dataloader = DataLoader(
         dataset,

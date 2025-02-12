@@ -108,13 +108,16 @@ class MultiHeadAttention(nn.Module):
         self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
     
     def forward(self, x):
+        # shape: [batch_size, num_tokens, d_in]
         batch_size, num_tokens, d_in = x.shape
-        # shape: [b, num_tokens, d_out]
-        keys = self.W_key(x)
+        
+        # shape: [batch_size, num_tokens, d_out]
         queries = self.W_query(x)
+        keys = self.W_key(x)
         values = self.W_value(x)
+        
         # split the matrix by adding a "num_heads" dimension, 
-        # unroll last dim: (b, num_tokens, d_out) -> (b, num_tokens, num_heads, head_dim)
+        # unroll last dim: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, num_heads, head_dim)
         queries = queries.view(batch_size, num_tokens, self.num_heads, self.head_dim)
         keys = keys.view(batch_size, num_tokens, self.num_heads, self.head_dim)
         values = values.view(batch_size, num_tokens, self.num_heads, self.head_dim)
