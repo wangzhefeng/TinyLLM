@@ -1,16 +1,29 @@
+export CUDA_VISIBLE_DEVICES=0
 
-python training.py \ 
-    # data params
+
+python -u run_gpt_pretrain.py \
+    --task_name tiny_llm_pretrain \
+    --is_training 1 \
+    --is_inference 0 \
     --data_source https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt \
+    --context_length 256 \
+    --model_name gpt \
+    --vocab_size 50257 \
+    --emb_dim 768 \
+    --n_heads 12 \
+    --n_layers 12 \
+    --dropout 0.1 \
+    --qkv_bias 0 \
+    --max_new_tokens 50 \
+    --iters 10 \
+    --num_epochs 10 \
+    --batch_size 2 \
     --train_ratio 0.9 \
-    --context_length 1024 \ 
-    --model_name gpt \  # model params
-    --num_epochs 10 \  # training params
-    --learning_rate 0.0004 \
+    --learning_rate 0.0005 \
     --weight_decay 0.1 \
-    --user_gpu 1 \
+    --use_gpu 1 \
+    --use_multi_gpu 0 \
     --gpu_type cuda \
-    --user_multi_gpu 0 \
-    --devices 0,1,2,3
-    --checkpoints "./saved_results/pretrained_models/"
+    --devices 0,1,2,3 \
+    --checkpoints ./saved_results/pretrained_models/
 

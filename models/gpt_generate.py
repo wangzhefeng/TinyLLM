@@ -26,10 +26,7 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def generate_text_simple(model, 
-                         idx: torch.tensor, 
-                         max_new_tokens: int, 
-                         context_size: int):
+def generate_text_simple(model, token_idx: torch.tensor, max_new_tokens: int, context_size: int):
     """
     generate text
 
@@ -43,31 +40,31 @@ def generate_text_simple(model,
         _type_: _description_
     """
     for i in range(max_new_tokens):
-        logger.info(f"generate text step: {i}")
-        logger.info(f"{25 * '-'}")
+        # logger.info(f"generate text step: {i}")
+        # logger.info(f"{25 * '-'}")
         # crop current context if it exceeds the supported context size
-        logger.info(f"idx before crop: {idx}")
-        idx_cond = idx[:, -context_size:]
-        logger.info(f"idx after crop: {idx_cond}")
+        # logger.info(f"token_idx before crop: {token_idx}")
+        idx_cond = token_idx[:, -context_size:]
+        # logger.info(f"token_idx after crop: {idx_cond}")
         # get the predictions
         with torch.no_grad():
             logits = model(idx_cond)
-        logger.info(f"logits: {logits}")
+        # logger.info(f"logits: \n{logits}")
         # focus only on the last time step
         # shape: (batch, n_tokens, vocab_size) -> (batch, vocab_size)
         logits = logits[:, -1, :]
-        logger.info(f"logits: {logits}")
+        # logger.info(f"logits: \n{logits}")
         # softmax
         probas = torch.softmax(logits, dim=-1)  # (batch, vocab_size)
-        logger.info(f"probas: {probas}")
+        # logger.info(f"probas: \n{probas}, \nprobas.shape{probas.shape}")
         # get the idx of the vocab entry with the highest probability value
         idx_next = torch.argmax(probas, dim = -1, keepdim = True)
-        logger.info(f"idx_next: {idx_next}")
+        # logger.info(f"idx_next: {idx_next}")
         # append sampled index to the running sequence
-        idx = torch.cat((idx, idx_next), dim = 1)  # (batch, n_tokens+1)
-        logger.info(f"idx: {idx}\n")
+        token_idx = torch.cat((token_idx, idx_next), dim = 1)  # (batch, n_tokens+1)
+        # logger.info(f"token_idx: {token_idx}\n")
 
-    return idx
+    return token_idx
 
 
 def generate(model, 

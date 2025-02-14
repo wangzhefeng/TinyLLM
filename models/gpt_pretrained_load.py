@@ -25,20 +25,16 @@ import numpy as np
 import torch
 import tiktoken
 
-from models.gpt import GPTModel, generate
+from models.gpt import Model 
+from models.gpt_generate import generate
+from layers.tokenization import token_ids_to_text, text_to_token_ids
 from tests.gtp_download import download_and_load_gpt2
+from utils.device import device
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
-# device
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-elif torch.backends.mps.is_available():
-    device = torch.device("mps")
-else:
-    device = torch.device("cpu")
-logger.info(f"Using {device} device.")
+
 
 # config
 GPT_CONFIG_124M = {
@@ -76,7 +72,7 @@ NEW_CONFIG.update({
 })
 
 # custom model
-gpt = GPTModel(NEW_CONFIG)
+gpt = Model(NEW_CONFIG)
 gpt.eval();
 
 

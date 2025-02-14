@@ -37,17 +37,17 @@ class TransformerBlock(nn.Module):
         super().__init__()
         
         self.attn = MultiHeadAttention(
-            d_in = cfg["emb_dim"],
-            d_out = cfg["emb_dim"],
-            context_length = cfg["context_length"],
-            num_heads = cfg["n_heads"],
-            dropout = cfg["dropout"],
-            qkv_bias = cfg["qkv_bias"],
+            d_in = cfg.emb_dim,
+            d_out = cfg.emb_dim,
+            context_length = cfg.context_length,
+            num_heads = cfg.n_heads,
+            dropout = cfg.dropout,
+            qkv_bias = cfg.qkv_bias,
         )
         self.ff = FeedForward(cfg)
-        self.norm1 = LayerNorm(cfg["emb_dim"])
-        self.norm2 = LayerNorm(cfg["emb_dim"])
-        self.drop_shortcut = nn.Dropout(cfg["dropout"])
+        self.norm1 = LayerNorm(cfg.emb_dim)
+        self.norm2 = LayerNorm(cfg.emb_dim)
+        self.drop_shortcut = nn.Dropout(cfg.dropout)
     
     def forward(self, x):
         # shortcut connection for attention block

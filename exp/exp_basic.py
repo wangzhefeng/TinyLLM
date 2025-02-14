@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 import torch
 
 from models import gpt
+from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -49,13 +50,13 @@ class Exp_Basic(object):
                 if not self.args.use_multi_gpu \
                 else self.args.devices
             device = torch.device('cuda:{}'.format(self.args.gpu))
-            print('Use GPU: cuda:{}'.format(self.args.gpu))
+            logger.info('Use GPU: cuda:{}'.format(self.args.gpu))
         elif self.args.use_gpu and self.args.gpu_type == 'mps':
             device = torch.device('mps')
-            print('Use GPU: mps')
+            logger.info('Use GPU: mps')
         else:
             device = torch.device('cpu')
-            print('Use CPU')
+            logger.info('Use CPU')
         
         return device 
 
