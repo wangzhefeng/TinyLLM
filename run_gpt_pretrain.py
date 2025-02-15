@@ -106,6 +106,8 @@ def args_parse():
     parser.add_argument("--checkpoints", type=str, required=False, 
                         default="./saved_results/pretrained_models/", 
                         help="checkpoints")
+    parser.add_argument("--test_results", type=str, required=False, default="./saved_results/test_results/",
+                        help="test results")
     # ------------------------------
     # arguments parse
     # ------------------------------

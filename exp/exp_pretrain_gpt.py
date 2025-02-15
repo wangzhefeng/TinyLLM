@@ -37,6 +37,7 @@ from layers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from exp.exp_basic import Exp_Basic
 from models.gpt_generate import generate_text_simple
+from utils.model_tools import adjust_learning_rate, EarlyStopping
 # utils
 # from utils.device import device
 from utils.log_util import logger
@@ -151,7 +152,28 @@ class Model_Pretrain(Exp_Basic):
         
         return total_loss / num_batches
 
-    def train(self, eval_freq: int = 2, eval_iter: int = 2, start_context: str = "Every effort moves you"):
+    def _get_model_path(self, setting):
+        """
+        模型保存路径
+        """
+        # 模型保存路径
+        model_path = os.path.join(self.args.checkpoints, setting)
+        os.makedirs(model_path, exist_ok=True)
+        # 最优模型保存路径
+        best_model_path = f"{model_path}/checkpoint.pth"
+        
+        return best_model_path
+
+    def _get_test_results_path(self, setting):
+        """
+        结果保存路径
+        """
+        results_path = os.path.join(self.args.test_results, setting + "/")
+        os.makedirs(results_path, exist_ok=True)
+        
+        return results_path
+
+    def train(self, setting, eval_freq: int = 2, eval_iter: int = 2, start_context: str = "Every effort moves you"):
         # build dataloader
         train_loader, val_loader = self._build_data()
         
@@ -161,20 +183,39 @@ class Model_Pretrain(Exp_Basic):
         # TODO loss
         criterion = self._select_criterion() 
         
-        # training start time
-        start_time = time.time()
+        # checkpoint path
+        best_model_path = self._get_model_path(setting)
 
+        # early stopping
+        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
+        
+        # training start time
+        training_start_time = time.time()
+        
+        # TODO 训练数据长度
+        train_steps = len(train_loader)
+        logger.info(f"train_steps: {train_steps}")
+        
         # initialize list to track losses and tokens seen
         train_losses, val_losses = [], []
         track_tokens_seen = []
         tokens_seen = 0
         global_step = -1
         # main training loop
-        for epoch in range(self.args.num_epochs):
+        for epoch in range(self.args.train_epochs):
+            # time: epoch 模型训练开始时间
+            epoch_start_time = time.time()
+            
+            # iter count
+            iter_count = 0
+
             # training mode
             self.model.train()
+            
             # model training
-            for input_batch, target_batch in train_loader:
+            for i, (input_batch, target_batch) in enumerate(train_loader):
+                # update iter count
+                iter_count += 1
                 # forward
                 optimizer.zero_grad()
                 loss = self._calc_loss_batch(self.model, input_batch, target_batch)
@@ -193,17 +234,38 @@ class Model_Pretrain(Exp_Basic):
                     val_losses.append(val_loss)
                     track_tokens_seen.append(tokens_seen)
                     logger.info(f"Epoch {epoch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {val_loss:.3f}")
+                    speed = (time.time() - training_start_time) / iter_count
+                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
+                    logger.info(f'Epoch: {epoch + 1}, \tSpeed: {speed:.4f}s/iter; left time: {left_time:.4f}s')
+                    iter_count = 0
+                    training_start_time = time.time()
+            # 日志打印: 训练 epoch、每个 epoch 训练的用时
+            logger.info(f"Epoch: {epoch + 1}, Cost time: {time.time() - epoch_start_time}")
+            # 早停机制、模型保存
+            early_stopping(vali_loss, self.model, best_model_path)
+            if early_stopping.early_stop:
+                logger.info(f"Epoch: {epoch + 1}, Early stopping...")
+                break
+            # 学习率调整
+            adjust_learning_rate(optimizer, epoch + 1, self.args)
+            
             # print a sample text after each epoch
             self.generate_and_print_sample(self.model, start_context)
         
         # calc training time
         end_time = time.time()
-        execution_time_minutes = (end_time - start_time) / 60
+        execution_time_minutes = (end_time - training_start_time) / 60
         logger.info(f"Training Completed in {execution_time_minutes:.2f} minutes.")
 
         # loss visual
-        # self.plot_losses(self.args.num_epochs, tokens_seen, train_losses, val_losses)
+        # self.plot_losses(self.args.train_epochs, tokens_seen, train_losses, val_losses)
 
+        # ------------------------------
+        # 模型加载
+        # ------------------------------
+        logger.info("Loading best model...")
+        self.model.load_state_dict(torch.load(best_model_path))
+        
         return train_losses, val_losses, track_tokens_seen
  
     def vali(self, model, train_loader, val_loader, eval_iter):
@@ -239,8 +301,8 @@ class Model_Pretrain(Exp_Basic):
             logger.info(decoded_text.replace('\n', ' '))
         model.train()
 
-    def plot_losses(self, num_epochs, tokens_seen, train_losses, val_losses):
-        epochs_seen = torch.linspace(0, num_epochs, len(train_losses))
+    def plot_losses(self, train_epochs, tokens_seen, train_losses, val_losses):
+        epochs_seen = torch.linspace(0, train_epochs, len(train_losses))
         
         fig, ax1 = plt.subplots(figsize = (5, 3))
         # plot training and validation loss against epochs
