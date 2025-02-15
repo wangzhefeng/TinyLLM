@@ -31,6 +31,9 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
 def create_balanced_dataset(df):
+    """
+    create a balanced dataset
+    """
     # count the instances of "spam"
     num_spam = df[df["Label"] == "spam"].shape[0]
     # randomly sample "ham" instances to match the number of "spam" instances
@@ -43,6 +46,17 @@ def create_balanced_dataset(df):
 
 
 def random_split(df, train_frac, valid_frac):
+    """
+    split dataframe into train, valid, test
+
+    Args:
+        df (_type_): _description_
+        train_frac (_type_): _description_
+        valid_frac (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # shuffle the entire dataframe
     df = df.sample(frac = 1, random_state = 123).reset_index(drop = True)
     # calculate split indices
@@ -57,22 +71,44 @@ def random_split(df, train_frac, valid_frac):
 
 
 def data_to_csv(train_df, valid_df, test_df):
-    extracted_path = os.path.join(ROOT, "dataset/sms_spam_collection")
-    train_df.to_csv(os.path.join(extracted_path, "train.csv"), index = None)
-    valid_df.to_csv(os.path.join(extracted_path, "valid.csv"), index = None)
-    test_df.to_csv(os.path.join(extracted_path, "test.csv"), index = None)
+    """
+    save data to csv
+
+    Args:
+        train_df (_type_): _description_
+        valid_df (_type_): _description_
+        test_df (_type_): _description_
+    """
+    # data dir
+    extracted_path = os.path.join(ROOT, r"dataset\finetuning\sms_spam_collection")
+    os.makedirs(extracted_path, exist_ok=True)
+    data_map = {
+        "train.csv": train_df,
+        "valid.csv": valid_df,
+        "test.csv": test_df,
+    }
+    # data file path
+    for data_name, data_obj in data_map.items():
+        data_path = os.path.join(extracted_path, data_name)
+        if not os.path.exists(data_path):
+            data_obj.to_csv(data_path, index=None)
+            logger.info(f"{data_name} saved to {data_path}")
+        logger.info(f"{data_name} exists. Skipping save.")
 
 
 
 
 # 测试代码 main 函数
 def main():
+    # load data
     df = load_spam_data()
-    logger.info(f"df: \n{df.head()}")
+    logger.info(f"df: \n{df.head()} \ndf.shape: {df.shape}")
+    
+    # create balanced dataset
     balanced_df = create_balanced_dataset(df)
-    # logger.info(f"balanced_df: {balanced_df.head()}")
-    logger.info(f"balanced_df.shape: {balanced_df.shape}")
-    logger.info(f"balanced_df: \n{balanced_df['Label'].value_counts()}")
+    logger.info(f"balanced_df: {balanced_df.head()} \nbalanced_df.shape: {balanced_df.shape}")
+    logger.info(f"balanced_df['Label'].value_counts(): \n{balanced_df['Label'].value_counts()}")
+    
     # data split
     train_df, valid_df, test_df = random_split(balanced_df, 0.7, 0.1)
     data_to_csv(train_df, valid_df, test_df)
