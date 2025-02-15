@@ -32,7 +32,7 @@ def generate_text_simple(model, token_idx: torch.tensor, max_new_tokens: int, co
 
     Args:
         model (_type_): LLM model
-        idx (torch.tensor): idx is array of indices in the current contex. shape: (batch, n_tokens)
+        token_idx (torch.tensor): token_idx is array of indices in the current contex. shape: (batch, n_tokens)
         max_new_tokens (int): maximum length new tokens
         context_size (int): start context length
 
@@ -42,6 +42,7 @@ def generate_text_simple(model, token_idx: torch.tensor, max_new_tokens: int, co
     for i in range(max_new_tokens):
         # logger.info(f"generate text step: {i}")
         # logger.info(f"{25 * '-'}")
+
         # crop current context if it exceeds the supported context size
         # logger.info(f"token_idx before crop: {token_idx}")
         idx_cond = token_idx[:, -context_size:]
@@ -67,19 +68,14 @@ def generate_text_simple(model, token_idx: torch.tensor, max_new_tokens: int, co
     return token_idx
 
 
-def generate(model, 
-             idx: torch.tensor, 
-             max_new_tokens: int, 
-             context_size: int, 
-             temperature: float=0.0, 
-             top_k: float=None, 
-             eos_id: int=None):
+def generate(model, token_idx: torch.tensor, max_new_tokens: int,  context_size: int, 
+             temperature: float=0.0, top_k: float=None, eos_id: int=None):
     """
     get logits, and only focus on last time step
 
     Args:
         model (_type_): _description_
-        idx (torch.tensor): _description_
+        token_idx (torch.tensor): _description_
         max_new_tokens (int): _description_
         context_size (int): _description_
         temperature (float, optional): _description_. Defaults to 0.0.
@@ -89,18 +85,23 @@ def generate(model,
     Returns:
         _type_: _description_
     """
-    for _ in range(max_new_tokens):
+    for i in range(max_new_tokens):
+        # logger.info(f"generate text step: {i}")
+        # logger.info(f"{25 * '-'}")
+
         # crop current context if it exceeds the supported context size
-        logger.info(f"idx before crop: {idx}")
-        idx_cond = idx[:, -context_size:]
-        logger.info(f"idx after crop: {idx_cond}")
+        # logger.info(f"token_idx before crop: {token_idx}")
+        idx_cond = token_idx[:, -context_size:]
+        # logger.info(f"token_idx after crop: {idx_cond}")
         # get the predictions
         with torch.no_grad():
             logits = model(idx_cond)
-        logger.info(f"logits: {logits}")
+        # logger.info(f"logits: {logits}")
         # focus only on the last time step
         # shape: (batch, n_tokens, vocab_size) -> (batch, vocab_size)
         logits = logits[:, -1, :]
+        # logger.info(f"logits: \n{logits}")
+
         # filter logits with top_k sampling
         if top_k is not None:
             top_logits, _ = torch.topk(logits, top_k)
@@ -110,6 +111,7 @@ def generate(model,
                 torch.tensor(float("-inf")).to(logits.device),
                 logits
             )
+        
         # apply temperature scaling
         if temperature > 0.0:
             logits = logits / temperature
@@ -124,9 +126,9 @@ def generate(model,
         if idx_next == eos_id:
             break
         # append sampled index to the running sequence
-        idx = torch.cat([idx, idx_next], dim=1)  # (batch_size, num_tokens+1)
+        token_idx = torch.cat([token_idx, idx_next], dim=1)  # (batch_size, num_tokens+1)
 
-    return idx
+    return token_idx
 
 
 

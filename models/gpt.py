@@ -75,6 +75,7 @@ class Model(nn.Module):
 # 测试代码 main 函数
 def main():
     import tiktoken
+    from utils.argsparser_tools import DotDict
 
     # model params
     GPT_CONFIG_124M = {
@@ -87,6 +88,7 @@ def main():
         "dropout": 0.1,          # Dropout rate
         "qkv_bias": False,       # Query-Key-Value bias
     }
+    GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
 
     # input data
     start_context = "Hello, I am"
@@ -108,7 +110,7 @@ def main():
     # generate text
     out = generate_text_simple(
         model = model,
-        idx = token_ids_tensor,
+        token_idx = token_ids_tensor,
         max_new_tokens = GPT_CONFIG_124M["max_new_toknes"],
         context_size = GPT_CONFIG_124M["context_length"],
     )

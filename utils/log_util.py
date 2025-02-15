@@ -40,7 +40,8 @@ time_rotating_file_handler = handlers.TimedRotatingFileHandler(
     filename=log_path, 
     when="MIDNIGHT", 
     interval=1, 
-    backupCount=10
+    backupCount=10,
+    encoding="utf-8"
 )
 time_rotating_file_handler.suffix = "%Y-%m-%d.log"
 # 需要注意的是 suffix 和 extMatch 一定要匹配的上，如果不匹配，过期日志不会被删除。

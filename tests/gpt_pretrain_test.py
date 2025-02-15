@@ -22,17 +22,15 @@ import torch
 import torch.nn as nn
 
 from data_provider.data_load_pretrain import data_load
-from models.gpt import Model
-from utils.device import device
 from layers.tokenization import text_to_token_ids, token_ids_to_text
+from models.gpt import Model
 from models.gpt_generate import generate_text_simple
+from utils.device import device
+from utils.argsparser_tools import DotDict
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
-
-
-
 
 
 
@@ -52,6 +50,7 @@ def main():
         "dropout": 0.1,      # Dropout rate
         "qkv_bias": False      # Query-key-value bias
     }
+    GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
     train_cfgs = {
         "num_epochs": 10,
         "max_new_tokens": 10,
@@ -77,7 +76,7 @@ def main():
         model = model,
         token_idx = text_to_token_ids(start_context),
         max_new_tokens = 10,
-        context_size = GPT_CONFIG_124M["context_length"],
+        context_size = GPT_CONFIG_124M.context_length,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
     
@@ -149,7 +148,7 @@ def main():
     logger.info(f"perplexity: {perplexity}")
 
     # ------------------------------
-    # 
+    # model training
     # ------------------------------
     # 数据加载
     raw_text = data_load(
@@ -172,12 +171,12 @@ def main():
     split_idx = int(train_ratio * len(raw_text))
     train_data = raw_text[:split_idx]
     val_data = raw_text[split_idx:]
-    if total_tokens * (train_ratio) < GPT_CONFIG_124M["context_length"]:
+    if total_tokens * (train_ratio) < GPT_CONFIG_124M.context_length:
         print("Not enough tokens for the training loader. "
             "Try to lower the `GPT_CONFIG_124M['context_length']` or "
             "increase the `training_ratio`")
 
-    if total_tokens * (1-train_ratio) < GPT_CONFIG_124M["context_length"]:
+    if total_tokens * (1-train_ratio) < GPT_CONFIG_124M.context_length:
         print("Not enough tokens for the validation loader. "
             "Try to lower the `GPT_CONFIG_124M['context_length']` or "
             "decrease the `training_ratio`")
@@ -185,8 +184,8 @@ def main():
     train_loader = create_dataloader(
         train_data,
         batch_size=2,
-        max_length=GPT_CONFIG_124M["context_length"],
-        stride=GPT_CONFIG_124M["context_length"],
+        max_length=GPT_CONFIG_124M.context_length,
+        stride=GPT_CONFIG_124M.context_length,
         drop_last=True,
         shuffle=True,
         num_workers=0,
@@ -194,8 +193,8 @@ def main():
     val_loader = create_dataloader(
         val_data,
         batch_size=2,
-        max_length=GPT_CONFIG_124M["context_length"],
-        stride=GPT_CONFIG_124M["context_length"],
+        max_length=GPT_CONFIG_124M.context_length,
+        stride=GPT_CONFIG_124M.context_length,
         drop_last=False,
         shuffle=False,
         num_workers=0,
@@ -259,7 +258,7 @@ def main():
         train_loss = _calc_loss_loader(train_loader, model, device)
         val_loss = _calc_loss_loader(val_loader, model, device)
     logger.info(f"Training loss: {train_loss}")
-    logger.info(f"Validation loss: {val_loss}")
+    logger.info(f"Validation loss: {val_loss}") 
 
 if __name__ == "__main__":
     main()

@@ -16,7 +16,7 @@ python -u run_gpt_pretrain.py \
     --qkv_bias 0 \
     --max_new_tokens 50 \
     --iters 10 \
-    --num_epochs 10 \
+    --train_epochs 10 \
     --batch_size 2 \
     --train_ratio 0.9 \
     --learning_rate 0.0005 \
@@ -25,5 +25,7 @@ python -u run_gpt_pretrain.py \
     --use_multi_gpu 0 \
     --gpu_type cuda \
     --devices 0,1,2,3 \
-    --checkpoints ./saved_results/pretrained_models/
-
+    --lradj type1 \
+    --patience 7 \
+    --checkpoints ./saved_results/pretrained_models/ \
+    --test_results ./saved_results/test_results/

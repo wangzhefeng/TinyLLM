@@ -85,8 +85,8 @@ def args_parse():
     # model pretrain params
     parser.add_argument("--iters", type=int, required=True, default=10, 
                         help="number of iterations")
-    parser.add_argument("--num_epochs", type=int, required=True, default=10, 
-                        help="number of epochs")
+    parser.add_argument("--train_epochs", type=int, required=True, default=10, 
+                        help="number of training epochs")
     parser.add_argument("--batch_size", type=int, required=True, default=2, 
                         help="batch size")
     parser.add_argument("--train_ratio", type=float, required=True, default=0.9, 
@@ -103,6 +103,9 @@ def args_parse():
                         help="gpu type")
     parser.add_argument("--devices", type=str, required=True, default="0,1,2,3",
                         help="devices")
+    parser.add_argument('--lradj', type = str, default = 'type1', help = 'adjust learning rate')
+    parser.add_argument("--patience", type=int, required=True, default=7, 
+                        help="early stopping patience")
     parser.add_argument("--checkpoints", type=str, required=False, 
                         default="./saved_results/pretrained_models/", 
                         help="checkpoints")
@@ -149,16 +152,21 @@ def running(args):
             logger.info(f"{50 * '='}")
             logger.info(f"iter: {ii}")
             logger.info(f"{50 * '='}")
+
             # setting record of experiments
-            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1]}_cl{args.context_length}_ne{args.num_epochs}_bs{args.batch_size}_{ii}"
+            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1]}_cl{args.context_length}_ne{args.train_epochs}_bs{args.batch_size}"
+
             # set experiments
             exp = Exp(args)
+
             # model training
             logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            exp.train(eval_freq=5, eval_iter=1, start_context="Every effort moves you")
+            exp.train(setting=setting, eval_freq=5, eval_iter=1, start_context="Every effort moves you")
+
             # model testing
             # logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
             # exp.test(setting)
+
             # empty cache
             torch.cuda.empty_cache()
     # ------------------------------
