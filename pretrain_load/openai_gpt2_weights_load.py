@@ -20,10 +20,10 @@ import sys
 ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import numpy as np
 import torch
-import tiktoken
 
 from models.gpt import Model 
 from models.gpt_generate import generate
@@ -35,7 +35,6 @@ from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 
 def load_weights_into_gpt(gpt, params):
