@@ -28,7 +28,7 @@ import torch
 from models.gpt import Model 
 from models.gpt_generate import generate
 from layers.tokenization import token_ids_to_text, text_to_token_ids
-from pretrain_load.gtp_download import download_and_load_gpt2
+from pretrained_weights_load.gtp_download import download_and_load_gpt2
 from utils.argsparser_tools import DotDict
 from utils.device import device
 from utils.log_util import logger
@@ -121,77 +121,74 @@ def load_weights_into_gpt(gpt, params):
     gpt.out_head.weight = _assign(gpt.out_head.weight, params["wte"])
 
 
-# ------------------------------
-# model downloading
-# ------------------------------
-settings, params = download_and_load_gpt2(
-    model_size = "124M", 
-    models_dir = "./downloaded_models/gpt2_model/"
-)
-logger.info(f"Settings: {settings}")
-logger.info(f"Parameter dictionary keys: {params.keys()}")
-logger.info(f"Token embedding weight tensor(wte): \n{params['wte']}")
-logger.info(f"Token embedding weight tensor dimensions: {params['wte'].shape}")
-
-# ------------------------------
-# update model config
-# ------------------------------
-# define model config in a dictionary for compactness
-pretrained_model_configs = {
-    "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
-    "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
-    "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
-    "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
-}
-# copy the base config and update with speicfic model settings
-model_name = "gpt2-small (124M)"
-GPT_CONFIG_124M = {
-    "vocab_size": 50257,
-    "context_length": 256,
-    "emb_dim": 768,
-    "n_heads": 12,
-    "n_layers": 12,
-    "dropout": 0.1,
-    "qkv_bias": False,
-}
-NEW_GPT_CONFIG_124M = GPT_CONFIG_124M.copy()
-NEW_GPT_CONFIG_124M.update(pretrained_model_configs[model_name])
-NEW_GPT_CONFIG_124M.update({"context_length": 1024, "qkv_bias": True})
-NEW_GPT_CONFIG_124M = DotDict(NEW_GPT_CONFIG_124M)
-logger.info(f"New config: {NEW_GPT_CONFIG_124M}")
-
-# ------------------------------
-# custom model
-# ------------------------------
-gpt = Model(NEW_GPT_CONFIG_124M)
-gpt.eval();
-
-# ------------------------------
-# load weights
-# ------------------------------
-load_weights_into_gpt(gpt, params)
-gpt.to(device)
-
-# ------------------------------
-# model inference
-# ------------------------------
-torch.manual_seed(123)
-token_ids = generate(
-    model=gpt,
-    token_idx=text_to_token_ids("Every effort moves you").to(device),
-    max_new_tokens=25,
-    context_size=NEW_GPT_CONFIG_124M.context_length,
-    top_k=50,
-    temperature=1.5
-)
-logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
-
-
 
 
 # 测试代码 main 函数
 def main():
-    pass
+    # ------------------------------
+    # model downloading
+    # ------------------------------
+    settings, params = download_and_load_gpt2(
+        model_size = "124M", 
+        models_dir = "./downloaded_models/gpt2_model/"
+    )
+    logger.info(f"Settings: {settings}")
+    logger.info(f"Parameter dictionary keys: {params.keys()}")
+    logger.info(f"Token embedding weight tensor(wte): \n{params['wte']}")
+    logger.info(f"Token embedding weight tensor dimensions: {params['wte'].shape}")
+
+    # ------------------------------
+    # update model config
+    # ------------------------------
+    # define model config in a dictionary for compactness
+    pretrained_model_configs = {
+        "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
+        "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
+        "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
+        "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
+    }
+    # copy the base config and update with speicfic model settings
+    model_name = "gpt2-small (124M)"
+    GPT_CONFIG_124M = {
+        "vocab_size": 50257,
+        "context_length": 256,
+        "emb_dim": 768,
+        "n_heads": 12,
+        "n_layers": 12,
+        "dropout": 0.1,
+        "qkv_bias": False,
+    }
+    NEW_GPT_CONFIG_124M = GPT_CONFIG_124M.copy()
+    NEW_GPT_CONFIG_124M.update(pretrained_model_configs[model_name])
+    NEW_GPT_CONFIG_124M.update({"context_length": 1024, "qkv_bias": True})
+    NEW_GPT_CONFIG_124M = DotDict(NEW_GPT_CONFIG_124M)
+    logger.info(f"New config: {NEW_GPT_CONFIG_124M}")
+
+    # ------------------------------
+    # custom model
+    # ------------------------------
+    gpt = Model(NEW_GPT_CONFIG_124M)
+    gpt.eval();
+
+    # ------------------------------
+    # load weights
+    # ------------------------------
+    load_weights_into_gpt(gpt, params)
+    gpt.to(device)
+
+    # ------------------------------
+    # model inference
+    # ------------------------------
+    torch.manual_seed(123)
+    token_ids = generate(
+        model=gpt,
+        token_idx=text_to_token_ids("Every effort moves you").to(device),
+        max_new_tokens=25,
+        context_size=NEW_GPT_CONFIG_124M.context_length,
+        top_k=50,
+        temperature=1.5
+    )
+    logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
 
 if __name__ == "__main__":
     main()

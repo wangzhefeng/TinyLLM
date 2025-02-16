@@ -31,9 +31,9 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 class SpamDataset(Dataset):
     
-    def __init__(self, csv_file, tokenizer, max_length=None, pad_token_id=50256):
+    def __init__(self, data_path, tokenizer, max_length=None, pad_token_id=50256):
         # load data
-        self.data = pd.read_csv(csv_file)
+        self.data = pd.read_csv(data_path)
         # pre-tokenize texts
         self.encoded_texts = [
             tokenizer.encode(text)
@@ -89,7 +89,7 @@ def create_dataloader(data_path,
     tokenizer = tiktoken.get_encoding("gpt2")
     # data set
     dataset = SpamDataset(
-        csv_file = data_path,
+        data_path = data_path,
         tokenizer=tokenizer,
         max_length=max_length,
     )
@@ -112,10 +112,11 @@ def main():
     tokenizer = tiktoken.get_encoding("gpt2")
     logger.info(f"special token '<|endoftext|>' id: {tokenizer.encode('<|endoftext|>', allowed_special={'<|endoftext|>'})}")
 
+    # params
     extracted_path = os.path.join(ROOT, r"dataset\finetuning\sms_spam_collection")
     batch_size = 8
-    num_workers = 0
 
+    # dataset and dataloader
     train_dataset, train_loader = create_dataloader(
         data_path = os.path.join(extracted_path, "train.csv"),
         max_length = None,
@@ -141,6 +142,7 @@ def main():
     logger.info(f"valid_dataset.max_length: {valid_dataset.max_length}")
     logger.info(f"test_dataset.max_length: {test_dataset.max_length}")
 
+    # dataloader test
     logger.info(f"Train loader:")
     for input_batch, target_batch in train_loader:
         pass
