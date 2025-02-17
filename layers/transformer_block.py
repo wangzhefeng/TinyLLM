@@ -26,6 +26,7 @@ import torch.nn as nn
 from layers.attention import MultiHeadAttention
 from layers.feed_forward import FeedForward
 from layers.layer_norm import LayerNorm
+from layers.moe import SparseMoE
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -66,6 +67,44 @@ class TransformerBlock(nn.Module):
         return x
 
 
+class MixureOfExperts_TransformerBlock(nn.Module):
+    """
+    Mixture of Experts Transformer block
+    communication followed by computation (multi-head self attention + SparseMoE) 
+    """
+
+    def __init__(self, cfg):
+        super().__init__()
+        
+        self.attn = MultiHeadAttention(
+            d_in = cfg.emb_dim,
+            d_out = cfg.emb_dim,
+            context_length = cfg.context_length,
+            num_heads = cfg.n_heads,
+            dropout = cfg.dropout,
+            qkv_bias = cfg.qkv_bias,
+        )
+        self.smoe = SparseMoE(cfg)
+        self.norm1 = LayerNorm(cfg.emb_dim)
+        self.norm2 = LayerNorm(cfg.emb_dim)
+        self.drop_shortcut = nn.Dropout(cfg.dropout)
+    
+    def forward(self, x):
+        # shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x = self.attn(x)  # shape: [batch_size, num_tokens, emb_dim]
+        x = self.drop_shortcut(x)
+        x = shortcut + x
+        # shortcut connection for feed forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.smoe(x)
+        x = self.drop_shortcut(x)
+        x = shortcut + x
+        
+        return x
+        
 
 
 # 测试代码 main 函数

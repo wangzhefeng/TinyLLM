@@ -40,7 +40,9 @@ class FeedForward(nn.Module):
         )
     
     def forward(self, x):
-        return self.layers(x)
+        out = self.layers(x)
+
+        return out
 
 
 
