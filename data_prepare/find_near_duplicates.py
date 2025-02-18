@@ -1,31 +1,58 @@
+# -*- coding: utf-8 -*-
 
-# Copyright (c) Sebastian Raschka under Apache License 2.0 (see LICENSE.txt).
-# Source for "Build a Large Language Model From Scratch"
-#   - https://www.manning.com/books/build-a-large-language-model-from-scratch
-# Code: https://github.com/rasbt/LLMs-from-scratch
+# ***************************************************
+# * File        : find_near_duplicates.py
+# * Author      : Zhefeng Wang
+# * Email       : wangzhefengr@163.com
+# * Date        : 2025-02-18
+# * Version     : 0.1.021823
+# * Description : description
+# * Link        : link
+# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
+# ***************************************************
 
-import argparse
-import json
+# python libraries
+import os
+import sys
+ROOT = os.getcwd()
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 import re
+import json
+import argparse
+
 from sklearn import __version__ as sklearn_version
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from utils.log_util import logger
+
+# global variable
+LOGGING_LABEL = __file__.split('/')[-1][:-3]
+
 
 # Sample JSON dataset
 example_data = [
-    {"instruction": "What is the capital of Italy?",
-     "input": "", "output": "The capital of Italy is Rome."
+    {
+        "instruction": "What is the capital of Italy?",
+        "input": "", 
+        "output": "The capital of Italy is Rome."
+    },
+    {
+        "instruction": "What's the capital city of Italy?",
+        "input": "", 
+        "output": "The capital city is Rome."
      },
-    {"instruction": "What's the capital city of Italy?",
-     "input": "", "output": "The capital city is Rome."
-     },
-    {"instruction": "Identify the main verb in the sentence: 'The cat sleeps on the couch.'",
-     "input": "", "output": "The verb is 'sleeps'."
-     },
-    {"instruction": "Identify the verb in the following sentence: The cat sleeps on the couch.",
-     "input": "", "output": "The verb in the sentence is \"sleeps.\""
-     },
+    {
+        "instruction": "Identify the main verb in the sentence: 'The cat sleeps on the couch.'",
+        "input": "", 
+        "output": "The verb is 'sleeps'."
+    },
+    {
+        "instruction": "Identify the verb in the following sentence: The cat sleeps on the couch.",
+        "input": "", 
+        "output": "The verb in the sentence is \"sleeps.\""
+    },
     # ...
 ]
 
@@ -97,36 +124,22 @@ def find_print_and_remove_near_duplicates(json_data, remove_duplicates=False, th
     return json_data
 
 
-if __name__ == "__main__":
-    print("scikit-learn version:", sklearn_version)
 
+
+# 测试代码 main 函数
+def main():
+    # command arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--json_file",
-        type=str,
-        help=("Path to the dataset JSON file")
-    )
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=0.9,
-        help=("A sensitivity threshold between 0 and 1 where 1 is strictest")
-    )
-    parser.add_argument(
-        "--remove_duplicates",
-        action='store_true',
-        default=False,
-        help=(
-            "Removes duplicates based on the 'input' or 'output' keys "
-            " (but not the 'instruction') and saves the cleaned JSON file as --json_output_file"
-        )
-    )
-    parser.add_argument(
-        "--json_output_file",
-        type=str,
-        help=("Path to the dataset JSON file")
-    )
-
+    parser.add_argument("--json_file", type=str, 
+                        help=("Path to the dataset JSON file"))
+    parser.add_argument("--threshold", type=float, default=0.9,
+                        help=("A sensitivity threshold between 0 and 1 where 1 is strictest"))
+    parser.add_argument("--remove_duplicates", action='store_true', default=False,
+                        help=(
+                            "Removes duplicates based on the 'input' or 'output' keys "
+                            " (but not the 'instruction') and saves the cleaned JSON file as --json_output_file"))
+    parser.add_argument("--json_output_file", type=str, 
+                        help="Path to the dataset JSON file")
     args = parser.parse_args()
 
     if args.remove_duplicates and not args.json_output_file:
@@ -137,11 +150,12 @@ if __name__ == "__main__":
 
     if not args.json_file:
         json_data = example_data
-
     else:
         with open(args.json_file, "r") as file:
             json_data = json.load(file)
-
+    # ------------------------------
+    # 
+    # ------------------------------
     json_data = find_print_and_remove_near_duplicates(
         json_data=json_data,
         remove_duplicates=args.remove_duplicates,
@@ -151,3 +165,6 @@ if __name__ == "__main__":
     if args.remove_duplicates:
         with open(args.json_output_file, "w") as file:
             json.dump(json_data, file, indent=4)
+
+if __name__ == "__main__":
+    main()
