@@ -24,7 +24,7 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def format_input(entry):
+def format_input_alpaca(entry):
     """
     format the input to the LLM use Alpaca-style prompt formatting
 
@@ -42,12 +42,16 @@ def format_input(entry):
     input_text = f"\n\n### Input:\n{entry['input']}" if entry["input"] else ""
     # response_text = f"\n\n### Response:\n{entry['output']}"
 
-    return (
-        instruction_text + input_text 
-        # + response_text
-    )
+    return instruction_text + input_text #+ response_text
 
 
+# TODO
+def format_input_phi3(entry):
+    instruction_text = f"<|user|>\n{entry['instruction']}"
+    input_text = f": '{entry['input']}'"
+    # response_text = f"<|assistant|>\n{entry["output"]}"
+
+    return instruction_text[:-1] + input_text
 
 
 
@@ -57,25 +61,26 @@ def main():
     # data
     from finetuning.instruction_follow.data_load import load_file
     data = load_file(file_path = "./dataset/finetuning/instruction-data.json")
-    
+
     # prompt format
-    formated_entry = format_input(data[50])
+    formated_entry = format_input_alpaca(data[0])
     logger.info(f"format instruction entry: \n{formated_entry}")
 
     # prompt format
-    formated_entry = format_input(data[999])
+    formated_entry = format_input_alpaca(data[50])
     logger.info(f"format instruction entry: \n{formated_entry}")
 
-    # data split
-    train_portion = int(len(data) * 0.85)
-    test_portion = int(len(data) * 0.10)
-    valid_portion = len(data) - train_portion - test_portion
-    train_data = data[:train_portion]
-    test_data = data[train_portion:train_portion+test_portion]
-    valid_data = data[train_portion+test_portion:]
-    logger.info(f"Training data length: {len(train_data)}")
-    logger.info(f"Test data length: {len(test_data)}")
-    logger.info(f"Validation data length: {len(valid_data)}")
+    # prompt format
+    formated_entry = format_input_alpaca(data[999])
+    logger.info(f"format instruction entry: \n{formated_entry}")
+
+    # prompt format
+    formated_entry = format_input_phi3(data[50])
+    logger.info(f"format instruction entry: \n{formated_entry}")
+
+    # prompt format
+    formated_entry = format_input_phi3(data[999])
+    logger.info(f"format instruction entry: \n{formated_entry}")
 
 if __name__ == "__main__":
     main()
