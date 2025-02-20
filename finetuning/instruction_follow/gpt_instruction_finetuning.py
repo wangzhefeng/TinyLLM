@@ -174,26 +174,23 @@ def _select_criterion():
 # ------------------------------
 # Finetuning LLM on instruction data
 # ------------------------------
-# def _calc_loss_batch(input_batch, target_batch, model, device):
-#     """
-#     calculate loss in batch training
-#     """
-#     # move data to device
-#     input_batch, target_batch = input_batch.to(device), target_batch.to(device)
-#     # criterion
-#     criterion = _select_criterion()
-#     # Logits of last output token
-#     logits = model(input_batch)[:, -1, :]
-#     logger.info(f"logits: {logits.shape}")
-#     logger.info(f"target_batch: {target_batch.shape}")
-#     loss = criterion(logits.flatten(0, 1), target_batch.flatten())
-
-#     return loss
-
 def _calc_loss_batch(input_batch, target_batch, model, device):
+    """
+    calculate loss in batch training
+    """
+    # move data to device
     input_batch, target_batch = input_batch.to(device), target_batch.to(device)
+    
+    # criterion
+    criterion = _select_criterion()
+    
+    # Logits of last output token
+    # logits = model(input_batch)[:, -1, :]
     logits = model(input_batch)
-    loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
+
+    # loss
+    loss = criterion(logits.flatten(0, 1), target_batch.flatten())
+
     return loss
 
 
@@ -278,21 +275,31 @@ def _generate_and_print_sample(model, device, start_context):
     model.train()
 
 
-def _train_model_simple(model, train_loader, val_loader, optimizer, device, num_epochs,
-                       eval_freq, eval_iter, start_context):
+def _train_model_simple(model, 
+                        train_loader, 
+                        val_loader, 
+                        optimizer, 
+                        device, 
+                        train_epochs,
+                        eval_freq, 
+                        eval_iter, 
+                        start_context):
     # Initialize lists to track losses and tokens seen
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen, global_step = 0, -1
-
     # Main training loop
-    for epoch in range(num_epochs):
-        model.train()  # Set model to training mode
-
+    for epoch in range(train_epochs):
+        # Set model to training mode
+        model.train()  
         for input_batch, target_batch in train_loader:
-            optimizer.zero_grad()  # Reset loss gradients from previous batch iteration
+            # Reset loss gradients from previous batch iteration
+            optimizer.zero_grad()
             loss = _calc_loss_batch(input_batch, target_batch, model, device)
-            loss.backward()  # Calculate loss gradients
-            optimizer.step()  # Update model weights using loss gradients
+            # Calculate loss gradients
+            loss.backward()  
+            # Update model weights using loss gradients
+            optimizer.step()
+
             tokens_seen += input_batch.numel()
             global_step += 1
 
@@ -337,13 +344,14 @@ def train(model, train_dataloader, valid_dataloader, device, valid_data):
     """
     model training
     """
-    model.to(device)
     # training start time
     training_start_time = time.time()
     # seed
     torch.manual_seed(123)
     # training epochs
-    num_epochs = 2
+    train_epochs = 2
+    # move model to device
+    model.to(device)
     # optimizer
     optimizer = _select_optimizer(model=model)
     # model training
@@ -353,11 +361,12 @@ def train(model, train_dataloader, valid_dataloader, device, valid_data):
         valid_dataloader, 
         optimizer, 
         device,
-        num_epochs=num_epochs, 
+        train_epochs=train_epochs, 
         eval_freq=5, 
         eval_iter=5,
         start_context = format_input_alpaca(valid_data[0]), 
     )
+    
     # training end time
     training_end_time = time.time()
     # training time
@@ -365,7 +374,7 @@ def train(model, train_dataloader, valid_dataloader, device, valid_data):
     logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
 
     # plot losses
-    epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
+    epochs_tensor = torch.linspace(0, train_epochs, len(train_losses))
     _plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
 
 
