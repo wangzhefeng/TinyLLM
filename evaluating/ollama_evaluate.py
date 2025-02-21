@@ -23,8 +23,6 @@ from tqdm import tqdm
 import urllib.request
 
 from finetuning.instruction_follow.data_load import load_file
-from finetuning.instruction_follow.data_process import format_input
-from evaluating.query_model import query_model
 from utils.log_util import logger
 
 # global variable
@@ -47,11 +45,9 @@ def query_model(prompt, model="llama3", url="http://localhost:11434/api/chat"):
 
     # Convert the dictionary to a JSON formatted string and encode it to bytes
     payload = json.dumps(data).encode("utf-8")
-
     # Create a request object, setting the method to POST and adding necessary headers
     request = urllib.request.Request(url, data=payload, method="POST")
     request.add_header("Content-Type", "application/json")
-
     # Send the request and capture the response
     response_data = ""
     with urllib.request.urlopen(request) as response:
@@ -72,6 +68,7 @@ def check_if_running(process_name):
         if process_name in proc.info["name"]:
             running = True
             break
+    
     return running
 
 

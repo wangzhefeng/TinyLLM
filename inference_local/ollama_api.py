@@ -18,6 +18,7 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 import json
+import psutil
 import urllib.request
 
 from utils.log_util import logger
@@ -26,7 +27,17 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def query_model(prompt, model="llama3", url="http://localhost:11434/api/chat"):
+def check_if_running(process_name):
+    running = False
+    for proc in psutil.process_iter(["name"]):
+        if process_name in proc.info["name"]:
+            running = True
+            break
+        
+    return running
+
+
+def query_model(prompt, model="llama3.1:70b", url="http://localhost:11434/api/chat"):
     # Create the data payload as a dictionary
     data = {
         "model": model,
@@ -66,9 +77,15 @@ def query_model(prompt, model="llama3", url="http://localhost:11434/api/chat"):
 
 # 测试代码 main 函数
 def main():
-    model = "llama3"
-    result = query_model("What do Llamas eat?", model)
-    logger.info(f"result: \n{result}")
+    # check ollama running
+    ollama_running = check_if_running("ollama")
+    # inference
+    if ollama_running:
+        logger.info(f"Ollama running: {ollama_running}")
+        result = query_model(prompt = "What do Llamas eat?", model = "llama3.1")
+        logger.info(f"result: \n{result}")
+    else:
+        raise RuntimeError("Ollama not running. Launch ollama before proceeding.")
 
 if __name__ == "__main__":
     main()
