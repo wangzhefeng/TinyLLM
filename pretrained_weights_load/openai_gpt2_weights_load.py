@@ -121,15 +121,15 @@ def load_weights_into_gpt(gpt, params):
     gpt.out_head.weight = _assign(gpt.out_head.weight, params["wte"])
 
 
-
-
-# 测试代码 main 函数
-def main():
+def build_model():
+    # pretrained model
+    choose_model = "gpt2-small (124M)"
     # ------------------------------
     # model downloading
     # ------------------------------
+    model_size = choose_model.split(" ")[-1].lstrip("(").rstrip(")")
     settings, params = download_and_load_gpt2(
-        model_size = "124M", 
+        model_size = model_size, 
         models_dir = "./downloaded_models/gpt2_model/"
     )
     logger.info(f"Settings: {settings}")
@@ -148,7 +148,6 @@ def main():
         "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
     }
     # copy the base config and update with speicfic model settings
-    model_name = "gpt2-small (124M)"
     GPT_CONFIG_124M = {
         "vocab_size": 50257,
         "context_length": 256,
@@ -158,33 +157,42 @@ def main():
         "dropout": 0.1,
         "qkv_bias": False,
     }
-    NEW_GPT_CONFIG_124M = GPT_CONFIG_124M.copy()
-    NEW_GPT_CONFIG_124M.update(pretrained_model_configs[model_name])
-    NEW_GPT_CONFIG_124M.update({"context_length": 1024, "qkv_bias": True})
-    NEW_GPT_CONFIG_124M = DotDict(NEW_GPT_CONFIG_124M)
-    logger.info(f"New config: {NEW_GPT_CONFIG_124M}")
+    base_config = GPT_CONFIG_124M.copy()
+    base_config.update(pretrained_model_configs[choose_model])
+    base_config.update({"context_length": 1024, "qkv_bias": True})
+    base_config = DotDict(base_config)
+    logger.info(f"New config: {base_config}")
 
     # ------------------------------
     # custom model
     # ------------------------------
-    gpt = Model(NEW_GPT_CONFIG_124M)
+    gpt = Model(base_config)
     gpt.eval();
 
     # ------------------------------
     # load weights
     # ------------------------------
     load_weights_into_gpt(gpt, params)
+    gpt.eval()
+    
+    return gpt, base_config, choose_model
+
+
+
+
+# 测试代码 main 函数
+def main():
+    # model
+    gpt, base_config, choose_model = build_model()
     gpt.to(device)
 
-    # ------------------------------
     # model inference
-    # ------------------------------
     torch.manual_seed(123)
     token_ids = generate(
         model=gpt,
         token_idx=text_to_token_ids("Every effort moves you").to(device),
         max_new_tokens=25,
-        context_size=NEW_GPT_CONFIG_124M.context_length,
+        context_size=base_config.context_length,
         top_k=50,
         temperature=1.5
     )

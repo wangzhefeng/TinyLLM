@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : gpt_finetuning_classifier.py
+# * File        : gpt_classifier_finetuning.py
 # * Author      : Zhefeng Wang
 # * Email       : wangzhefengr@163.com
-# * Date        : 2025-02-16
-# * Version     : 0.1.021612
+# * Date        : 2025-02-21
+# * Version     : 0.1.022122
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
@@ -26,11 +26,13 @@ import torch
 import torch.nn as nn
 from transformers import GPT2Model
 
-from finetuning.text_classification.data_loader_finetuning import create_dataloader
+from finetuning.lora_finetuning.data_loader_finetuning import create_dataloader
 from models.gpt import Model
 from models.gpt_generate import generate
 from layers.tokenization import text_to_token_ids, token_ids_to_text
+from pretrained_weights_load.openai_gpt2_weights_load import build_model
 from pretrained_weights_load.openai_gpt2_weights_load_hf import load_weights
+from layers.lora import replace_linear_with_lora
 from utils.argsparser_tools import DotDict
 from utils.device import device
 from utils.log_util import logger
@@ -86,7 +88,7 @@ def _build_model():
     """
     initializing a model with pretrained weights
     """
-    # Loading pretrained LLM 
+    # Loading pretrained LLM
     choose_model = "gpt2-small (124M)"
 
     # model base cofig
@@ -133,19 +135,28 @@ def _build_model():
     return model, base_config, choose_model
 
 
-def _finetune_model(model, base_config, num_classes = 2):
+def _finetune_model(model, base_config, num_classes):
     """
     add a classification head
     """
     # model architecture
-    logger.info(f"model: {model}")
+    logger.info(f"model: \n{model}")
 
     # freeze model(make all layers non-trainable)
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Total trainable parameters before: {total_params}")
     for param in model.parameters():
         param.requires_grad = False
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Total trainable parameters after: {total_params}")
 
     # replace output layer
     model.out_head = nn.Linear(in_features = base_config.emb_dim, out_features = num_classes)
+
+    # replace linear with LinearWithLoRA
+    replace_linear_with_lora(model, rank = 16, alpha = 16)
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Total trainable LoRA parameters: {total_params}")
 
     # make the last transformer block and final LayerNorm module 
     # connecting the last transformer block to the output layer trainable
@@ -154,8 +165,11 @@ def _finetune_model(model, base_config, num_classes = 2):
 
     for param in model.final_norm.parameters():
         param.requires_grad = True
-    
+   
+    # move model to device 
     model.to(device)
+    # model architecture
+    logger.info(f"model: \n{model}")
 
     return model
 
@@ -222,10 +236,14 @@ def _calc_accuracy(train_loader, valid_loader, test_loader, model, device):
 
 
 def _calc_loss_batch(input_batch, target_batch, model, device):
+    # data
     input_batch, target_batch = input_batch.to(device), target_batch.to(device)
+    # criterion
+    criterion = _select_criterion()
     # Logits of last output token
     logits = model(input_batch)[:, -1, :]
-    loss = torch.nn.functional.cross_entropy(logits, target_batch)
+    # loss
+    loss = criterion(logits, target_batch)
 
     return loss
 
@@ -378,74 +396,6 @@ def train(model, train_epochs: int, train_loader, valid_loader, test_loader, dev
     print(f"Test accuracy: {test_accuracy*100:.2f}%")
 
 
-# ------------------------------
-# using the LLM as a spam classifier
-# ------------------------------
-def classify_review(text, model, tokenizer, device, max_length=None, pad_token_id=50256):
-    model.eval()
-
-    # Prepare inputs to the model
-    input_ids = tokenizer.encode(text)
-    supported_context_length = model.pos_emb.weight.shape[0]
-    # Note: In the book, this was originally written as pos_emb.weight.shape[1] by mistake
-    # It didn't break the code but would have caused unnecessary truncation (to 768 instead of 1024)
-
-    # Truncate sequences if they too long
-    input_ids = input_ids[:min(max_length, supported_context_length)]
-
-    # Pad sequences to the longest sequence
-    input_ids += [pad_token_id] * (max_length - len(input_ids))
-    input_tensor = torch.tensor(input_ids, device=device).unsqueeze(0) # add batch dimension
-
-    # Model inference
-    with torch.no_grad():
-        logits = model(input_tensor)[:, -1, :]  # Logits of the last output token
-    predicted_label = torch.argmax(logits, dim=-1).item()
-
-    # Return the classified result
-    return "spam" if predicted_label == 1 else "not spam"
-
-
-def inference(model, train_dataset):
-    tokenizer = tiktoken.get_encoding("gpt2")
-
-    # usage 1
-    text_1 = (
-        "You are a winner you have been specially"
-        " selected to receive $1000 cash or a $2000 award."
-    )
-    logger.info(classify_review(
-        text_1, model, tokenizer, device, max_length=train_dataset.max_length
-    ))
-
-    # usage 2
-    text_2 = (
-        "Hey, just wanted to check if we're still on"
-        " for dinner tonight? Let me know!"
-    )
-
-    print(classify_review(
-        text_2, model, tokenizer, device, max_length=train_dataset.max_length
-    ))
-
-
-def _save_model(model):
-    # model save
-    torch.save(
-        model.state_dict(), 
-        "./saved_results/pretrained_models/review_classifier.pth"
-    )
-
-
-def _load_model(model):
-    # model load
-    model_state_dict = torch.load(
-        "./saved_results/pretrained_models/review_classifier.pth", 
-        map_location=device, 
-        weights_only=True
-    )
-    model.load_state_dict(model_state_dict)
-
 
 
 # 测试代码 main 函数
@@ -456,6 +406,7 @@ def main():
     data_path = os.path.join(ROOT, r"dataset\finetuning\sms_spam_collection")
     batch_size = 8
     num_classes = 2
+    train_epochs = 5
     # ------------------------------
     # set seed
     # ------------------------------
@@ -467,7 +418,7 @@ def main():
     # ------------------------------
     # model
     # ------------------------------
-    model, base_config, choose_model = _build_model()
+    model, base_config, choose_model = build_model()
     # ------------------------------
     # model inference before finetuning
     # ------------------------------
@@ -479,60 +430,25 @@ def main():
         context_size = base_config.context_length,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
-
-    # before finetune model as classifier
-    text = (
-        "Is the following text 'spam'? Answer with 'yes' or 'no':"
-        " 'You are a winner you have been specially"
-        " selected to receive $1000 cash or a $2000 award.'"
-    )
-
-    token_ids = generate(
-        model = model,
-        token_idx = text_to_token_ids(text),
-        max_new_tokens = 23,
-        context_size = base_config.context_length,
-    )
-    logger.info(f"Output text: {token_ids_to_text(token_ids)}")
     # ------------------------------
     # finetune model
     # ------------------------------
     model = _finetune_model(model, base_config, num_classes)
-    # ------------------------------
-    # calculate accuracy and loss before finetuning
-    # ------------------------------
-    # calculating the classification accuracy
-    tokenizer = tiktoken.get_encoding("gpt2")
-    inputs = torch.tensor(tokenizer.encode("Do you have time")).unsqueeze(0)
-    logger.info(f"inputs: \n{inputs} \ninputs shape: {inputs.shape}")
-    with torch.no_grad():
-        outputs = model(inputs)
-    logger.info(f"outputs: \n{outputs} \noutputs shape: {outputs.shape}")
-
-    last_output_token = outputs[:, -1, :]
-    logger.info(f"Last output token: {outputs[:, -1, :]}")
-
-    probas = torch.softmax(outputs[:, -1, :], dim = -1)
-    logger.info(f"Last output token probas: {probas}")
-
-    label = torch.argmax(probas)
-    logger.info(f"Class label: {label.item()}")
     
-    # calculating the classification accuracy
+    # calculate accuracy before finetuning
     _calc_accuracy(train_loader, valid_loader, test_loader, model, device)
-
-    # calculating the classification loss
-    _calc_loss(model, train_loader, valid_loader, test_loader, device)
     # ------------------------------
     # finetune model training
     # ------------------------------
-    # optimizer
-    optimizer = _select_optimizer(model)
-
-    # criterion
-    criterion = _select_criterion()
-
     # train model
+    train(
+        model, 
+        train_epochs = train_epochs, 
+        train_loader = train_loader, 
+        valid_loader = valid_loader, 
+        test_loader = test_loader, 
+        device = device
+    )
 
 if __name__ == "__main__":
     main()
