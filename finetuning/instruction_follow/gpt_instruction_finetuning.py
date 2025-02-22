@@ -31,13 +31,19 @@ from matplotlib.ticker import MaxNLocator
 # data
 from finetuning.instruction_follow.data_load import load_file
 from finetuning.instruction_follow.data_loader import create_dataloader
-from finetuning.instruction_follow.data_process import format_input_alpaca
+from finetuning.instruction_format import format_input_alpaca
 # tokenizer
 from layers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
 from models.gpt_generate import generate
 from pretrained_weights_load.openai_gpt2_weights_load_hf import load_weights
+# model training
+from training.calc_loss import _calc_loss_batch, _calc_loss_loader
+from training.generate import _generate_and_print_sample
+from training.train_funcs import _select_optimizer
+from training.plot_losses import _plot_losses
+from training.save_load_model import _save_model
 # tools
 from utils.argsparser_tools import DotDict
 from utils.device import device
@@ -76,21 +82,18 @@ def _build_data(data_path: str, train_ratio: float = 0.85, test_ratio: float = 0
         batch_size = batch_size,
         shuffle = True,
         drop_last = True,
-        num_workers = 0,
     )
     test_dataset, test_dataloader = create_dataloader(
         data = test_data,
         batch_size = batch_size,
         shuffle = False,
         drop_last = False,
-        num_workers = 0,
     )
     valid_dataset, valid_dataloader = create_dataloader(
         data = valid_data,
         batch_size = batch_size,
         shuffle = False,
         drop_last = False,
-        num_workers = 0,
     )
 
     return (
@@ -109,7 +112,6 @@ def _build_model():
     """
     # Loading pretrained LLM   
     choose_model = "gpt2-medium (355M)"
-    input_prompt = "Every effort moves you"
 
     # model base cofig
     base_config = {
@@ -150,77 +152,9 @@ def _build_model():
     return model, base_config, choose_model
 
 
-def _select_optimizer(model):
-    """
-    optimizer
-    """
-    optimizer = torch.optim.AdamW(
-        model.parameters(), 
-        lr=0.00005, 
-        weight_decay=0.1
-    )
-
-    return optimizer
-
-
-def _select_criterion():
-    """
-    loss
-    """
-    criterion = nn.CrossEntropyLoss()
-
-    return criterion
-
 # ------------------------------
 # Finetuning LLM on instruction data
 # ------------------------------
-def _calc_loss_batch(input_batch, target_batch, model, device):
-    """
-    calculate loss in batch training
-    """
-    # move data to device
-    input_batch, target_batch = input_batch.to(device), target_batch.to(device)
-    
-    # criterion
-    criterion = _select_criterion()
-    
-    # Logits of last output token
-    # logits = model(input_batch)[:, -1, :]
-    logits = model(input_batch)
-
-    # loss
-    loss = criterion(logits.flatten(0, 1), target_batch.flatten())
-
-    return loss
-
-
-def _calc_loss_loader(data_loader, model, device, num_batches=None):
-    """
-    calculate loss in all batches
-    """
-    # total loss
-    total_loss = 0.0
-    # num_batches
-    if len(data_loader) == 0:
-        return float("nan")
-    elif num_batches is None:
-        num_batches = len(data_loader)
-    else:
-        # Reduce the number of batches to match the total number of 
-        # batches in the data loader, if num_batches exceeds the number 
-        # of batches in the data loader
-        num_batches = min(num_batches, len(data_loader))
-    # calculate batch loss
-    for i, (input_batch, target_batch) in enumerate(data_loader):
-        if i < num_batches:
-            loss = _calc_loss_batch(input_batch, target_batch, model, device)
-            total_loss += loss.item()
-        else:
-            break
-    
-    return total_loss / num_batches
-
-
 def valid(model, train_loader, val_loader, device, eval_iter):
     """
     model evaluate
@@ -232,47 +166,6 @@ def valid(model, train_loader, val_loader, device, eval_iter):
     model.train()
     
     return train_loss, val_loss
-
-
-def _generate_text_simple(model, idx, max_new_tokens, context_size):
-    # idx is (B, T) array of indices in the current context
-    for _ in range(max_new_tokens):
-        # Crop current context if it exceeds the supported context size
-        # E.g., if LLM supports only 5 tokens, and the context size is 10
-        # then only the last 5 tokens are used as context
-        idx_cond = idx[:, -context_size:]
-
-        # Get the predictions
-        with torch.no_grad():
-            logits = model(idx_cond)
-
-        # Focus only on the last time step
-        # (batch, n_token, vocab_size) becomes (batch, vocab_size)
-        logits = logits[:, -1, :]
-
-        # Get the idx of the vocab entry with the highest logits value
-        idx_next = torch.argmax(logits, dim=-1, keepdim=True)  # (batch, 1)
-
-        # Append sampled index to the running sequence
-        idx = torch.cat((idx, idx_next), dim=1)  # (batch, n_tokens+1)
-
-    return idx
-
-
-def _generate_and_print_sample(model, device, start_context):
-    model.eval()
-    context_size = model.pos_emb.weight.shape[0]
-    encoded = text_to_token_ids(start_context).to(device)
-    with torch.no_grad():
-        token_ids = _generate_text_simple(
-            model=model, 
-            idx=encoded,
-            max_new_tokens=50, 
-            context_size=context_size
-        )
-        decoded_text = token_ids_to_text(token_ids)
-        logger.info(decoded_text.replace("\n", " "))  # Compact print format
-    model.train()
 
 
 def _train_model_simple(model, 
@@ -290,7 +183,7 @@ def _train_model_simple(model,
     # Main training loop
     for epoch in range(train_epochs):
         # Set model to training mode
-        model.train()  
+        model.train()
         for input_batch, target_batch in train_loader:
             # Reset loss gradients from previous batch iteration
             optimizer.zero_grad()
@@ -317,27 +210,6 @@ def _train_model_simple(model,
         _generate_and_print_sample(model, device, start_context)
 
     return train_losses, val_losses, track_tokens_seen
-
-
-def _plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):
-    fig, ax1 = plt.subplots(figsize=(5, 3))
-
-    # Plot training and validation loss against epochs
-    ax1.plot(epochs_seen, train_losses, label="Training loss")
-    ax1.plot(epochs_seen, val_losses, linestyle="-.", label="Validation loss")
-    ax1.set_xlabel("Epochs")
-    ax1.set_ylabel("Loss")
-    ax1.legend(loc="upper right")
-    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # only show integer labels on x-axis
-
-    # Create a second x-axis for tokens seen
-    ax2 = ax1.twiny()  # Create a second x-axis that shares the same y-axis
-    ax2.plot(tokens_seen, train_losses, alpha=0)  # Invisible plot for aligning ticks
-    ax2.set_xlabel("Tokens seen")
-
-    fig.tight_layout()  # Adjust layout to make room
-    plt.savefig("loss-plot.pdf")
-    plt.show()
 
 
 def train(model, train_dataloader, valid_dataloader, device, valid_data):
@@ -426,25 +298,6 @@ def _build_test_data(test_data):
     os.makedirs(result_path, exist_ok=True)
     with open(os.path.join(result_path, "instruction-data-with-response.json"), "w") as file:
         json.dump(test_data, file, indent=4)
-
-
-def _save_model(model, pretrained_model_path: str, choose_model: str):
-    """
-    Save model
-    """
-    file_name = os.path.join(pretrained_model_path, f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
-    torch.save(model.state_dict(), file_name)
-    logger.info(f"Model saved to {file_name}")
-
-
-def _load_model(model, pretrained_model_path: str, choose_model: str):
-    """
-    Load model
-    """
-    file_name = os.path.join(pretrained_model_path, f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
-    model.load_state_dict(torch.load(file_name))
-    logger.info(f"Model loaded from {file_name}")
-
 
 
 

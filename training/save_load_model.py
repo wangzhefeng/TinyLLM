@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
 import torch
 
 from models.gpt import Model
+from utils.device import device
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -44,6 +45,44 @@ def load_model_weights(args, model_path: str, device: str):
     model = Model(args)
     model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval();
+
+
+def _save_model(model):
+    # model save
+    torch.save(
+        model.state_dict(), 
+        "./saved_results/pretrained_models/review_classifier.pth"
+    )
+
+
+def _load_model(model):
+    # model load
+    model_state_dict = torch.load(
+        "./saved_results/pretrained_models/review_classifier.pth", 
+        map_location=device, 
+        weights_only=True
+    )
+    model.load_state_dict(model_state_dict)
+
+
+def _save_model(model, pretrained_model_path: str, choose_model: str):
+    """
+    Save model
+    """
+    file_name = os.path.join(pretrained_model_path, f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
+    torch.save(model.state_dict(), file_name)
+    logger.info(f"Model saved to {file_name}")
+
+
+def _load_model(model, pretrained_model_path: str, choose_model: str):
+    """
+    Load model
+    """
+    file_name = os.path.join(pretrained_model_path, f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
+    model.load_state_dict(torch.load(file_name))
+    logger.info(f"Model loaded from {file_name}")
+
+
 
 
 def save_model_optim_weights(model, optimizer, model_path: str):

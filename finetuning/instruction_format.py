@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : data_process.py
+# * File        : instruction_format.py
 # * Author      : Zhefeng Wang
 # * Email       : wangzhefengr@163.com
-# * Date        : 2025-02-16
-# * Version     : 0.1.021619
+# * Date        : 2025-02-23
+# * Version     : 0.1.022300
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)

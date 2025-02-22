@@ -22,7 +22,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch.nn as nn
-from utils.activation import GELU
+from layers.activation import GELU
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]

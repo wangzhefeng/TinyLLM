@@ -40,11 +40,11 @@ def load_instruction_data(data_path: str):
 
 # 测试代码 main 函数
 def main():
-    instruction_entries_with_preference_path = "./dataset/finetuning/instruction-preference-data.json"
-    instruction_entries_with_preference_data = load_instruction_data(
-        data_path = instruction_entries_with_preference_path
+    inst_entries_with_pref_path = "./dataset/finetuning/instruction-preference-data.json"
+    inst_entries_with_pref_data = load_instruction_data(
+        data_path =inst_entries_with_pref_path 
     )
-    logger.info(f"Number of entries: {len(instruction_entries_with_preference_data)}")
+    logger.info(f"Number of entries: {len(inst_entries_with_pref_data)}")
 
 if __name__ == "__main__":
     main()

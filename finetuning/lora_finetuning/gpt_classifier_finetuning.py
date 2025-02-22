@@ -33,6 +33,12 @@ from layers.tokenization import text_to_token_ids, token_ids_to_text
 from pretrained_weights_load.openai_gpt2_weights_load import build_model
 from pretrained_weights_load.openai_gpt2_weights_load_hf import load_weights
 from layers.lora import replace_linear_with_lora
+from training.calc_loss import _calc_loss_batch, _calc_loss_loader
+from training.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
+from training.generate import _generate_and_print_sample
+from training.train_funcs import _select_optimizer
+from training.plot_losses import _plot_values_classifier, _plot_losses_instruction_sft
+from training.save_load_model import _save_model
 from utils.argsparser_tools import DotDict
 from utils.device import device
 from utils.log_util import logger
@@ -174,111 +180,6 @@ def _finetune_model(model, base_config, num_classes):
     return model
 
 
-def _select_optimizer(model):
-    """
-    optimizer
-    """
-    optimizer = torch.optim.AdamW(
-        model.parameters(), 
-        lr=0.00005, 
-        weight_decay=0.1
-    )
-
-    return optimizer
-
-
-def _select_criterion():
-    """
-    loss
-    """
-    criterion = nn.CrossEntropyLoss()
-
-    return criterion
-
-
-def _calc_accuracy_loader(dataloader, model, device, num_batches = None):
-    # model eval
-    model.eval()
-    # correct predictions and number of examples
-    correct_preds, num_examples = 0, 0
-    # number of batches
-    if num_batches is None:
-        num_batches = len(dataloader)
-    else:
-        num_batches = min(num_batches, len(dataloader))
-    # calculate accuracy
-    for i, (input_batch, target_batch) in enumerate(dataloader):
-        if i < num_batches:
-            # data to device
-            input_batch, target_batch = input_batch.to(device), target_batch.to(device)
-            # model inference
-            with torch.no_grad():
-                logits = model(input_batch)[:, -1, :]
-            # pred labels
-            pred_labels = torch.argmax(logits, dim=-1)
-            # collect info
-            num_examples += pred_labels.shape[0]
-            correct_preds += (pred_labels == target_batch).sum().item()
-        else:
-            break
-    
-    return correct_preds / num_examples
-
-
-def _calc_accuracy(train_loader, valid_loader, test_loader, model, device):
-    train_accuracy = _calc_accuracy_loader(train_loader, model, device, num_batches=10)
-    valid_accuracy = _calc_accuracy_loader(valid_loader, model, device, num_batches=10)
-    test_accuracy = _calc_accuracy_loader(test_loader, model, device, num_batches=10)
-
-    logger.info(f"Train accuracy: {train_accuracy * 100:.2f}%")
-    logger.info(f"Valid accuracy: {valid_accuracy * 100:.2f}%")
-    logger.info(f"Test accuracy: {test_accuracy * 100:.2f}%")
-
-
-def _calc_loss_batch(input_batch, target_batch, model, device):
-    # data
-    input_batch, target_batch = input_batch.to(device), target_batch.to(device)
-    # criterion
-    criterion = _select_criterion()
-    # Logits of last output token
-    logits = model(input_batch)[:, -1, :]
-    # loss
-    loss = criterion(logits, target_batch)
-
-    return loss
-
-
-def _calc_loss_loader(data_loader, model, device, num_batches=None):
-    total_loss = 0.
-    if len(data_loader) == 0:
-        return float("nan")
-    elif num_batches is None:
-        num_batches = len(data_loader)
-    else:
-        # Reduce the number of batches to match the total number of batches in the data loader
-        # if num_batches exceeds the number of batches in the data loader
-        num_batches = min(num_batches, len(data_loader))
-    for i, (input_batch, target_batch) in enumerate(data_loader):
-        if i < num_batches:
-            loss = _calc_loss_batch(input_batch, target_batch, model, device)
-            total_loss += loss.item()
-        else:
-            break
-        
-    return total_loss / num_batches
-
-
-def _calc_loss(model, train_loader, valid_loader, test_loader, device):
-    # Disable gradient tracking for efficiency because we are not training, yet
-    with torch.no_grad(): 
-        train_loss = _calc_loss_loader(train_loader, model, device, num_batches=5)
-        val_loss = _calc_loss_loader(valid_loader, model, device, num_batches=5)
-        test_loss = _calc_loss_loader(test_loader, model, device, num_batches=5)
-
-    print(f"Training loss: {train_loss:.3f}")
-    print(f"Validation loss: {val_loss:.3f}")
-    print(f"Test loss: {test_loss:.3f}")
-
 # ------------------------------
 # finetuning the model on supervised data
 # ------------------------------
@@ -290,23 +191,6 @@ def evaluate_model(model, train_loader, val_loader, device, eval_iter):
     model.train()
 
     return train_loss, val_loss
-
-
-def _plot_values(epochs_seen, examples_seen, train_values, val_values, label="loss"):
-    fig, ax1 = plt.subplots(figsize=(5, 3))
-    # Plot training and validation loss against epochs
-    ax1.plot(epochs_seen, train_values, label=f"Training {label}")
-    ax1.plot(epochs_seen, val_values, linestyle="-.", label=f"Validation {label}")
-    ax1.set_xlabel("Epochs")
-    ax1.set_ylabel(label.capitalize())
-    ax1.legend()
-    # Create a second x-axis for examples seen
-    ax2 = ax1.twiny()  # Create a second x-axis that shares the same y-axis
-    ax2.plot(examples_seen, train_values, alpha=0)  # Invisible plot for aligning ticks
-    ax2.set_xlabel("Examples seen")
-    fig.tight_layout()  # Adjust layout to make room
-    # plt.savefig(f"{label}-plot.pdf")
-    plt.show()
 
 
 def _train_classifier_simple(model, 
@@ -380,12 +264,12 @@ def train(model, train_epochs: int, train_loader, valid_loader, test_loader, dev
     # training loss plot
     epochs_tensor = torch.linspace(0, train_epochs, len(train_losses))
     examples_seen_tensor = torch.linspace(0, examples_seen, len(train_losses))
-    _plot_values(epochs_tensor, examples_seen_tensor, train_losses, val_losses)
+    _plot_values_classifier(epochs_tensor, examples_seen_tensor, train_losses, val_losses)
 
     # training accuracy plot
     epochs_tensor = torch.linspace(0, train_epochs, len(train_accs))
     examples_seen_tensor = torch.linspace(0, examples_seen, len(train_accs))
-    _plot_values(epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy")
+    _plot_values_classifier(epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy")
 
     # accuracy
     train_accuracy = _calc_accuracy_loader(train_loader, model, device)

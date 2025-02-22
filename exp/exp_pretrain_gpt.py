@@ -37,8 +37,8 @@ from layers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from exp.exp_basic import Exp_Basic
 from models.gpt_generate import generate_text_simple, generate
-from utils.model_tools import adjust_learning_rate, EarlyStopping
-from utils.model_saving_loading import load_model_weights
+from training.train_funcs import adjust_learning_rate, EarlyStopping
+from training.save_load_model import load_model_weights
 # utils
 # from utils.device import device
 from utils.log_util import logger

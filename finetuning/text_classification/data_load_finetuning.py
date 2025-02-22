@@ -32,24 +32,7 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-# data save path
-finetuning_data_path = r"dataset\finetuning"
-
-# zip file path
-zip_path = os.path.join(ROOT, finetuning_data_path, "sms_spam_collection.zip")
-# logger.info(f"zip_path: {zip_path}")
-
-# extracted path
-extracted_path = os.path.join(ROOT, finetuning_data_path, "sms_spam_collection")
-os.makedirs(extracted_path, exist_ok=True)
-# logger.info(f"extracted_path: {extracted_path}")
-
-# data file path
-data_file_path = Path(extracted_path) / "SMSSpamCollection.tsv"
-# logger.info(f"data_file_path: {data_file_path}")
-
-
-def download_and_unzip_spam_data():
+def download_and_unzip_spam_data(data_file_path, zip_path, extracted_path):
     """
     download spam data for finetuning text classification
     """
@@ -71,7 +54,7 @@ def download_and_unzip_spam_data():
     logger.info(f"File downloaded and saved as {data_file_path}")
 
 
-def load_spam_data():
+def load_spam_data(data_file_path):
     """
     load spam data for finetuning text classification
     """
@@ -84,8 +67,27 @@ def load_spam_data():
 
 # 测试代码 main 函数
 def main():
-    download_and_unzip_spam_data()
-    df = load_spam_data()
+    # data save path
+    finetuning_data_path = r"dataset\finetuning"
+
+    # zip file path
+    zip_path = os.path.join(ROOT, finetuning_data_path, "sms_spam_collection.zip")
+    # logger.info(f"zip_path: {zip_path}")
+
+    # extracted path
+    extracted_path = os.path.join(ROOT, finetuning_data_path, "sms_spam_collection")
+    os.makedirs(extracted_path, exist_ok=True)
+    # logger.info(f"extracted_path: {extracted_path}")
+
+    # data file path
+    data_file_path = Path(extracted_path) / "SMSSpamCollection.tsv"
+    # logger.info(f"data_file_path: {data_file_path}")
+
+    # data download
+    download_and_unzip_spam_data(data_file_path, zip_path, extracted_path)
+
+    # data load
+    df = load_spam_data(data_file_path)
     logger.info(f"df: \n{df.head()} \ndf.shape: {df.shape}")
     logger.info(f"df['Label'].value_counts(): \n{df['Label'].value_counts()}")
 
