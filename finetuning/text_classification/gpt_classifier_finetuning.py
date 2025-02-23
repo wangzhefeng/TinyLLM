@@ -29,8 +29,8 @@ from transformers import GPT2Model
 from finetuning.text_classification.data_loader_finetuning import create_dataloader
 from models.gpt import Model
 from models.gpt_generate import generate
-from layers.tokenization import text_to_token_ids, token_ids_to_text
-from pretrained_weights_load.openai_gpt2_weights_load_hf import load_weights
+from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+from models_load.openai_gpt2_weights_load_hf import load_weights
 from training.calc_loss import _calc_loss_batch, _calc_loss_loader, _calc_loss
 from training.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
 from training.generate import _generate_and_print_sample

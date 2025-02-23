@@ -29,9 +29,9 @@ from transformers import GPT2Model
 from finetuning.lora_finetuning.data_loader_finetuning import create_dataloader
 from models.gpt import Model
 from models.gpt_generate import generate
-from layers.tokenization import text_to_token_ids, token_ids_to_text
-from pretrained_weights_load.openai_gpt2_weights_load import build_model
-from pretrained_weights_load.openai_gpt2_weights_load_hf import load_weights
+from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+from models_load.openai_gpt2_weights_load import build_model
+from models_load.openai_gpt2_weights_load_hf import load_weights
 from layers.lora import replace_linear_with_lora
 from training.calc_loss import _calc_loss_batch, _calc_loss_loader
 from training.calc_accuracy import _calc_accuracy_loader, _calc_accuracy

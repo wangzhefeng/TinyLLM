@@ -33,11 +33,11 @@ from finetuning.instruction_follow.data_load import load_file
 from finetuning.instruction_follow.data_loader import create_dataloader
 from finetuning.instruction_format import format_input_alpaca
 # tokenizer
-from layers.tokenization import text_to_token_ids, token_ids_to_text
+from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
 from models.gpt_generate import generate
-from pretrained_weights_load.openai_gpt2_weights_load_hf import load_weights
+from models_load.openai_gpt2_weights_load_hf import load_weights
 # model training
 from training.calc_loss import _calc_loss_batch, _calc_loss_loader
 from training.generate import _generate_and_print_sample

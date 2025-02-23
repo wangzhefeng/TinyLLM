@@ -444,7 +444,7 @@ def main():
     model, base_config = _build_model(model_path=finetuned_model_path)
 
     # model test before dpo
-    from layers.tokenization import text_to_token_ids, token_ids_to_text
+    from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
     from models.gpt_generate import generate
     prompt = """Below is an instruction that describes a task. Write a response
     that appropriately completes the request.

@@ -27,8 +27,8 @@ import torch
 
 from models.gpt import Model 
 from models.gpt_generate import generate
-from layers.tokenization import token_ids_to_text, text_to_token_ids
-from pretrained_weights_load.gtp_download import download_and_load_gpt2
+from tokenizer.tokenization import token_ids_to_text, text_to_token_ids
+from models_load.gtp_download import download_and_load_gpt2
 from utils.argsparser_tools import DotDict
 from utils.device import device
 from utils.log_util import logger

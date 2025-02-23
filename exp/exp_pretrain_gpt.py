@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from data_provider.data_load_pretrain import data_load
 from data_provider.data_loader import create_dataloader
 # tokenizer
-from layers.tokenization import text_to_token_ids, token_ids_to_text
+from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from exp.exp_basic import Exp_Basic
 from models.gpt_generate import generate_text_simple, generate

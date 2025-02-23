@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 
 from data_provider.data_load_pretrain import data_load
-from layers.tokenization import text_to_token_ids, token_ids_to_text
+from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models.gpt import Model
 from models.gpt_generate import generate_text_simple
 from utils.device import device
