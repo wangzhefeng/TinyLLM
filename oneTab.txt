@@ -1,179 +1,205 @@
-https://mp.weixin.qq.com/s/uMxruIyMIpY1BpaaZdLKjA | 使用PyTorch Lightning从头开始实现并训练CNN
-https://mp.weixin.qq.com/s/hOgeu6EPbuaQgVHyjij-kg | 零基础入门：DeepSeek微调教程来了！
-https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04 | How To Install and Use Docker on Ubuntu 22.04 | DigitalOcean
-https://www.digitalocean.com/community/tutorials/vision-transformer-for-computer-vision | Vision Transformers (ViTs): Computer Vision with Transformer Models | DigitalOcean
-https://damaokeji.feishu.cn/wiki/KIlMwjj7viWv5OkgIAwcPaMbnag | 能量块or平衡基团调研成果总结 - 飞书云文档
-https://www.zhihu.com/question/463332914/answer/3433457082 | (2 封私信) 如何生成python项目需要的最小requirements.txt文件？ - 知乎
-https://www.zhihu.com/question/352525266/answer/3344947198 | (2 封私信) 如何提高自己的代码能力以达到熟练使用pytorch? - 知乎
-https://github.com/lucidrains?tab=repositories | lucidrains (lucidrains) / Repositories
-https://github.com/bRAGAI/bRAG-langchain/ | bRAGAI/bRAG-langchain: Everything you need to know to build your own RAG application
-https://github.com/AIDajiangtang/LLM-from-scratch?tab=readme-ov-file | AIDajiangtang/LLM-from-scratch: Transformer、GPT2、BERT pre-training and fine-tuning from scratch
-https://mp.weixin.qq.com/s/xtYqNQJBb5vJ11NWzbrAFg | 大模型分布式并行训练范式原理篇
-https://chantou.damao.tech/Energy#/ | 生成式AI虚拟电厂Copilot
-https://www.zhihu.com/search?type=content&q=%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E8%92%B8%E9%A6%8F | (2 封私信) 大语言模型蒸馏 - 搜索结果 - 知乎
-https://zhuanlan.zhihu.com/p/695640168 | 大规模语言模型知识蒸馏综述 - 知乎
-https://zhuanlan.zhihu.com/p/683993105 | 大模型如何蒸馏知识？港大等最新《大型语言模型知识蒸馏》综述 - 知乎
-https://zhuanlan.zhihu.com/p/71986772 | 深度神经网络模型蒸馏Distillation - 知乎
-https://arxiv.org/pdf/2402.13116 | 2402.13116
-https://arxiv.org/html/2402.13116v4#S5 | 大型语言模型知识蒸馏综述 --- A Survey on Knowledge Distillation of Large Language Models
-https://github.com/Tebmer/Awesome-Knowledge-Distillation-of-LLMs | Tebmer/Awesome-Knowledge-Distillation-of-LLMs: This repository collects papers for "A Survey on Knowledge Distillation of Large Language Models". We break down KD into Knowledge Elicitation and Distillation Algorithms, and explore the Skill & Vertical Distillation of LLMs.
-https://blog.csdn.net/HUSTHY/article/details/115174978 | 模型蒸馏原理和bert模型蒸馏以及theseus压缩实战-CSDN博客
-https://pytorch.org/tutorials/beginner/knowledge_distillation_tutorial.html | Knowledge Distillation Tutorial — PyTorch Tutorials 2.6.0+cu124 documentation
-https://github.com/dkozlov/awesome-knowledge-distillation | dkozlov/awesome-knowledge-distillation: Awesome Knowledge Distillation
-http://cjc.ict.ac.cn/online/onlinepaper/HZH315.pdf | HZH315.pdf
-https://zhuanlan.zhihu.com/p/644502891 | 一文搞懂什么是ablation study (消融实验） - 知乎
-
-https://imbalanced-learn.org/stable/user_guide.html | User guide: contents — Version 0.13.0
-https://github.com/karminski/one-small-step | karminski/one-small-step: 这是一个简单的技术科普教程项目，主要聚焦于解释一些有趣的，前沿的技术概念和原理。每篇文章都力求在 5 分钟内阅读完成。
-https://zhuanlan.zhihu.com/p/93287223 | 从入门到放弃：深度学习中的模型蒸馏技术 - 知乎
-https://zhuanlan.zhihu.com/p/681401085 | LLMs-from-scratch|笔记|Chapter02 - 知乎
-https://zhuanlan.zhihu.com/p/683436483
-https://zhuanlan.zhihu.com/p/684137179 | LLMs-from-scratch|笔记|Chapter04 - 知乎
-https://blog.csdn.net/v_JULY_v/article/details/134923301 | 一文通透想颠覆Transformer的Mamba：从SSM、HiPPO、S4到Mamba(被誉为Mamba最佳解读)_mamba模型-CSDN博客
-https://mp.weixin.qq.com/s?__biz=MzkzMzI4MjMyNA==&mid=2247510917&idx=1&sn=da0f96175e743bb23fa8c03b863bf01b&source=41#wechat_redirect | 用Python构建NLP Pipeline，从思路到具体代码，这篇文章一次性都讲到了
-https://mp.weixin.qq.com/s/gk2VJmoxSb9Bw8mlACckJg | 大神Andrej的最新AI课: 大语言模型LLM深入详解 | 5万字完整版·附视频
-https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1 | FineWeb: decanting the web for the finest text data at scale - a Hugging Face Space by HuggingFaceFW
-https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf | Language Models are Unsupervised Multitask Learners
-https://anythingllm.com/ | AnythingLLM | The all-in-one AI application for everyone
-https://chantou.damao.tech/Energy | 生成式AI虚拟电厂Copilot
+chrome-extension://bpoadfkcbjbfhfodiogcnhhhpibjhbnh/pdf/index.html?file=https%3A%2F%2Farxiv.org%2Fpdf%2F2401.02954 | 2401.02954
 http://47.101.215.80:13151/vpp-cfgs/vpp-deployment-test-cfgs/edit | 通用 · 设置 · DT-VPP / VPP-deployment-test · GitLab
 http://47.101.215.80:13151/vpp-cfgs/vpp-load_prediction-cfgs | DT-VPP / VPP-load_prediction-cfgs · GitLab
-https://lightning.ai/docs/pytorch/stable/debug/debugging_basic.html | Debug your model (basic) — PyTorch Lightning 2.5.0.post0 documentation
-https://github.com/TingsongYu/PyTorch_Tutorial | TingsongYu/PyTorch_Tutorial: 《Pytorch模型训练实用教程》中配套代码
-
-https://www.analyticsvidhya.com/blog/2017/06/word-embeddings-count-word2veec/ | Understanding Word Embeddings: From Word2Vec to Count Vectors
-https://projector.tensorflow.org/ | Embedding projector - visualization of high-dimensional data
-https://pytorch.org/docs/stable/generated/torch.tril.html | torch.tril — PyTorch 2.5 documentation
-https://mp.weixin.qq.com/s/LnUchUuiJvQBX1zx0cZnpw | 谷歌新架构终结Transformer，长序列处理王者诞生？清华姚班校友新作
-https://blog.xiang578.com/post/are-transformers-effective-for-time-series-forecasting.html | 【时间序列预测】Are Transformers Effective for Time Series Forecasting? - 算法花园
-https://huggingface.co/docs/transformers/main/en/model_doc/time_series_transformer | Time Series Transformer
-https://www.sbert.net/examples/training/sts/README.html | Semantic Textual Similarity — Sentence Transformers documentation
-https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486244&idx=1&sn=702d2921f4527e8d93e10b851f8c98fb&scene=19#wechat_redirect | 【务实基础】AB Test
-https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486537&idx=1&sn=03cc507873683e4ad030b1bec8305c39&chksm=fa041222cd739b34e18c209b91f5c4da9ea9aa4162e46ffdaa5a0e4e18f784ca26b2d3e34092&scene=178&cur_album_id=1577157748566310916#rd | 【时序】平稳时序分析
-https://greenteapress.com/thinkstats2/thinkstats2.pdf | thinkstats2.pdf
-https://colab.research.google.com/drive/1_X7O2BkFLvqyCdZzDZvV2MB0aAvYALLC#scrollTo=928tzaA2AA2g | Informer.ipynb - Colab
-https://zhuanlan.zhihu.com/p/646853438 | Informer算法原理与代码详解 - 知乎
-https://github.com/zhouhaoyi/Informer2020 | zhouhaoyi/Informer2020: The GitHub repository for the paper "Informer" accepted by AAAI 2021.
-https://mp.weixin.qq.com/s?__biz=MzkzMzI4MjMyNA==&mid=2247510970&idx=1&sn=1aa447379230d12ce8dedcf8a4e02b9b&source=41#wechat_redirect | 用文本分类模型轻松搞定复杂语义分析；NLP管道模型可以退下了
-https://mp.weixin.qq.com/s/5_VnzP3JmOB0D5geV5HRFg | 【独家】万字长文带你梳理Llama开源家族：从Llama-1到Llama-3
-
-https://weibo.com/ttarticle/p/show?id=2309405119057228857576 | OpenAI研究员Jason Wei大模型扩展范式40页PPT及讲稿
-https://skforecast.org/0.14.0/introduction-forecasting/introduction-forecasting | Intro to Forecasting - Skforecast Docs
-https://mp.weixin.qq.com/s/ZRXtWN9Xk_4t-z3T2bRY7g | 时间序列数据特征提取的几类方法。
-https://mp.weixin.qq.com/s/R8UbrixkKHXE4dnVt0VMvw | AIPO共学课 | 李继刚提示词课万字整理
-https://mp.weixin.qq.com/s/8Ts2abXTpH9xA5vzQym_Og | 大模型最强架构TTT问世！斯坦福UCSD等5年磨一剑， 一夜推翻Transformer
-https://docs.oneflow.org/master/index.html | OneFlow -- 全新一代深度学习框架 - OneFlow
-https://www.cse.ust.hk/~qyang/Docs/2009/tkde_transfer_learning.pdf | untitled
-
-https://lightning.ai/docs/torchmetrics/stable/pages/quickstart.html | Quick Start — PyTorch-Metrics 1.6.1 documentation
-https://lightning.ai/docs/torchmetrics/stable/ | Welcome to TorchMetrics — PyTorch-Metrics 1.6.1 documentation
-https://lightning.ai/docs/examples/finetune-llm
-https://github.com/blue-yonder/tsfresh | blue-yonder/tsfresh: Automatic extraction of relevant features from time series:
-https://github.com/fastai/fastai | fastai/fastai: The fastai deep learning library
-https://github.com/awslabs/gluonts | awslabs/gluonts: Probabilistic time series modeling in Python
-https://mp.weixin.qq.com/s/tufq2iBfZLFIhaaB2C7Biw | 时序大模型技术总结：从时序数据的特点、常见任务说起
-https://task.csdn.net/ | CSDN有奖任务
-https://mp.weixin.qq.com/s/bYTQwwn52_22fYmFJrEbDg | 11种经典时间序列预测方法：理论、Python实现与应用
-https://mp.weixin.qq.com/s?__biz=MzkxNDE1NjM5MA==&mid=2247484417&idx=1&sn=efd49713967931a93568f1a8557672cd&chksm=c173fa08f604731e96ff7ddfc07f622befb1351fdda49b602715dca91c0eddcfd4b2e83655db&cur_album_id=2111235593522200577&scene=189#wechat_redirect | 时间序列 | PACF篇
-https://mp.weixin.qq.com/s/XYoaNObxwOLUQksFGtVplg | 适合时空预测的时间序列表示学习方法
-https://mp.weixin.qq.com/s/IPY2QwJ68YIrclMi2JtkMA | TFB：2024最新时间序列预测Benchmark
-https://mp.weixin.qq.com/s/hEojAe80TRbLiVKsjhgeUw | 深度学习时间序列的综述
-https://mp.weixin.qq.com/s/an5dFwyKzpjgi8QurC6f7A | 最近一年值得关注的10篇时间序列领域工作
-https://mp.weixin.qq.com/s/A6tCdPVH-VzhMy17G5ljAQ | 时间序列预测和缺失值填充联合建模方法
-https://mp.weixin.qq.com/s/a4TCsYub-OPaqRPSbs6qXw | 最新时间序列统一大模型，秒杀各类时序任务
-https://mp.weixin.qq.com/s/5n4DuFAIbWCj7nmsR8pQLw | 时间序列去趋势化和傅里叶变换
-https://www.zhihu.com/question/390044856/answer/2751290273 | (2 封私信) 时序数据预测有哪些好方法？ - 知乎
-https://blog.csdn.net/c9Yv2cf9I06K2A9E/article/details/125754784 | 阿里达摩院最新FEDformer，长程时序预测全面超越SOTA | ICML 2022-CSDN博客
-https://blog.csdn.net/qq_44454263/article/details/122548708 | AR-Net: A SIMPLE AUTO-REGRESSIVE NEURAL NETWORK FOR TIME-SERIES 阅读笔记_neural net time series-CSDN博客
-https://www.sktime.net/en/latest/api_reference/forecasting.html#online-and-stream-forecasting | Forecasting — sktime documentation
-https://www.sktime.net/en/stable/examples/01_forecasting.html | Forecasting with sktime — sktime documentation
-https://github.com/apachecn/ml-mastery-zh/blob/master/docs/dlts/how-to-develop-convolutional-neural-network-models-for-time-series-forecasting.md | ml-mastery-zh/docs/dlts/how-to-develop-convolutional-neural-network-models-for-time-series-forecasting.md at master · apachecn/ml-mastery-zh
-https://github.com/ourownstory/AR-Net/tree/master?tab=readme-ov-file | ourownstory/AR-Net: A simple Auto-Regressive Neural Network for time-series
-https://scikit-learn.org/stable/auto_examples/applications/plot_cyclical_feature_engineering.html#time-based-cross-validation | Time-related feature engineering — scikit-learn 1.6.1 documentation
-https://scikit-learn.org/stable/auto_examples/applications/plot_time_series_lagged_features.html#sphx-glr-auto-examples-applications-plot-time-series-lagged-features-py | Lagged features for time series forecasting — scikit-learn 1.6.1 documentation
-https://github.com/microsoft/DeepSpeed | microsoft/DeepSpeed: DeepSpeed is a deep learning optimization library that makes distributed training and inference easy, efficient, and effective.
-https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247488926&idx=1&sn=dd40a0da1a73d177e2f7adb40adfb39f&scene=19#wechat_redirect | GPT语音机器人 (附<70行代码)
-https://github.com/zjhellofss/KuiperInfer | zjhellofss/KuiperInfer: 校招、秋招、春招、实习好项目！带你从零实现一个高性能的深度学习推理库，支持大模型 llama2 、Unet、Yolov5、Resnet等模型的推理。Implement a high-performance deep learning inference library step by step
-https://zhuanlan.zhihu.com/p/599037143 | Pre-trained Model （预训练模型）是什么以及fine-tune是如何工作的 - 知乎
-https://arxiv.org/pdf/2408.13296v1 | 2408.13296v1
-https://arxiv.org/pdf/2407.04620 | 2407.04620
-https://bayesian-optimization.github.io/BayesianOptimization/1.5.1/basic-tour.html | Basic tour of the Bayesian Optimization package - Bayesian Optimization
-https://arxiv.org/pdf/2202.07125 | 2202.07125
-https://arxiv.org/pdf/2107.13586 | 2107.13586
+http://cjc.ict.ac.cn/online/onlinepaper/HZH315.pdf | HZH315.pdf
+https://anythingllm.com/ | AnythingLLM | The all-in-one AI application for everyone
+https://arthurchiao.art/articles-zh/ | Articles (cn-zh)
+https://arthurchiao.art/blog/deepseek-r1-paper-zh/ | [译] DeepSeek-R1：通过强化学习激励大模型的推理能力（DeepSeek，2024）
+https://arthurchiao.art/blog/how-to-train-a-gpt-assistant-zh/ | [译] 如何训练一个企业级 GPT 助手（OpenAI，2023）
+https://arxiv.org/abs/2305.18290 | [2305.18290] Direct Preference Optimization: Your Language Model is Secretly a Reward Model
+https://arxiv.org/html/2402.13116v4#S5 | 大型语言模型知识蒸馏综述 --- A Survey on Knowledge Distillation of Large Language Models
 https://arxiv.org/pdf/1503.02531 | 1503.02531
-
+https://arxiv.org/pdf/2107.13586 | 2107.13586
+https://arxiv.org/pdf/2202.07125 | 2202.07125
+https://arxiv.org/pdf/2303.18223v10 | 2303.18223v10
+https://arxiv.org/pdf/2401.02954 | 2401.02954
+https://arxiv.org/pdf/2402.13116 | 2402.13116
+https://arxiv.org/pdf/2406.06608 | 2406.06608
+https://arxiv.org/pdf/2407.04620 | 2407.04620
+https://arxiv.org/pdf/2408.13296v1 | 2408.13296v1
+https://bayesian-optimization.github.io/BayesianOptimization/1.5.1/basic-tour.html | Basic tour of the Bayesian Optimization package - Bayesian Optimization
+https://blog.csdn.net/c9Yv2cf9I06K2A9E/article/details/125754784 | 阿里达摩院最新FEDformer，长程时序预测全面超越SOTA | ICML 2022-CSDN博客
+https://blog.csdn.net/HUSTHY/article/details/115174978 | 模型蒸馏原理和bert模型蒸馏以及theseus压缩实战-CSDN博客
+https://blog.csdn.net/qq_40671063/article/details/129410665 | ubuntu 系统安装docker——使用docker打包python项目，整个流程介绍-CSDN博客
+https://blog.csdn.net/qq_44454263/article/details/122548708 | AR-Net: A SIMPLE AUTO-REGRESSIVE NEURAL NETWORK FOR TIME-SERIES 阅读笔记_neural net time series-CSDN博客
+https://blog.csdn.net/v_JULY_v/article/details/134923301 | 一文通透想颠覆Transformer的Mamba：从SSM、HiPPO、S4到Mamba(被誉为Mamba最佳解读)_mamba模型-CSDN博客
 https://blog.dailydoseofds.com/ | Daily Dose of Data Science | Avi Chawla | Substack
+https://blog.xiang578.com/post/are-transformers-effective-for-time-series-forecasting.html | 【时间序列预测】Are Transformers Effective for Time Series Forecasting? - 算法花园
+https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf | Language Models are Unsupervised Multitask Learners
+https://chantou.damao.tech/Energy | 生成式AI虚拟电厂Copilot
+https://chantou.damao.tech/Energy#/ | 生成式AI虚拟电厂Copilot
+https://colab.research.google.com/drive/1_X7O2BkFLvqyCdZzDZvV2MB0aAvYALLC#scrollTo=928tzaA2AA2g | Informer.ipynb - Colab
 https://course.fast.ai/ | Practical Deep Learning for Coders - Practical Deep Learning
+https://damaokeji.feishu.cn/wiki/KIlMwjj7viWv5OkgIAwcPaMbnag | 能量块or平衡基团调研成果总结 - 飞书云文档
 https://data.mendeley.com/datasets/rscbjbr9sj/2 | Labeled Optical Coherence Tomography (OCT) and Chest X-Ray Images for Classification - Mendeley Data
+https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository | Ubuntu | Docker Docs
 https://docs.fast.ai/examples/migrating_pytorch_verbose.html | Pytorch to fastai details – fastai
+https://docs.google.com/presentation/d/11KWCKUORnPpVMSY6vXgBeFSWo7fJcuGQ9yuR6vC1pzE/mobilepresent?slide=id.g324f92e3a78_0_0 | ChatGPT + Post-Training - Google 幻灯片
+https://docs.oneflow.org/master/index.html | OneFlow -- 全新一代深度学习框架 - OneFlow
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.normaltest.html | scipy.stats.normaltest — SciPy v1.11.1 Manual
 https://e10v.me/tea-tasting-analysis-of-experiments/ | tea-tasting: a Python package for the statistical analysis of A/B tests | Evgeny Ivanov
 https://getomni.ai/ocr-demo | OmniAI. Automate document workflows
 https://gist.github.com/jimgoo/0179e52305ca768a601f | CaffeNet fine-tuned on the Oxford 102 category flower dataset
+https://github.com/AIDajiangtang/LLM-from-scratch?tab=readme-ov-file | AIDajiangtang/LLM-from-scratch: Transformer、GPT2、BERT pre-training and fine-tuning from scratch
 https://github.com/AmruthPillai/Reactive-Resume | AmruthPillai/Reactive-Resume: A one-of-a-kind resume builder that keeps your privacy in mind. Completely secure, customizable, portable, open-source and free forever. Try it out today!
 https://github.com/ant-design/x | ant-design/x: Craft AI-driven interfaces effortlessly 🤖
 https://github.com/anthropics/anthropic-quickstarts/blob/main/financial-data-analyst/README.md?continueFlag=7a717eba9a2460f0c40007de50fa15d1 | anthropic-quickstarts/financial-data-analyst/README.md at main · anthropics/anthropic-quickstarts
+https://github.com/apachecn/ml-mastery-zh/blob/master/docs/dlts/how-to-develop-convolutional-neural-network-models-for-time-series-forecasting.md | ml-mastery-zh/docs/dlts/how-to-develop-convolutional-neural-network-models-for-time-series-forecasting.md at master · apachecn/ml-mastery-zh
+https://github.com/awslabs/gluonts | awslabs/gluonts: Probabilistic time series modeling in Python
+https://github.com/blue-yonder/tsfresh | blue-yonder/tsfresh: Automatic extraction of relevant features from time series:
+https://github.com/bRAGAI/bRAG-langchain/ | bRAGAI/bRAG-langchain: Everything you need to know to build your own RAG application
 https://github.com/careywyr/UnderstandingDeepLearning-ZH-CN?continueFlag=bcac205a7171554629b66a85f613c999 | Releases · careywyr/UnderstandingDeepLearning-ZH-CN
 https://github.com/chatmcp/mcp-server-chatsum/blob/main/README_CN.md | mcp-server-chatsum/README_CN.md at main · chatmcp/mcp-server-chatsum
 https://github.com/connorferster/handcalcs | connorferster/handcalcs: Python library for converting Python calculations into rendered latex.
 https://github.com/dabeaz-course/python-mastery | dabeaz-course/python-mastery: Advanced Python Mastery (course by @dabeaz)
+https://github.com/dkozlov/awesome-knowledge-distillation | dkozlov/awesome-knowledge-distillation: Awesome Knowledge Distillation
 https://github.com/doFighter/Computational-intelligence | doFighter/Computational-intelligence: 记录计算智能优化算法的学习笔记，通过阅读论文并复现的形式加深对相关的启发式智能优化的理解。
+https://github.com/fastai/fastai | fastai/fastai: The fastai deep learning library
 https://github.com/getomni-ai/zerox | getomni-ai/zerox: Zero shot pdf OCR with gpt-4o-mini
 https://github.com/hoarder-app/hoarder | hoarder-app/hoarder: A self-hostable bookmark-everything app (links, notes and images) with AI-based automatic tagging and full text search
 https://github.com/huggingface/smol-course | huggingface/smol-course: A course on aligning smol models.
 https://github.com/ieee8023/covid-chestxray-dataset | ieee8023/covid-chestxray-dataset: We are building an open database of COVID-19 cases with chest X-ray or CT images.
 https://github.com/jimgoo/caffe-oxford102?tab=readme-ov-file | jimgoo/caffe-oxford102: Caffe CNNs for the Oxford 102 flower dataset
+https://github.com/karminski/one-small-step | karminski/one-small-step: 这是一个简单的技术科普教程项目，主要聚焦于解释一些有趣的，前沿的技术概念和原理。每篇文章都力求在 5 分钟内阅读完成。
+https://github.com/kevinpdev/gpt-from-scratch/tree/main | kevinpdev/gpt-from-scratch: Educational implementation of a small GPT model from scratch in a single Jupyter Notebook
 https://github.com/lucidrains | lucidrains (Phil Wang)
+https://github.com/lucidrains?tab=repositories | lucidrains (lucidrains) / Repositories
 https://github.com/luhengshiwo/LLMForEverybody | luhengshiwo/LLMForEverybody: 每个人都能看懂的大模型知识分享，LLMs春/秋招大模型面试前必看，让你和面试官侃侃而谈
 https://github.com/MarchLiu/litchi?continueFlag=0cd8d20d8110edea306666837cc81d84&s_trans=2390860643_&s_channel=4 | MarchLiu/litchi: Litchi is a jupyter lab extension for chat with ollama or others ai client
+https://github.com/microsoft/DeepSpeed | microsoft/DeepSpeed: DeepSpeed is a deep learning optimization library that makes distributed training and inference easy, efficient, and effective.
 https://github.com/microsoft/LoRA | microsoft/LoRA: Code for loralib, an implementation of "LoRA: Low-Rank Adaptation of Large Language Models"
+https://github.com/MLNLP-World/LLMs-from-scratch-CN | MLNLP-World/LLMs-from-scratch-CN: LLMs-from-scratch项目中文翻译
+https://github.com/MLNLP-World/LLMs-from-scratch-CN/tree/main?tab=readme-ov-file | MLNLP-World/LLMs-from-scratch-CN: LLMs-from-scratch项目中文翻译
 https://github.com/niudd/kaggle-cloud | niudd/kaggle-cloud
+https://github.com/ourownstory/AR-Net/tree/master?tab=readme-ov-file | ourownstory/AR-Net: A simple Auto-Regressive Neural Network for time-series
 https://github.com/perklet/reverse-interview-zh | perklet/reverse-interview-zh: 技术面试最后反问面试官的话
 https://github.com/pymc-devs/pymc | pymc-devs/pymc: Bayesian Modeling in Python
 https://github.com/pytorch/vision/blob/v0.10.0/references/classification/train.py | vision/references/classification/train.py at v0.10.0 · pytorch/vision
+https://github.com/roboflow/notebooks | roboflow/notebooks: This repository offers a comprehensive collection of tutorials on state-of-the-art computer vision models and techniques. Explore everything from foundational architectures like ResNet to cutting-edge models like YOLO11, RT-DETR, SAM 2, Florence-2, PaliGemma 2, and Qwen2.5VL.
 https://github.com/SocialAI-tianji/Tianji | SocialAI-tianji/Tianji: 天机是一款专注人情世故的大语言模型系统。由 SocialAI（来事儿AI）社区小伙伴制作，免费使用、非商业用途。您可以利用它进行涉及传统人情世故的任务，如何说好话、如何会来事儿等，以提升您的“情商”和"核心竞争能力"
 https://github.com/tczhangzhi/pytorch-distributed?tab=readme-ov-file#horovod-%E7%9A%84%E4%BC%98%E9%9B%85%E5%AE%9E%E7%8E%B0 | tczhangzhi/pytorch-distributed: A quickstart and benchmark for pytorch distributed training.
+https://github.com/Tebmer/Awesome-Knowledge-Distillation-of-LLMs | Tebmer/Awesome-Knowledge-Distillation-of-LLMs: This repository collects papers for "A Survey on Knowledge Distillation of Large Language Models". We break down KD into Knowledge Elicitation and Distillation Algorithms, and explore the Skill & Vertical Distillation of LLMs.
+https://github.com/TingsongYu/PyTorch_Tutorial | TingsongYu/PyTorch_Tutorial: 《Pytorch模型训练实用教程》中配套代码
 https://github.com/TingsongYu/PyTorch-Tutorial-2nd/blob/main/code/chapter-8/01_classification/datasets/pneumonia_dataset.py | PyTorch-Tutorial-2nd/code/chapter-8/01_classification/datasets/pneumonia_dataset.py at main · TingsongYu/PyTorch-Tutorial-2nd
 https://github.com/vcerqueira/blog/tree/main?tab=readme-ov-file | vcerqueira/blog
 https://github.com/vincentdoerig/latex-css | vincentdoerig/latex-css: LaTeX.css is a CSS library that makes your website look like a LaTeX document
+https://github.com/wangzhefeng/TinyLLM | wangzhefeng/TinyLLM
 https://github.com/wdndev/llm_interview_note | wdndev/llm_interview_note: 主要记录大语言大模型（LLMs） 算法（应用）工程师相关的知识及面试题
 https://github.com/yobix-ai/extractous | yobix-ai/extractous: Fast and efficient unstructured data extraction. Written in Rust with bindings for many languages.
+https://github.com/zhouhaoyi/Informer2020 | zhouhaoyi/Informer2020: The GitHub repository for the paper "Informer" accepted by AAAI 2021.
+https://github.com/zjhellofss/KuiperInfer | zjhellofss/KuiperInfer: 校招、秋招、春招、实习好项目！带你从零实现一个高性能的深度学习推理库，支持大模型 llama2 、Unet、Yolov5、Resnet等模型的推理。Implement a high-performance deep learning inference library step by step
 https://github.com/zoogzog/chexnet | zoogzog/chexnet: Implementation of the CheXNet network (PyTorch)
+https://greenteapress.com/thinkstats2/thinkstats2.pdf | thinkstats2.pdf
+https://huggingface.co/docs/transformers/main/en/model_doc/time_series_transformer | Time Series Transformer
+https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1 | FineWeb: decanting the web for the finest text data at scale - a Hugging Face Space by HuggingFaceFW
+https://huggingface.co/spaces/Ki-Seki/ultrascale-playbook-zh-cn | LLM训练终极指南 | The Ultra-Scale Playbook - a Hugging Face Space by Ki-Seki
+https://huggingface.co/spaces/nanotron/ultrascale-playbook | The Ultra-Scale Playbook - a Hugging Face Space by nanotron
+https://imbalanced-learn.org/stable/user_guide.html | User guide: contents — Version 0.13.0
+https://lightning.ai/docs/examples/finetune-llm
+https://lightning.ai/docs/pytorch/stable/debug/debugging_basic.html | Debug your model (basic) — PyTorch Lightning 2.5.0.post0 documentation
+https://lightning.ai/docs/torchmetrics/stable/ | Welcome to TorchMetrics — PyTorch-Metrics 1.6.1 documentation
+https://lightning.ai/docs/torchmetrics/stable/pages/quickstart.html | Quick Start — PyTorch-Metrics 1.6.1 documentation
+https://magazine.sebastianraschka.com/p/tips-for-llm-pretraining-and-evaluating-rms | Tips for LLM Pretraining and Evaluating Reward Models
+https://magazine.sebastianraschka.com/p/tips-for-llm-pretraining-and-evaluating-rms?open=false#%C2%A7rlhf-vs-direct-preference-optimization-dpo | Tips for LLM Pretraining and Evaluating Reward Models
 https://mp.weixin.qq.com/s/_RviVdx4sEM3teDSrxMohg | 深度学习调参最全指南！(附对应pdf)
+https://mp.weixin.qq.com/s/5_VnzP3JmOB0D5geV5HRFg | 【独家】万字长文带你梳理Llama开源家族：从Llama-1到Llama-3
+https://mp.weixin.qq.com/s/5n4DuFAIbWCj7nmsR8pQLw | 时间序列去趋势化和傅里叶变换
 https://mp.weixin.qq.com/s/7e2xMTYWF_YSnS-wE_HJhA | Kaggle金牌时序特征。
+https://mp.weixin.qq.com/s/8Ts2abXTpH9xA5vzQym_Og | 大模型最强架构TTT问世！斯坦福UCSD等5年磨一剑， 一夜推翻Transformer
+https://mp.weixin.qq.com/s/a4TCsYub-OPaqRPSbs6qXw | 最新时间序列统一大模型，秒杀各类时序任务
+https://mp.weixin.qq.com/s/A6tCdPVH-VzhMy17G5ljAQ | 时间序列预测和缺失值填充联合建模方法
+https://mp.weixin.qq.com/s/an5dFwyKzpjgi8QurC6f7A | 最近一年值得关注的10篇时间序列领域工作
+https://mp.weixin.qq.com/s/bYTQwwn52_22fYmFJrEbDg | 11种经典时间序列预测方法：理论、Python实现与应用
+https://mp.weixin.qq.com/s/gk2VJmoxSb9Bw8mlACckJg | 大神Andrej的最新AI课: 大语言模型LLM深入详解 | 5万字完整版·附视频
 https://mp.weixin.qq.com/s/GW2T-X6CFix-bqWD8NNUWw | 改进探索性数据分析的实用技巧！
+https://mp.weixin.qq.com/s/hEojAe80TRbLiVKsjhgeUw | 深度学习时间序列的综述
+https://mp.weixin.qq.com/s/hOgeu6EPbuaQgVHyjij-kg | 零基础入门：DeepSeek微调教程来了！
 https://mp.weixin.qq.com/s/IhUhAOD8HmCXxhg7CpFhUw | Python 教你 3 分钟用 Bert 搭建问答搜索引擎
+https://mp.weixin.qq.com/s/IPY2QwJ68YIrclMi2JtkMA | TFB：2024最新时间序列预测Benchmark
+https://mp.weixin.qq.com/s/jZB-b9YLeihrO26Nmw4dBQ | PPO & GRPO原理，小学生也能看懂！
+https://mp.weixin.qq.com/s/KJnz3cxmfXE-iQcfNgqLSA | 填补空白！Salesforce 提出首个通用时序预测模型评测基准 GIFT-Eval
+https://mp.weixin.qq.com/s/lbeeblGYvb1JeC0gW4AE9g | 最全梳理：一文搞懂RAG技术的5种范式！
+https://mp.weixin.qq.com/s/LnUchUuiJvQBX1zx0cZnpw | 谷歌新架构终结Transformer，长序列处理王者诞生？清华姚班校友新作
 https://mp.weixin.qq.com/s/mwGr69QlUBb2naqJXj__0g | 当代研究生应当掌握的5种Pytorch并行训练方法（单机多卡）
 https://mp.weixin.qq.com/s/oLb1A7Tyw_itYUJiYcH8Ng | Git还能这样用？一文看懂Git最佳实践！
 https://mp.weixin.qq.com/s/Q_nxr8Iip1zkAxhaWX5bSw?poc_token=HASJpGaj6v4_unwgZcvnmLXdCt_BMAFyOTtWfF7D | 时序预测不同注意力机制更好的是哪个？亚马逊这篇文章讲明白了
+https://mp.weixin.qq.com/s/R8UbrixkKHXE4dnVt0VMvw | AIPO共学课 | 李继刚提示词课万字整理
 https://mp.weixin.qq.com/s/S8ceRYlUi0GEa-PDbxGviA | 【kaggle项目】最佳聚类实战案例
 https://mp.weixin.qq.com/s/sHW0PjMkvXf1K0IijA_vgw | 多变量当辅助序列提升多元时序预测效果
 https://mp.weixin.qq.com/s/SrkK-ZwyIBr6AiKtxR_JPg | 特征工程——数据转换
+https://mp.weixin.qq.com/s/tufq2iBfZLFIhaaB2C7Biw | 时序大模型技术总结：从时序数据的特点、常见任务说起
 https://mp.weixin.qq.com/s/UdMSbZ69OzfVXzq3B_jyvg | Kaggle知识点：时序、谱域和时域特征
+https://mp.weixin.qq.com/s/uMxruIyMIpY1BpaaZdLKjA | 使用PyTorch Lightning从头开始实现并训练CNN
 https://mp.weixin.qq.com/s/vBfy70XEFeLg70TG2fIRDw | DCIC2024 光伏发电出力预测B榜0.904 baseline分享
+https://mp.weixin.qq.com/s/xtYqNQJBb5vJ11NWzbrAFg | 大模型分布式并行训练范式原理篇
+https://mp.weixin.qq.com/s/XYoaNObxwOLUQksFGtVplg | 适合时空预测的时间序列表示学习方法
+https://mp.weixin.qq.com/s/ZRXtWN9Xk_4t-z3T2bRY7g | 时间序列数据特征提取的几类方法。
+https://mp.weixin.qq.com/s?__biz=MzkxNDE1NjM5MA==&mid=2247484417&idx=1&sn=efd49713967931a93568f1a8557672cd&chksm=c173fa08f604731e96ff7ddfc07f622befb1351fdda49b602715dca91c0eddcfd4b2e83655db&cur_album_id=2111235593522200577&scene=189#wechat_redirect | 时间序列 | PACF篇
+https://mp.weixin.qq.com/s?__biz=MzkxNDE1NjM5MA==&mid=2247484417&idx=1&sn=efd49713967931a93568f1a8557672cd&chksm=c173fa08f604731e96ff7ddfc07f622befb1351fdda49b602715dca91c0eddcfd4b2e83655db&cur_album_id=2111235593522200577&scene=189#wechat_redirect | 时间序列 | PACF篇
+https://mp.weixin.qq.com/s?__biz=MzkzMzI4MjMyNA==&mid=2247510917&idx=1&sn=da0f96175e743bb23fa8c03b863bf01b&source=41#wechat_redirect | 用Python构建NLP Pipeline，从思路到具体代码，这篇文章一次性都讲到了
+https://mp.weixin.qq.com/s?__biz=MzkzMzI4MjMyNA==&mid=2247510970&idx=1&sn=1aa447379230d12ce8dedcf8a4e02b9b&source=41#wechat_redirect | 用文本分类模型轻松搞定复杂语义分析；NLP管道模型可以退下了
 https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486027&idx=1&sn=ae0f4ebedeb87feabb318be13790f200&scene=19#wechat_redirect | 【知出乎争】模型融合方法总结
 https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486109&idx=1&sn=f2a7056b90b69a8558d92333680ba65e&scene=19#wechat_redirect | 【务实基础】TabNet
+https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486244&idx=1&sn=702d2921f4527e8d93e10b851f8c98fb&scene=19#wechat_redirect | 【务实基础】AB Test
+https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486537&idx=1&sn=03cc507873683e4ad030b1bec8305c39&chksm=fa041222cd739b34e18c209b91f5c4da9ea9aa4162e46ffdaa5a0e4e18f784ca26b2d3e34092&scene=178&cur_album_id=1577157748566310916#rd | 【时序】平稳时序分析
+https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486573&idx=1&sn=6033360211bb24b125843058cbe6c3d2&chksm=fa041206cd739b101e0bac9aa531a9fdd117413d3602003dbd21fb554e70353615d13a06192f&cur_album_id=2217041786139623427&scene=189#wechat_redirect | 【时序】DeepAR: 自回归RNN预测时序概率分布
 https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486573&idx=1&sn=6033360211bb24b125843058cbe6c3d2&chksm=fa041206cd739b101e0bac9aa531a9fdd117413d3602003dbd21fb554e70353615d13a06192f&cur_album_id=2217041786139623427&scene=189#wechat_redirect | 【时序】DeepAR: 自回归RNN预测时序概率分布
 https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247486601&idx=1&sn=5f2c9885268014e6347d808cb7b7220d&scene=19#wechat_redirect | 【时序】N-BEATS：对可解释时序预测的神经基础扩展分析
+https://mp.weixin.qq.com/s?__biz=MzUyNzA1OTcxNg==&mid=2247488926&idx=1&sn=dd40a0da1a73d177e2f7adb40adfb39f&scene=19#wechat_redirect | GPT语音机器人 (附<70行代码)
 https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html | optuna.trial.Trial — Optuna 4.0.0 documentation
 https://optuna.readthedocs.io/zh-cn/stable/tutorial/ | 教程 — Optuna 2.7.0 文档
 https://papers.baulab.info/ | Famous Deep Learning Papers
+https://projector.tensorflow.org/ | Embedding projector - visualization of high-dimensional data
 https://pytorch.org/docs/stable/amp.html | Automatic Mixed Precision package - torch.amp — PyTorch 2.5 documentation
+https://pytorch.org/docs/stable/elastic/run.html | torchrun (Elastic Launch) — PyTorch 2.5 documentation
 https://pytorch.org/docs/stable/generated/torch.load.html#torch.load | torch.load — PyTorch 2.5 documentation
+https://pytorch.org/docs/stable/generated/torch.tril.html | torch.tril — PyTorch 2.5 documentation
 https://pytorch.org/docs/stable/notes/amp_examples.html | Automatic Mixed Precision examples — PyTorch 2.4 documentation
 https://pytorch.org/examples/?utm_source=examples&utm_medium=examples-landing | PyTorch Examples — PyTorchExamples 1.11 documentation
 https://pytorch.org/tutorials/beginner/basics/intro.html | Learn the Basics — PyTorch Tutorials 2.5.0+cu124 documentation
+https://pytorch.org/tutorials/beginner/knowledge_distillation_tutorial.html | Knowledge Distillation Tutorial — PyTorch Tutorials 2.6.0+cu124 documentation
 https://pytorch.org/tutorials/beginner/saving_loading_models.html | Saving and Loading Models — PyTorch Tutorials 2.5.0+cu124 documentation
 https://pytorch.org/tutorials/intermediate/ddp_tutorial.html | Getting Started with Distributed Data Parallel — PyTorch Tutorials 2.5.0+cu124 documentation
 https://pytorch.org/tutorials/recipes/recipes_index.html | PyTorch Recipes — PyTorch Tutorials 2.5.0+cu124 documentation
 https://pytorch.org/vision/stable/training_references.html | Training references — Torchvision 0.20 documentation
+https://scikit-learn.org/stable/auto_examples/applications/plot_cyclical_feature_engineering.html#time-based-cross-validation | Time-related feature engineering — scikit-learn 1.6.1 documentation
+https://scikit-learn.org/stable/auto_examples/applications/plot_time_series_lagged_features.html#sphx-glr-auto-examples-applications-plot-time-series-lagged-features-py | Lagged features for time series forecasting — scikit-learn 1.6.1 documentation
+https://skforecast.org/0.14.0/introduction-forecasting/introduction-forecasting | Intro to Forecasting - Skforecast Docs
+https://task.csdn.net/ | CSDN有奖任务
 https://tingsongyu.github.io/PyTorch-Tutorial-2nd/chapter-7/7.4-training-script.html | 7.4 模型训练代码模板 · PyTorch实用教程（第二版）
 https://vmartin.fr/understanding-automatic-differentiation-in-30-lines-of-python.html?continueFlag=d461abeeae49162d7df52ae87fdb24ec&s_trans=2390860643_&s_channel=4 | Understanding Automatic Differentiation in 30 lines of Python
+https://weibo.com/mygroups?gid=110002390860643 | 最新微博 - 首页 - 微博
+https://weibo.com/ttarticle/p/show?id=2309405119057228857576 | OpenAI研究员Jason Wei大模型扩展范式40页PPT及讲稿
+https://www.analyticsvidhya.com/blog/2017/06/word-embeddings-count-word2veec/ | Understanding Word Embeddings: From Word2Vec to Count Vectors
+https://www.cse.ust.hk/~qyang/Docs/2009/tkde_transfer_learning.pdf | untitled
+https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04 | How To Install and Use Docker on Ubuntu 22.04 | DigitalOcean
+https://www.digitalocean.com/community/tutorials/vision-transformer-for-computer-vision | Vision Transformers (ViTs): Computer Vision with Transformer Models | DigitalOcean
+https://www.sbert.net/examples/training/sts/README.html | Semantic Textual Similarity — Sentence Transformers documentation
+https://www.sktime.net/en/latest/api_reference/forecasting.html#online-and-stream-forecasting | Forecasting — sktime documentation
+https://www.sktime.net/en/stable/examples/01_forecasting.html | Forecasting with sktime — sktime documentation
+https://www.volcengine.com/ | 火山引擎-云上增长新动力
+https://www.zhihu.com/collection/973717606 | (2 封私信) 时间序列预测 - 收藏夹 - 知乎
 https://www.zhihu.com/people/zhan-shi-jin-27/posts | (2 封私信 / 1 条消息) 战士金 - 知乎
 https://www.zhihu.com/question/20254932/answer/45583793 | (5 封私信 / 2 条消息) 假设检验的逻辑是是什么？ - 知乎
+https://www.zhihu.com/question/352525266/answer/3344947198 | (2 封私信) 如何提高自己的代码能力以达到熟练使用pytorch? - 知乎
+https://www.zhihu.com/question/390044856/answer/2751290273 | (2 封私信) 时序数据预测有哪些好方法？ - 知乎
+https://www.zhihu.com/question/463332914/answer/3433457082 | (2 封私信) 如何生成python项目需要的最小requirements.txt文件？ - 知乎
+https://www.zhihu.com/search?type=content&q=%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E8%92%B8%E9%A6%8F | (2 封私信) 大语言模型蒸馏 - 搜索结果 - 知乎
 https://xv44586.github.io/2020/11/24/fine-tune/ | 如何提升bert在下游任务中的性能 | 小蛋子
+https://yeasy.gitbook.io/docker_practice/install/ubuntu | Ubuntu | Docker — 从入门到实践
 https://zh.d2l.ai/chapter_multilayer-perceptrons/weight-decay.html | 4.5. 权重衰减 — 动手学深度学习 2.0.0 documentation
 https://zhuanlan.zhihu.com/p/103226488 | BERT 详解 - 知乎
+https://zhuanlan.zhihu.com/p/23599229 | 只要一小时，零基础入门Docker - 知乎
 https://zhuanlan.zhihu.com/p/548088633 | 详解word2vec的两种模型 - 知乎
 https://zhuanlan.zhihu.com/p/574903096 | 详解Doc2vec:Distributed Representations of Sentences and Documents - 知乎
+https://zhuanlan.zhihu.com/p/599037143 | Pre-trained Model （预训练模型）是什么以及fine-tune是如何工作的 - 知乎
 https://zhuanlan.zhihu.com/p/633671394 | 大模型外挂(向量)知识库 - 知乎
+https://zhuanlan.zhihu.com/p/644502891 | 一文搞懂什么是ablation study (消融实验） - 知乎
+https://zhuanlan.zhihu.com/p/646853438 | Informer算法原理与代码详解 - 知乎
+https://zhuanlan.zhihu.com/p/681401085 | LLMs-from-scratch|笔记|Chapter02 - 知乎
+https://zhuanlan.zhihu.com/p/683436483
+https://zhuanlan.zhihu.com/p/683993105 | 大模型如何蒸馏知识？港大等最新《大型语言模型知识蒸馏》综述 - 知乎
+https://zhuanlan.zhihu.com/p/684137179 | LLMs-from-scratch|笔记|Chapter04 - 知乎
+https://zhuanlan.zhihu.com/p/695640168 | 大规模语言模型知识蒸馏综述 - 知乎
+https://zhuanlan.zhihu.com/p/71986772 | 深度神经网络模型蒸馏Distillation - 知乎
+https://zhuanlan.zhihu.com/p/93287223 | 从入门到放弃：深度学习中的模型蒸馏技术 - 知乎
