@@ -164,7 +164,7 @@ def compute_accuracy(model, dataloader, device):
 
 
 # 测试代码 main 函数
-def main(rank, world_size, num_epochs):
+def main(rank, world_size, train_epochs):
     # initialize process groups
     ddp_setup(rank, world_size)
     # data loader
@@ -177,7 +177,7 @@ def main(rank, world_size, num_epochs):
     # wrap model with DDP
     model = DDP(model, device_ids = [rank])
     # the core model is now accessible as model.module
-    for epoch in range(num_epochs):
+    for epoch in range(train_epochs):
         # Set sampler to ensure each epoch has a different shuffle order
         train_loader.sampler.set_epoch(epoch)
         # training mode
@@ -193,7 +193,7 @@ def main(rank, world_size, num_epochs):
             loss.backward()
             optimizer.step()
             # log
-            logger.info(f"[GPU{rank}] Epoch: {epoch+1:03d}/{num_epochs:03d}"
+            logger.info(f"[GPU{rank}] Epoch: {epoch+1:03d}/{train_epochs:03d}"
                         f" | Batchsize {labels.shape[0]:03d}"
                         f" | Train/Val Loss: {loss:.2f}")
     model.eval()
@@ -230,5 +230,5 @@ if __name__ == "__main__":
         logger.info(f"number of GPUs available: {torch.cuda.device_count()}")
 
     torch.manual_seed(123)
-    num_epochs = 3
-    main(rank, world_size, num_epochs)
+    train_epochs = 3
+    main(rank, world_size, train_epochs)

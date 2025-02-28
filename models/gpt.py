@@ -26,7 +26,6 @@ import torch.nn as nn
 
 from layers.transformer_block import TransformerBlock
 from layers.layer_norm import LayerNorm
-from models.gpt_generate import generate_text_simple, generate
 from utils.log_util import logger
 
 # global variable
@@ -75,6 +74,7 @@ class Model(nn.Module):
 # 测试代码 main 函数
 def main():
     import tiktoken
+    from training.gpt_generate import generate
     from utils.argsparser_tools import DotDict
 
     # model params
@@ -108,7 +108,7 @@ def main():
     model.eval()  # disable dropout
     
     # generate text
-    out = generate_text_simple(
+    out = generate(
         model = model,
         token_idx = token_ids_tensor,
         max_new_tokens = GPT_CONFIG_124M["max_new_toknes"],

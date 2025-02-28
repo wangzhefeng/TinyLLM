@@ -24,10 +24,10 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 import re
+import json
 from typing import List
 from collections import Counter, deque
 from functools import lru_cache
-import json
 
 import torch
 
@@ -395,45 +395,44 @@ class BPETokenizerSimple:
         return replaced
 
 
-def text_to_token_ids(text):
+def text_to_token_ids(text: str):
     """
     tokenizer text to token_ids
 
     Args:
-        text (_type_): _description_
-        tokenizer (_type_): _description_
+        text (str): _description_
 
     Returns:
         _type_: _description_
     """
+    # tokenizer
     import tiktoken
     tokenizer = tiktoken.get_encoding("gpt2")
+    # text encode to token ids
     encoded = tokenizer.encode(text, allowed_special = {"<|endoftext|>"})
     # add batch dimension
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-    # logger.info(f"encoded tensor: {encoded_tensor}")
-    # logger.info(f"encoded tensor shape: {encoded_tensor.shape}")
     
     return encoded_tensor
 
 
-def token_ids_to_text(token_ids):
+def token_ids_to_text(token_ids: List):
     """
     tokenizer decoded token_ids to text
 
     Args:
         token_ids (_type_): _description_
-        tokenizer (_type_): _description_
 
     Returns:
         _type_: _description_
     """
+    # tokenizer
     import tiktoken
     tokenizer = tiktoken.get_encoding("gpt2")
     # remove batch dimension
     flat = token_ids.squeeze(0)
+    # token ids decode to text
     decoded_text = tokenizer.decode(flat.tolist())
-    # logger.info(f"decoded text: {decoded_text}")
     
     return decoded_text
 

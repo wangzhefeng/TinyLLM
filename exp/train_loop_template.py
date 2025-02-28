@@ -26,99 +26,6 @@ from utils.log_util import logger
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
-# data
-train_loader = None
-
-# model
-model = None
-
-# optimizer
-optimizer = torch.optim.AdamW(model.parameters(), weight_decay = 0.1)
-
-
-# ------------------------------
-# learning rate warmup
-# ------------------------------
-train_epochs = 15
-initial_lr = 0.0001
-peak_lr = 0.01
-total_steps = len(train_loader) * train_epochs
-warmup_steps = int(0.2 * total_steps)
-lr_increment = (peak_lr - initial_lr) / warmup_steps
-logger.info(f"warmup_steps: {warmup_steps}")
-
-
-global_step = -1
-track_lrs = []
-for epoch in range(train_epochs):
-    for input_batch, target_batch in train_loader:
-        optimizer.zero_grad()
-        global_step += 1
-
-        if global_step < warmup_steps:
-            lr = initial_lr + global_step * lr_increment
-        else:
-            lr = peak_lr
-        
-        # apply the calculated learning rate to the optimizer
-        for param_group in optimizer.param_groups:
-            param_group["lr"] = lr
-        track_lrs.append(optimizer.param_groups[0]["lr"])
-
-        # calculate loss and update weights
-        # TODO
-
-
-# ------------------------------
-# learning rate cosine decay
-# ------------------------------
-initial_lr = 0.0001
-min_lr = 0.1 * initial_lr
-lr_increment = (peak_lr - initial_lr) / warmup_steps
-
-global_step = -1
-track_lrs = []
-for epoch in range(train_epochs):
-    for input_batch, target_batch in train_loader:
-        optimizer.zero_grad()
-        global_step += 1
-
-        # adjust learning rate based on the current phase(warmup or cosine annealing)
-        if global_step < warmup_steps:
-            # linear warmup
-            lr = initial_lr + global_step * lr_increment
-        else:
-            # cosine annealing
-            progress = (global_step - warmup_steps) / (total_steps - warmup_steps)
-            lr = min_lr + 0.5 * (peak_lr - min_lr) * (1 + math.cos(math.pi * progress))
-        
-        # apply the calculated learning rate to the optimizer
-        for param_group in optimizer.param_groups:
-            param_group["lr"] = lr
-        track_lrs.append(optimizer.param_groups[0]["lr"])
-
-        # calculate loss and update weights
-        # TODO
-
-
-# ------------------------------
-# gradient clipping
-# ------------------------------
-def find_highest_gradient(model):
-    max_grad = None
-    for param in model.parameters():
-        if param.grad is not None:
-            grad_values = param.grad.data.flatten()
-            max_grad_param = grad_values.max()
-            if max_grad is None or max_grad_param > max_grad:
-                max_grad = max_grad_param
-    
-    return max_grad
-
-torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 1.0)
-logger.info(f"{find_highest_gradient(model)}")
-
-
 
 # ------------------------------
 # train process
@@ -141,13 +48,14 @@ def train(model,
     track_tokens_seen = []
     tokens_seen = 0
     global_step = -1
+
     # 从优化器中获取最大学习率
     peak_lr = optimizer.param_groups[0]["lr"]
     # 计算训练过程中总的迭代次数
     total_training_steps = len(train_loader) * train_epochs
     # 计算warmup阶段的迭代次数
     lr_increment = (peak_lr - initial_lr) / warmup_steps
-
+    track_lrs = []
     for epoch in range(train_epochs):
         model.train()
         for input_batch, target_batch in train_loader:
@@ -202,29 +110,15 @@ def train(model,
 
 # 测试代码 main 函数
 def main():
-    import tiktoken
-    import time
-    
-    start_time = time.time()
-    torch.manual_seed(123)
-    model = Model(GPT_CONFIG_124M)
-    model.to(device)
-
     peak_lr = 0.001  # 书中原始设置为 5e-4，这是一个错误
     optimizer = torch.optim.AdamW(model.parameters(), lr=peak_lr, weight_decay=0.1)
-    tokenizer = tiktoken.get_encoding("gpt2")
 
-    n_epochs = 15
     train_losses, val_losses, tokens_seen, lrs = train(
         model, train_loader, val_loader, optimizer, device, n_epochs=n_epochs,
         eval_freq=5, eval_iter=1, start_context="Every effort moves you",
         tokenizer=tokenizer, warmup_steps=warmup_steps, 
         initial_lr=1e-5, min_lr=1e-5
     )
-
-    end_time = time.time()
-    execution_time_minutes = (end_time - start_time) / 60
-    logger.info(f"训练完成，用时 {execution_time_minutes:.2f} 分钟。")
 
 if __name__ == "__main__":
     main()

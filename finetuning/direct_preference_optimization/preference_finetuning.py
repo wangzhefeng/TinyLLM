@@ -321,7 +321,7 @@ def _train_model_dpo_simple(model,
                            train_loader, 
                            val_loader,
                            optimizer, 
-                           num_epochs, 
+                           train_epochs, 
                            beta,
                            eval_freq, 
                            eval_iter, 
@@ -339,7 +339,7 @@ def _train_model_dpo_simple(model,
     }
     tokens_seen, global_step = 0, -1
     # 主训练循环
-    for epoch in range(num_epochs):
+    for epoch in range(train_epochs):
         policy_model.train()  # 将模型设置为训练模式
         for batch_idx, batch in enumerate(train_loader):
             optimizer.zero_grad()  # 重置上一批次的损失梯度
@@ -393,14 +393,14 @@ def train(policy_model, reference_model, train_loader, val_loader, val_data, tok
     start_time = time.time()
     torch.manual_seed(123)
     optimizer = torch.optim.AdamW(policy_model.parameters(), lr=5e-6, weight_decay=0.01)
-    num_epochs = 1
+    train_epochs = 1
     tracking = _train_model_dpo_simple(
         policy_model=policy_model,
         reference_model=reference_model,
         train_loader=train_loader,
         val_loader=val_loader,
         optimizer=optimizer,
-        num_epochs=num_epochs,
+        train_epochs=train_epochs,
         beta=0.1, # 取值在0.1到0.5之间
         eval_freq=5,
         eval_iter=5,
@@ -445,7 +445,7 @@ def main():
 
     # model test before dpo
     from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
-    from models.gpt_generate import generate
+    from training.gpt_generate import generate
     prompt = """Below is an instruction that describes a task. Write a response
     that appropriately completes the request.
 

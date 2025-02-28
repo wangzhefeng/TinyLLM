@@ -18,51 +18,36 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 import argparse
-import random
 
-import numpy as np
 import torch
 
 from exp.exp_pretrain_gpt import Model_Pretrain
+from utils.random_seed import set_seed
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def set_seed():
-    """
-    设置可重复随机数
-    """
-    fix_seed = 2023
-    random.seed(fix_seed)
-    np.random.seed(fix_seed)
-    torch.manual_seed(fix_seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(fix_seed)
-        torch.cuda.manual_seed(fix_seed)
-        torch.backends.cudnn.deterministic = True
-
-
 def args_parse():
     # ------------------------------
     # parser
     # ------------------------------
-    parser = argparse.ArgumentParser(description="Tiny LLM Pretraining")
+    parser = argparse.ArgumentParser(description="Tiny GPT Pretraining")
     # ------------------------------
     # add arguments
     # ------------------------------
     # task params
-    parser.add_argument("--task_name", type=str, required=True, default="tiny_llm_pretrain",
+    parser.add_argument("--task_name", type=str, required=True, default="tiny_gpt_pretrain",
                         help="task name")
     parser.add_argument("--is_training", type=int, required=True, default=1,
-                        help="is training")
+                        help="training flag")
     parser.add_argument("--is_inference", type=int, required=True, default=0,
-                        help="is inference")
+                        help="inference flag")
     # data params
     parser.add_argument("--data_source", type=str, required=True, 
                         default="https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt", 
-                        help="data download url") 
+                        help="data download url")
     parser.add_argument("--context_length", type=int, required=True, default=1024,
                         help="context length")
     # model params
@@ -93,8 +78,24 @@ def args_parse():
                         help="train data ratio")
     parser.add_argument("--learning_rate", type=float, required=True, default=5e-4, 
                         help="learning rate")
+    parser.add_argument("--initial_lr", type=float, required=True, default=3e-5, 
+                        help="initial learning rate")
+    parser.add_argument("--min_lr", type=float, required=True, default=1e-6,
+                        help="minimum learning rate")
     parser.add_argument("--weight_decay", type=float, required=True, default=0.1, 
                         help="weight decay")
+    parser.add_argument('--lradj', type = str, default = 'type1', 
+                        help = 'adjust learning rate')
+    parser.add_argument("--patience", type=int, required=True, default=7, 
+                        help="early stopping patience")
+    parser.add_argument("--checkpoints", type=str, required=False, 
+                        default="./saved_results/pretrained_models/", 
+                        help="checkpoints path")
+    parser.add_argument("--test_results", type=str, required=False, default="./saved_results/test_results/",
+                        help="test results path")
+    parser.add_argument("--use_amp", type=int, required=True, default=1,
+                        help="Use amp")
+    # model pretrain device params
     parser.add_argument("--use_gpu", type=int, required=True, default=1, 
                         help="user gpu")
     parser.add_argument("--use_multi_gpu", type=int, required=True, default=0, 
@@ -102,45 +103,37 @@ def args_parse():
     parser.add_argument("--gpu_type", type=str, required=True, default="cuda", 
                         help="gpu type")
     parser.add_argument("--devices", type=str, required=True, default="0,1,2,3",
-                        help="devices")
-    parser.add_argument('--lradj', type = str, default = 'type1', help = 'adjust learning rate')
-    parser.add_argument("--patience", type=int, required=True, default=7, 
-                        help="early stopping patience")
-    parser.add_argument("--checkpoints", type=str, required=False, 
-                        default="./saved_results/pretrained_models/", 
-                        help="checkpoints")
-    parser.add_argument("--test_results", type=str, required=False, default="./saved_results/test_results/",
-                        help="test results")
+                        help="devices") 
     # ------------------------------
     # arguments parse
     # ------------------------------
     args = parser.parse_args()
     # use gpu
-    args.use_gpu = True if (
-        torch.cuda.is_available() or torch.backends.mps.is_available()
-    ) and args.use_gpu else False
+    args.use_gpu = True \
+        if (torch.cuda.is_available() or torch.backends.mps.is_available()) and args.use_gpu \
+        else False
     # gpu type: "cuda", "mps"
     args.gpu_type = args.gpu_type.lower().strip()
     # devices string: "0,1,2,3", "0", "1", "2", "3", "0,1", "0,2"...
-    args.devices = args.devices.replace(" ", "")  # str
+    args.devices = args.devices.replace(" ", "")
     # device ids: [0,1,2,3], [0], [1], [2], [3], [0,1], [0,2]...
-    args.device_ids = [int(id_) for id_ in args.devices.split(",")]  # list
+    args.device_ids = [int(id_) for id_ in args.devices.split(",")]
     # gpu: [0,1,2,3], "0"
     if args.use_gpu and args.use_multi_gpu:
         args.gpu = args.devices
     elif args.use_gpu and not args.use_multi_gpu:
-        args.gpu = [int(id_) for id_ in args.devices.split(",")][0]
+        args.gpu = args.device_ids[0]
     
     logger.info(f"Args in experiment: \n{args}")
 
     return args
 
 
-def running(args):
+def run(args):
     # ------------------------------
     # 模型任务
     # ------------------------------
-    if args.task_name == 'tiny_llm_pretrain':
+    if args.task_name == 'tiny_gpt_pretrain':
         Exp = Model_Pretrain
     else:
         Exp = Model_Pretrain
@@ -148,20 +141,20 @@ def running(args):
     # 模型训练
     # ------------------------------
     if args.is_training:
-        for ii in range(args.iters):
+        for itr in range(args.iters):
             logger.info(f"{50 * '='}")
-            logger.info(f"iter: {ii}")
+            logger.info(f"training iter: {itr}")
             logger.info(f"{50 * '='}")
 
             # setting record of experiments
-            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1]}_cl{args.context_length}_ne{args.train_epochs}_bs{args.batch_size}"
+            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1][:-4]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
 
+            logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
             # set experiments
             exp = Exp(args)
 
             # model training
-            logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            exp.train(setting=setting, eval_freq=5, eval_iter=1, start_context="Every effort moves you")
+            exp.train(training_iter = itr, setting=setting, eval_freq=5, eval_iter=1, start_context="Every effort moves you")
 
             # model testing
             # logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
@@ -169,10 +162,11 @@ def running(args):
 
             # empty cache
             torch.cuda.empty_cache()
+    
+    """
     # ------------------------------
     # 模型测试
     # ------------------------------
-    """
     if args.is_testing:
         ii = 0
         # setting record of experiments
@@ -185,15 +179,17 @@ def running(args):
         logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
         exp.test(setting, test = 1)
         torch.cuda.empty_cache()
+    
     # ------------------------------
     # 模型推理预测
     # ------------------------------
-    if args.is_predict:
+    if args.is_inference:
         logger.info(f">>>>>>>predicting : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
         prediction = exp.predict(setting, True)
         torch.cuda.empty_cache()
         logger.info(prediction.shape)
     """
+
 
 
 
@@ -204,7 +200,7 @@ def main():
     # 参数解析
     args = args_parse()
     # 参数使用
-    running(args) 
+    run(args)
 
 if __name__ == "__main__":
     main()

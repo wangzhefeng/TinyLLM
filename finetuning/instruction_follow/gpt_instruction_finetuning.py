@@ -36,7 +36,7 @@ from finetuning.instruction_format import format_input_alpaca
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
-from models.gpt_generate import generate
+from training.gpt_generate import generate
 from models_load.openai_gpt2_weights_load_hf import load_weights
 # model training
 from training.calc_loss import _calc_loss_batch, _calc_loss_loader

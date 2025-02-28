@@ -20,13 +20,16 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from utils.log_util import logger
-
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def generate_text_simple(model, token_idx: torch.tensor, max_new_tokens: int, context_size: int):
+def generate_simple_V2(
+        model, 
+        token_idx: torch.tensor, 
+        max_new_tokens: int, 
+        context_size: int
+    ):
     """
     generate text
 
@@ -43,33 +46,103 @@ def generate_text_simple(model, token_idx: torch.tensor, max_new_tokens: int, co
         # logger.info(f"generate text step: {i}")
         # logger.info(f"{25 * '-'}")
 
-        # crop current context if it exceeds the supported context size
+        # Crop current context if it exceeds the supported context size
         # logger.info(f"token_idx before crop: {token_idx}")
         idx_cond = token_idx[:, -context_size:]
         # logger.info(f"token_idx after crop: {idx_cond}")
-        # get the predictions
+        
+        # Get the predictions
         with torch.no_grad():
             logits = model(idx_cond)
         # logger.info(f"logits: \n{logits}")
-        # focus only on the last time step
+        
+        # Focus only on the last time step
         # shape: (batch, n_tokens, vocab_size) -> (batch, vocab_size)
         logits = logits[:, -1, :]
         # logger.info(f"logits: \n{logits}")
-        # softmax
-        probas = torch.softmax(logits, dim=-1)  # (batch, vocab_size)
+        
+        # Softmax
+        # shape: (batch, vocab_size)
+        # probas = torch.softmax(logits, dim=-1)
         # logger.info(f"probas: \n{probas}, \nprobas.shape{probas.shape}")
-        # get the idx of the vocab entry with the highest probability value
-        idx_next = torch.argmax(probas, dim = -1, keepdim = True)
+        
+        # Get the idx of the vocab entry with the highest probability value
+        # shape: (batch, 1)
+        idx_next = torch.argmax(logits, dim = -1, keepdim = True)
         # logger.info(f"idx_next: {idx_next}")
-        # append sampled index to the running sequence
-        token_idx = torch.cat((token_idx, idx_next), dim = 1)  # (batch, n_tokens+1)
+        
+        # Append sampled index to the running sequence
+        # shape: (batch, n_tokens+1)
+        token_idx = torch.cat((token_idx, idx_next), dim = 1)
         # logger.info(f"token_idx: {token_idx}\n")
 
     return token_idx
 
 
-def generate(model, token_idx: torch.tensor, max_new_tokens: int,  context_size: int, 
-             temperature: float=0.0, top_k: float=None, eos_id: int=None):
+def generate_simple_V1(
+        model, 
+        token_idx: torch.tensor, 
+        max_new_tokens: int, 
+        context_size: int
+    ):
+    """
+    generate text
+
+    Args:
+        model (_type_): LLM model
+        token_idx (torch.tensor): token_idx is array of indices in the current contex. shape: (batch, n_tokens)
+        max_new_tokens (int): maximum length new tokens
+        context_size (int): start context length
+
+    Returns:
+        _type_: _description_
+    """
+    for i in range(max_new_tokens):
+        # logger.info(f"generate text step: {i}")
+        # logger.info(f"{25 * '-'}")
+
+        # Crop current context if it exceeds the supported context size
+        # logger.info(f"token_idx before crop: {token_idx}")
+        idx_cond = token_idx[:, -context_size:]
+        # logger.info(f"token_idx after crop: {idx_cond}")
+        
+        # Get the predictions
+        with torch.no_grad():
+            logits = model(idx_cond)
+        # logger.info(f"logits: \n{logits}")
+        
+        # Focus only on the last time step
+        # shape: (batch, n_tokens, vocab_size) -> (batch, vocab_size)
+        logits = logits[:, -1, :]
+        # logger.info(f"logits: \n{logits}")
+        
+        # Softmax
+        # shape: (batch, vocab_size)
+        probas = torch.softmax(logits, dim=-1)
+        # logger.info(f"probas: \n{probas}, \nprobas.shape{probas.shape}")
+        
+        # Get the idx of the vocab entry with the highest probability value
+        # shape: (batch, 1)
+        idx_next = torch.argmax(probas, dim = -1, keepdim = True)
+        # logger.info(f"idx_next: {idx_next}")
+        
+        # Append sampled index to the running sequence
+        # shape: (batch, n_tokens+1)
+        token_idx = torch.cat((token_idx, idx_next), dim = 1)
+        # logger.info(f"token_idx: {token_idx}\n")
+
+    return token_idx
+
+
+def generate(
+        model, 
+        token_idx: torch.tensor, 
+        max_new_tokens: int,  
+        context_size: int, 
+        temperature: float=0.0, 
+        top_k: float=None, 
+        eos_id: int=None,
+    ):
     """
     get logits, and only focus on last time step
 
