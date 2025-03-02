@@ -26,16 +26,16 @@ import torch
 import torch.nn as nn
 from transformers import GPT2Model
 
-from finetuning.text_classification.data_loader_finetuning import create_dataloader
+from finetuning.text_classification.data_loader import create_dataloader
 from models.gpt import Model
-from training.gpt_generate import generate
+from model_train.gpt_generate import generate
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models_load.openai_gpt2_weights_load_hf import load_weights
-from training.calc_loss import _calc_loss_batch, _calc_loss_loader, _calc_loss
-from training.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
-from training.train_funcs import _select_optimizer, _select_criterion
-from training.plot_losses import _plot_values_classifier, _plot_losses_instruction_sft
-from training.save_load_model import _save_model
+from model_train.calc_loss import _calc_loss_batch, _calc_loss_loader, _calc_loss
+from model_train.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
+from model_train.train_funcs import _select_optimizer, _select_criterion
+from model_train.plot_losses import _plot_values_classifier, _plot_losses_instruction_sft
+from model_train.save_load_model import _save_model
 from utils.argsparser_tools import DotDict
 from utils.device import device
 from utils.log_util import logger

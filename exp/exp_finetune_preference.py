@@ -23,10 +23,10 @@ import torch
 import torch.nn.functional as F
 
 from finetuning.direct_preference_optimization.data_load import load_instruction_data
-from data_provider.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_format import format_input_alpaca
 from finetuning.direct_preference_optimization.data_loader import create_dataloader
 from models.gpt import Model
-from training.gpt_generate import generate
+from model_train.gpt_generate import generate
 from utils.argsparser_tools import DotDict
 from utils.log_util import logger
 
@@ -445,7 +445,7 @@ def main():
 
     # model test before dpo
     from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
-    from training.gpt_generate import generate
+    from model_train.gpt_generate import generate
     prompt = """Below is an instruction that describes a task. Write a response
     that appropriately completes the request.
 

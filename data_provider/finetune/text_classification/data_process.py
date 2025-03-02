@@ -23,7 +23,7 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 
-from finetuning.text_classification.data_load_finetuning import load_spam_data
+from finetuning.text_classification.data_load import load_spam_data
 from utils.log_util import logger
 
 # global variable

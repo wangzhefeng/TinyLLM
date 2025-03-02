@@ -21,7 +21,7 @@ import json
 import random
 from tqdm import tqdm
 
-from data_provider.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_format import format_input_alpaca
 from inference.ollama_api import query_model
 from utils.log_util import logger
 

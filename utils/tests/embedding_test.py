@@ -81,13 +81,13 @@ def text_tokenization_embedding():
 
 def real_data_embedding(): 
     # data download & load
-    from data_provider.data_load_pretrain import data_load
+    from data_provider.pretrain.data_load import data_load
     raw_text = data_load(
         url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
     )
 
     # dataloader
-    from data_provider.data_loader import create_dataloader
+    from data_provider.pretrain.data_loader import create_dataloader
     batch_size = 8
     max_length = 4  # 1024
     dataloader = create_dataloader(

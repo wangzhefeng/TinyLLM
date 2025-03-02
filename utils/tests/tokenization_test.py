@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 from tokenizer.tokenization import SimpleTokenizer, BPETokenizerSimple
-from data_provider.data_load_pretrain import data_load
+from data_provider.pretrain.data_load import data_load
 from utils.log_util import logger
 
 # global variable

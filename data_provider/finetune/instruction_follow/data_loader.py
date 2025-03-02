@@ -24,7 +24,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from finetuning.instruction_follow.data_load import load_file
-from data_provider.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_format import format_input_alpaca
 from utils.device import device
 from utils.log_util import logger
 

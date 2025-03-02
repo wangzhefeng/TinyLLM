@@ -30,14 +30,14 @@ import torch
 import torch.nn as nn
 
 # data
-from data_provider.data_load_pretrain import data_load
-from data_provider.data_loader import create_dataloader
+from data_provider.pretrain.data_load import data_load
+from data_provider.pretrain.data_loader import create_dataloader
 # tokenizer
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from exp.exp_basic import Exp_Basic
-from training.gpt_generate import generate
-from training.train_funcs import adjust_learning_rate, EarlyStopping
+from model_train.gpt_generate import generate
+from model_train.train_funcs import adjust_learning_rate, EarlyStopping
 # utils
 from utils.log_util import logger
 

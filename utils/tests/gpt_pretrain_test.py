@@ -21,10 +21,10 @@ if str(ROOT) not in sys.path:
 import torch
 import torch.nn as nn
 
-from data_provider.data_load_pretrain import data_load
+from data_provider.pretrain.data_load import data_load
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models.gpt import Model
-from training.gpt_generate import generate_text_simple
+from model_train.gpt_generate import generate_text_simple
 from utils.device import device
 from utils.argsparser_tools import DotDict
 from utils.log_util import logger
@@ -166,7 +166,7 @@ def main():
     logger.info(f"total_tokens: {total_tokens}")
  
     # training and validation data loader create
-    from data_provider.data_loader import create_dataloader
+    from data_provider.pretrain.data_loader import create_dataloader
     train_ratio = 0.90
     split_idx = int(train_ratio * len(raw_text))
     train_data = raw_text[:split_idx]

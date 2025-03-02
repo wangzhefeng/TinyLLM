@@ -18,7 +18,7 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from data_provider.data_loader import create_dataloader
+from data_provider.pretrain.data_loader import create_dataloader
 from utils.log_util import logger
 
 # global variable
@@ -30,7 +30,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 # 测试代码 main 函数
 def main():
     import tiktoken
-    from data_provider.data_load_pretrain import data_load
+    from data_provider.pretrain.data_load import data_load
 
     # ------------------------------
     # data download & load

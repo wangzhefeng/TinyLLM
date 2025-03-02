@@ -31,18 +31,18 @@ from matplotlib.ticker import MaxNLocator
 # data
 from finetuning.instruction_follow.data_load import load_file
 from finetuning.instruction_follow.data_loader import create_dataloader
-from data_provider.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_format import format_input_alpaca
 # tokenizer
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
-from training.gpt_generate import generate
+from model_train.gpt_generate import generate
 from models_load.openai_gpt2_weights_load_hf import load_weights
 # model training
-from training.calc_loss import _calc_loss_batch, _calc_loss_loader
-from training.train_funcs import _select_optimizer
-from training.plot_losses import _plot_losses
-from training.save_load_model import _save_model
+from model_train.calc_loss import _calc_loss_batch, _calc_loss_loader
+from model_train.train_funcs import _select_optimizer
+from model_train.plot_losses import _plot_losses
+from model_train.save_load_model import _save_model
 # tools
 from utils.argsparser_tools import DotDict
 from utils.device import device
