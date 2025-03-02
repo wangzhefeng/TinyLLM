@@ -31,7 +31,7 @@ from matplotlib.ticker import MaxNLocator
 # data
 from finetuning.instruction_follow.data_load import load_file
 from finetuning.instruction_follow.data_loader import create_dataloader
-from finetuning.instruction_format import format_input_alpaca
+from data_provider.instruction_format import format_input_alpaca
 # tokenizer
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
@@ -40,7 +40,6 @@ from training.gpt_generate import generate
 from models_load.openai_gpt2_weights_load_hf import load_weights
 # model training
 from training.calc_loss import _calc_loss_batch, _calc_loss_loader
-from training.generate import _generate_and_print_sample
 from training.train_funcs import _select_optimizer
 from training.plot_losses import _plot_losses
 from training.save_load_model import _save_model
@@ -207,7 +206,7 @@ def _train_model_simple(model,
                       f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
         # Print a sample text after each epoch
-        _generate_and_print_sample(model, device, start_context)
+        generate(model, device, start_context)
 
     return train_losses, val_losses, track_tokens_seen
 

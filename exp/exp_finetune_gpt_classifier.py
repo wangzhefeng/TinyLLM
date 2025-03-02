@@ -33,7 +33,6 @@ from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models_load.openai_gpt2_weights_load_hf import load_weights
 from training.calc_loss import _calc_loss_batch, _calc_loss_loader, _calc_loss
 from training.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
-from training.generate import _generate_and_print_sample
 from training.train_funcs import _select_optimizer, _select_criterion
 from training.plot_losses import _plot_values_classifier, _plot_losses_instruction_sft
 from training.save_load_model import _save_model
@@ -44,6 +43,11 @@ from utils.log_util import logger
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
+
+class Model:
+
+    def __init__(self):
+        pass
 
 def _build_data(data_path, batch_size):
     """

@@ -23,10 +23,10 @@ import torch
 import torch.nn.functional as F
 
 from finetuning.direct_preference_optimization.data_load import load_instruction_data
-from finetuning.instruction_format import format_input_alpaca
+from data_provider.instruction_format import format_input_alpaca
 from finetuning.direct_preference_optimization.data_loader import create_dataloader
 from models.gpt import Model
-from training.generate import _generate_and_print_sample
+from training.gpt_generate import generate
 from utils.argsparser_tools import DotDict
 from utils.log_util import logger
 
@@ -379,7 +379,7 @@ def _train_model_dpo_simple(model,
                     f"Val reward margins {val_reward_margin:.3f}"
                 )
         # 在每个训练周期后打印示例文本
-        _generate_and_print_sample(
+        generate(
             model=model,
             tokenizer=tokenizer,
             device=loss.device,

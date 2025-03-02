@@ -131,7 +131,7 @@ def compare_model_bertscore(base_model, lora_model, tokenizer, test_data):
     lora_answers = batch_generate_response(lora_model, tokenizer, [d["Question"] for d in test_data])
     ref_answers = [d["Response"] for d in test_data]
     # bert model path(https://huggingface.co/google-bert/bert-base-chinese)
-    bert_model_path = "google-bert/bert-base-chinese"
+    bert_model_path = "downloaded_models/bert-base-chinese"
     # 计算 BERTScore
     _, _, base_bert = score(
         base_answers, 

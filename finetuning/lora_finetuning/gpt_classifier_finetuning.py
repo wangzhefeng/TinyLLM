@@ -35,7 +35,6 @@ from models_load.openai_gpt2_weights_load_hf import load_weights
 from layers.lora import replace_linear_with_lora
 from training.calc_loss import _calc_loss_batch, _calc_loss_loader
 from training.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
-from training.generate import _generate_and_print_sample
 from training.train_funcs import _select_optimizer
 from training.plot_losses import _plot_values_classifier, _plot_losses_instruction_sft
 from training.save_load_model import _save_model

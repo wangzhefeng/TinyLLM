@@ -33,7 +33,7 @@ from contextlib import nullcontext
 from transformers import AutoTokenizer
 import wandb
 
-from models.model import Transformer
+from llm_proj.model import Transformer
 from config.Config import ModelConfig
 from data_prepare.dataset import PretrainDataset
 
