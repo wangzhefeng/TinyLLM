@@ -54,9 +54,9 @@ def download_and_unzip_spam_data(data_file_path, zip_path, extracted_path):
     logger.info(f"File downloaded and saved as {data_file_path}")
 
 
-def load_spam_data(data_file_path):
+def load_data(data_file_path):
     """
-    load spam data for finetuning text classification
+    load spam tsv data for finetuning text classification
     """
     df = pd.read_csv(data_file_path, sep="\t", header=None, names=["Label", "Text"])
 
@@ -71,23 +71,23 @@ def main():
     finetuning_data_path = r"dataset\finetuning"
 
     # zip file path
-    zip_path = os.path.join(ROOT, finetuning_data_path, "sms_spam_collection.zip")
-    # logger.info(f"zip_path: {zip_path}")
+    zip_path = os.path.join(finetuning_data_path, "sms_spam_collection.zip")
+    logger.info(f"zip_path: {zip_path}")
 
     # extracted path
-    extracted_path = os.path.join(ROOT, finetuning_data_path, "sms_spam_collection")
+    extracted_path = os.path.join(finetuning_data_path, "sms_spam_collection")
     os.makedirs(extracted_path, exist_ok=True)
-    # logger.info(f"extracted_path: {extracted_path}")
+    logger.info(f"extracted_path: {extracted_path}")
 
     # data file path
     data_file_path = Path(extracted_path) / "SMSSpamCollection.tsv"
-    # logger.info(f"data_file_path: {data_file_path}")
+    logger.info(f"data_file_path: {data_file_path}")
 
     # data download
     download_and_unzip_spam_data(data_file_path, zip_path, extracted_path)
 
     # data load
-    df = load_spam_data(data_file_path)
+    df = load_data(data_file_path)
     logger.info(f"df: \n{df.head()} \ndf.shape: {df.shape}")
     logger.info(f"df['Label'].value_counts(): \n{df['Label'].value_counts()}")
 

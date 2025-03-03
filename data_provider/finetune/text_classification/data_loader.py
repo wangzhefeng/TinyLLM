@@ -31,60 +31,48 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 class SpamDataset(Dataset):
     
-    def __init__(self, data_path, tokenizer, max_length=None, pad_token_id=50256):
-        # load data
+    def __init__(self, data_path, tokenizer, max_length=None):
+        # load csv data
         self.data = pd.read_csv(data_path)
+        logger.info(self.data.head())
         # pre-tokenize texts
-        self.encoded_texts = [
-            tokenizer.encode(text)
-            for text in self.data["Text"]
-        ]
-        # max length
+        self.encoded_texts = [tokenizer.encode(text) for text in self.data["Text"]]
+        # max length of encoded texts
         if max_length is None:
             self.max_length = self._longest_encoded_length()
         else:
             self.max_length = max_length
             # truncate sequences if they are longer than max_length
-            self.encoded_texts = [
-                encoded_text[:self.max_length]
-                for encoded_text in self.encoded_texts
-            ]
+            self.encoded_texts = [encoded_text[:self.max_length] for encoded_text in self.encoded_texts]
         # pad sequences to the longest sequence
+        self.pad_token_id = tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]  # 50256
         self.encoded_texts = [
-            encoded_text + [pad_token_id] * (self.max_length - len(encoded_text))
+            encoded_text + [self.pad_token_id] * (self.max_length - len(encoded_text))
             for encoded_text in self.encoded_texts
         ]
     
     def __getitem__(self, index):
         encoded = self.encoded_texts[index]
         label = self.data.iloc[index]["Label"]
+        
         return (
-            torch.tensor(encoded, dtype=torch.long),
-            torch.tensor(label, dtype=torch.long)
+            torch.tensor(encoded, dtype = torch.long),
+            torch.tensor(label, dtype = torch.long)
         )
     
     def __len__(self):
         return len(self.data)
 
     def _longest_encoded_length(self):
-        max_length = 0
-        for encoded_text in self.encoded_texts:
-            encoded_length = len(encoded_text)
-            if encoded_length > max_length:
-                max_length = encoded_length
-        
-        return max_length
-        # Note: A more pythonic version to implement this method
-        # is the following, which is also used in the next chapter:
-        # return max(len(encoded_text) for encoded_text in self.encoded_texts)
+        return max(len(encoded_text) for encoded_text in self.encoded_texts)
 
 
 def create_dataloader(data_path, 
-                      max_length=None, 
-                      batch_size=8, 
-                      shuffle=False, 
-                      drop_last=True, 
-                      num_workers=0):
+                      max_length = None, 
+                      batch_size = 8, 
+                      shuffle = False, 
+                      drop_last = True, 
+                      num_workers = 0):
     # tokenizer
     tokenizer = tiktoken.get_encoding("gpt2")
     # data set
@@ -98,7 +86,7 @@ def create_dataloader(data_path,
         dataset = dataset,
         batch_size = batch_size,
         shuffle = shuffle,
-        drop_last = drop_last, 
+        drop_last = drop_last,
         num_workers = num_workers,
     )
 
@@ -110,26 +98,26 @@ def create_dataloader(data_path,
 # 测试代码 main 函数
 def main():
     # params
-    extracted_path = os.path.join(ROOT, r"dataset\finetuning\sms_spam_collection")
+    data_dir = r"dataset\finetuning\sms_spam_collection"
     batch_size = 8
 
     # dataset and dataloader
     train_dataset, train_loader = create_dataloader(
-        data_path = os.path.join(extracted_path, "train.csv"),
+        data_path = os.path.join(data_dir, "train.csv"),
         max_length = None,
         batch_size = batch_size,
         shuffle = True,
         drop_last = True,
     )
     valid_dataset, valid_loader = create_dataloader(
-        data_path = os.path.join(extracted_path, "valid.csv"),
+        data_path = os.path.join(data_dir, "valid.csv"),
         max_length = train_dataset.max_length,
         batch_size = batch_size,
         shuffle = False,
         drop_last = False,
     )
     test_dataset, test_loader = create_dataloader(
-        data_path = os.path.join(extracted_path, "test.csv"),
+        data_path = os.path.join(data_dir, "test.csv"),
         max_length = train_dataset.max_length,
         batch_size = batch_size,
         shuffle = False,
