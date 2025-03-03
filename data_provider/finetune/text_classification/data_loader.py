@@ -19,9 +19,9 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 import pandas as pd
+import tiktoken
 import torch
 from torch.utils.data import Dataset, DataLoader
-import tiktoken
 
 from utils.log_util import logger
 
@@ -90,8 +90,8 @@ def create_dataloader(data_path,
     # data set
     dataset = SpamDataset(
         data_path = data_path,
-        tokenizer=tokenizer,
-        max_length=max_length,
+        tokenizer = tokenizer,
+        max_length = max_length,
     )
     # data loader
     dataloader = DataLoader(
@@ -109,9 +109,6 @@ def create_dataloader(data_path,
 
 # 测试代码 main 函数
 def main():
-    tokenizer = tiktoken.get_encoding("gpt2")
-    logger.info(f"special token '<|endoftext|>' id: {tokenizer.encode('<|endoftext|>', allowed_special={'<|endoftext|>'})}")
-
     # params
     extracted_path = os.path.join(ROOT, r"dataset\finetuning\sms_spam_collection")
     batch_size = 8
@@ -141,17 +138,16 @@ def main():
     logger.info(f"train_dataset.max_length: {train_dataset.max_length}")
     logger.info(f"valid_dataset.max_length: {valid_dataset.max_length}")
     logger.info(f"test_dataset.max_length: {test_dataset.max_length}")
+    logger.info(f"{len(train_loader)} training batches")
+    logger.info(f"{len(valid_loader)} validation batches")
+    logger.info(f"{len(test_loader)} test batches")
 
     # dataloader test
     logger.info(f"Train loader:")
     for input_batch, target_batch in train_loader:
         pass
     logger.info(f"Input batch dim: {input_batch.shape}")
-    logger.info(f"Target batch dim: {target_batch.shape}")
-
-    logger.info(f"{len(train_loader)} training batches")
-    logger.info(f"{len(valid_loader)} validation batches")
-    logger.info(f"{len(test_loader)} test batches")
+    logger.info(f"Target batch dim: {target_batch.shape}") 
 
 if __name__ == "__main__":
     main()
