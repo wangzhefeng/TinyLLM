@@ -34,7 +34,6 @@ class SpamDataset(Dataset):
     def __init__(self, data_path, tokenizer, max_length=None):
         # load csv data
         self.data = pd.read_csv(data_path)
-        logger.info(self.data.head())
         # pre-tokenize texts
         self.encoded_texts = [tokenizer.encode(text) for text in self.data["Text"]]
         # max length of encoded texts
@@ -54,7 +53,7 @@ class SpamDataset(Dataset):
     def __getitem__(self, index):
         encoded = self.encoded_texts[index]
         label = self.data.iloc[index]["Label"]
-        
+
         return (
             torch.tensor(encoded, dtype = torch.long),
             torch.tensor(label, dtype = torch.long)

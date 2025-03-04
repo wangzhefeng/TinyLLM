@@ -23,16 +23,18 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import tiktoken
 import torch
-import torch.nn as nn
 from transformers import GPT2Model
 
 # data
 from data_provider.finetune.text_classification.data_loader import create_dataloader
 # model
 from models.gpt import Model
+from model_finetune.model_finetune_clf import (
+    finetune_model_simple,
+    finetune_model_lora,
+)
 # other model
-from models_load.openai_gpt2_models import gpt2_model_configs, gpt2_huggingface_models
-from models_load.openai_gpt2_weights_load_hf import load_weights
+from model_load.openai_gpt2_models import load_pretrained_gpt2_model
 # training
 from model_train.calc_loss import _calc_loss_batch, _calc_loss_loader, _calc_loss
 from model_train.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
@@ -83,71 +85,8 @@ class ModelFinetuningClassifier:
             drop_last = False,
         )
 
-        return train_loader, valid_loader, test_loader
-
-    def _build_model(self):
-        """
-        initializing a model with pretrained weights: gpt2-small (124M)
-        TODO:
-            cache_dir = "./downloaded_models/gpt2_model"
-        """
-        # model base config
-        self.base_config = {
-            "vocab_size": self.args.vocab_size,         # Vocabulary size: 50257
-            "context_length": self.args.context_length, # Context length: 1024
-            "dropout": self.args.dropout,               # Dropout rate: 0.0
-            "qkv_bias": self.args.qkv_bias,             # Query-key-value bias: True
-        }
-        self.base_config.update(gpt2_model_configs[self.args.choose_model])
-        self.base_config = DotDict(self.base_config)
-
-        # assert train_dataset.max_length <= base_config["context_length"], (
-        #     f"Dataset length {train_dataset.max_length} exceeds model's context "
-        #     f"length {base_config['context_length']}. Reinitialize data sets with "
-        #     f"`max_length={base_config['context_length']}`"
-        # )
-        gpt2_hf = GPT2Model.from_pretrained(
-            gpt2_huggingface_models[self.args.choose_model],
-            cache_dir = self.args.pretrained_model_path,
-        )
-        gpt2_hf.eval()
-
-        # custom gpt model
-        model = Model(self.base_config)
-        load_weights(model, gpt2_hf, self.base_config)
-        model.eval()
-        
-        return model
-
-    def _finetune_model(self):
-        """
-        add a classification head
-        """
-        # build model and print model architecture
-        self.model = self._build_model()
-        logger.info(f"model: {self.model}")
-
-        # freeze model(make all layers non-trainable)
-        for param in self.model.parameters():
-            param.requires_grad = False
-
-        # replace output layer
-        self.model.out_head = nn.Linear(
-            in_features = self.base_config.emb_dim, 
-            out_features = self.args.num_classes
-        )
-
-        # make the last transformer block and final LayerNorm module 
-        # connecting the last transformer block to the output layer trainable
-        for param in self.model.trf_blocks[-1].parameters():
-            param.requires_grad = True
-
-        for param in self.model.final_norm.parameters():
-            param.requires_grad = True
-
-        # move model to device
-        self.model.to(device)
-
+        return train_loader, valid_loader, test_loader 
+ 
     def _choose_tokenizer(self, tokenizer_model: str = "gpt2"):
         """
         choose tokenizer
@@ -173,16 +112,21 @@ class ModelFinetuningClassifier:
 
         return train_loss, val_loss
 
-    def train(self, train_epochs: int, eval_freq: int = 50, eval_iter: int = 5):
+    def train(self, eval_freq: int = 50, eval_iter: int = 5):
         """
         model training
         """
         # data loader
         train_loader, valid_loader, test_loader = self._build_data()
         # model
-        self._finetune_model() 
+        self.model, self.base_config = load_pretrained_gpt2_model(cfgs=self.args, model_cls=Model)
+        # model finetuning
+        if self.args.finetune_method == "simple":
+            finetune_model_simple(self.model, self.base_config, self.device, self.args.num_classes)
+        elif self.args.finetune_method == "lora":
+            finetune_model_lora(self.model, self.base_config, self.device, self.args.num_classes)
         # optimizer
-        optimizer = _select_optimizer(self.model)
+        self.optimizer = _select_optimizer(self.model)
 
         # record training start time
         training_start_time = time.time()
@@ -206,7 +150,7 @@ class ModelFinetuningClassifier:
                 loss.backward()
                 # Update model weights using loss gradients
                 self.optimizer.step()
-                # New: track examples instead of tokens
+                # track examples instead of tokens
                 examples_seen += input_batch.shape[0]
                 global_step += 1
                 # Optional evaluation step
@@ -230,12 +174,12 @@ class ModelFinetuningClassifier:
         logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
         
         # training loss plot
-        epochs_tensor = torch.linspace(0, train_epochs, len(train_losses))
+        epochs_tensor = torch.linspace(0, self.args.train_epochs, len(train_losses))
         examples_seen_tensor = torch.linspace(0, examples_seen, len(train_losses))
         plot_values_classifier(epochs_tensor, examples_seen_tensor, train_losses, val_losses)
 
         # training accuracy plot
-        epochs_tensor = torch.linspace(0, train_epochs, len(train_accs))
+        epochs_tensor = torch.linspace(0, self.args.train_epochs, len(train_accs))
         examples_seen_tensor = torch.linspace(0, examples_seen, len(train_accs))
         plot_values_classifier(epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy")
 
@@ -277,6 +221,8 @@ class ModelFinetuningClassifier:
 
 # 测试代码 main 函数
 def main():
+    # before finetune
+    input_prompt = "Every effort moves you"
     # usage 1
     text_1 = (
         "You are a winner you have been specially"
@@ -286,7 +232,7 @@ def main():
     text_2 = (
         "Hey, just wanted to check if we're still on"
         " for dinner tonight? Let me know!"
-    )
+    ) 
 
 if __name__ == "__main__":
     main()

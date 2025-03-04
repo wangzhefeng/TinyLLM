@@ -32,14 +32,14 @@ plt.switch_backend('agg')
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def _select_optimizer(model):
+def _select_optimizer(model, cfgs):
     """
     optimizer
     """
     optimizer = torch.optim.AdamW(
         model.parameters(), 
-        lr=5e-5, 
-        weight_decay=0.1
+        lr=cfgs.learning_rate, 
+        weight_decay=cfgs.weight_decay
     )
 
     return optimizer
