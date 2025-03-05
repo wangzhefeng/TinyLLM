@@ -25,7 +25,7 @@ import tiktoken
 import torch
 
 # data
-from data_provider.finetune.text_classification.data_loader import create_dataloader
+from data_provider.finetune.text_clf.data_loader import create_dataloader
 # model
 from models.gpt import Model
 from model_finetune.model_finetune_clf import (
