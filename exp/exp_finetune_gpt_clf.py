@@ -23,7 +23,6 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import tiktoken
 import torch
-from transformers import GPT2Model
 
 # data
 from data_provider.finetune.text_classification.data_loader import create_dataloader
@@ -36,14 +35,11 @@ from model_finetune.model_finetune_clf import (
 # other model
 from model_load.openai_gpt2_models import load_pretrained_gpt2_model
 # training
-from model_train.calc_loss import _calc_loss_batch, _calc_loss_loader, _calc_loss
-from model_train.calc_accuracy import _calc_accuracy_loader, _calc_accuracy
-from model_train.train_funcs import _select_optimizer, _select_criterion
+from model_train.calc_loss import _calc_loss_batch, _calc_loss_loader
+from model_train.calc_accuracy import _calc_accuracy_loader
+from model_train.train_funcs import _select_optimizer
 from model_train.plot_losses import plot_values_classifier
-from model_train.save_load_model import _save_model
 # utils
-from utils.argsparser_tools import DotDict
-from utils.device import device
 from utils.log_util import logger
 
 warnings.filterwarnings("ignore")
@@ -161,8 +157,8 @@ class ModelFinetuningClassifier:
                     logger.info(f"Ep {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
             # Calculate accuracy after each epoch
-            train_accuracy = _calc_accuracy_loader(train_loader, self.model, device, num_batches=eval_iter)
-            val_accuracy = _calc_accuracy_loader(valid_loader, self.model, device, num_batches=eval_iter)
+            train_accuracy = _calc_accuracy_loader(train_loader, self.model, self.device, num_batches=eval_iter)
+            val_accuracy = _calc_accuracy_loader(valid_loader, self.model, self.device, num_batches=eval_iter)
             logger.info(f"Training accuracy: {train_accuracy*100:.2f}% | ")
             logger.info(f"Validation accuracy: {val_accuracy*100:.2f}%")
             train_accs.append(train_accuracy)
@@ -184,9 +180,9 @@ class ModelFinetuningClassifier:
         plot_values_classifier(epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy")
 
         # accuracy
-        train_accuracy = _calc_accuracy_loader(train_loader, self.model, device)
-        val_accuracy = _calc_accuracy_loader(valid_loader, self.model, device)
-        test_accuracy = _calc_accuracy_loader(test_loader, self.model, device)
+        train_accuracy = _calc_accuracy_loader(train_loader, self.model, self.device)
+        val_accuracy = _calc_accuracy_loader(valid_loader, self.model, self.device)
+        test_accuracy = _calc_accuracy_loader(test_loader, self.model, self.device)
         logger.info(f"Training accuracy: {train_accuracy*100:.2f}%")
         logger.info(f"Validation accuracy: {val_accuracy*100:.2f}%")
         logger.info(f"Test accuracy: {test_accuracy*100:.2f}%")

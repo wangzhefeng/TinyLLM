@@ -15,10 +15,10 @@ python -u run_gpt_instruction_sft.py \
     --qkv_bias 1 \
     --pretrained_model 'gpt2-medium (355)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
+    --finetuned_model_path ./saved_results/finetuning_pretrained_models \
     --num_classes 2 \
     --train_epochs 2 \
     --use_gpu 1 \
     --use_multi_gpu 0 \
     --gpu_type cuda \
     --devices 0,1,2,3
-

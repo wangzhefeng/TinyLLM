@@ -40,7 +40,6 @@ from model_train.train_funcs import _select_optimizer
 from model_train.plot_losses import plot_losses
 from model_train.save_load_model import _save_model
 # tools
-from utils.argsparser_tools import DotDict
 from utils.device import device
 from utils.log_util import logger
 
@@ -128,7 +127,7 @@ class ModelFinetuningInstructionFlow:
         # model
         self.model, self.base_config = load_pretrained_gpt2_model(cfgs=self.args, model_cls=Model)
         # move model to device
-        self.model.to(device)
+        self.model.to(self.device)
         # optimizer
         self.optimizer = _select_optimizer(self.model)
 
@@ -209,7 +208,7 @@ class ModelFinetuningInstructionFlow:
             input_text = format_input_alpaca(entry)
             token_ids = generate(
                 model = self.model,
-                token_idx = text_to_token_ids(input_text).to(device),
+                token_idx = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = 256,
                 context_size = self.base_config.context_length,
                 eos_id = 50256
@@ -232,54 +231,7 @@ class ModelFinetuningInstructionFlow:
 
 # 测试代码 main 函数
 def main():
-    data_path = "./dataset/finetuning/instruction-data.json"
-    pretrained_model_path = "./saved_results/finetuning_pretrained_models/"
-    os.makedirs(pretrained_model_path, exist_ok=True)
-    train_ratio = 0.85
-    test_ratio = 0.10
-    batch_size = 8
-    max_new_tokens = 35
-    # ------------------------------
-    # data
-    # ------------------------------
-    (
-        train_data, train_dataset, train_dataloader, 
-        test_data, test_dataset, test_dataloader,
-        valid_data, valid_dataset, valid_dataloader,
-    ) = _build_data(data_path, train_ratio, test_ratio, batch_size)
-
-    # ------------------------------
-    # model
-    # ------------------------------
-    model, base_config, choose_model = _build_model()
-    """
-    # model test
-    torch.manual_seed(123)
-    input_text = format_input_alpaca(valid_data[0])
-    logger.info(f"input text: \n{input_text}")
-
-    token_ids = generate(
-        model = model, 
-        token_idx = text_to_token_ids(input_text),
-        max_new_tokens = max_new_tokens,
-        context_size = base_config.context_length,
-        eos_id = 50256,
-    )
-    generated_text = token_ids_to_text(token_ids)
-    logger.info(f"generated text: \n{generated_text}")
-    
-    response_text = (
-        generated_text[len(input_text):]
-        .replace("### Response:", "")
-        .strip()
-    )
-    logger.info(f"response text: \n{response_text}")
-    """
-    train(model, train_dataloader, valid_dataloader, device, valid_data)
-    _extract_save_responses(test_data, model, base_config)
-    _build_test_data(test_data)
-    _save_model(model, pretrained_model_path, choose_model)
-
+    pass
 
 if __name__ == "__main__":
     main()
