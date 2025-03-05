@@ -26,7 +26,7 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def _calc_accuracy_loader(dataloader, model, device, num_batches = None):
+def calc_accuracy_loader(dataloader, model, device, num_batches = None):
     # model eval
     model.eval()
     # correct predictions and number of examples
@@ -55,16 +55,14 @@ def _calc_accuracy_loader(dataloader, model, device, num_batches = None):
     return correct_preds / num_examples
 
 
-def _calc_accuracy(train_loader, valid_loader, test_loader, model, device):
-    train_accuracy = _calc_accuracy_loader(train_loader, model, device, num_batches=10)
-    valid_accuracy = _calc_accuracy_loader(valid_loader, model, device, num_batches=10)
-    test_accuracy = _calc_accuracy_loader(test_loader, model, device, num_batches=10)
+def calc_accuracy(train_loader, valid_loader, test_loader, model, device):
+    train_accuracy = calc_accuracy_loader(train_loader, model, device, num_batches=10)
+    valid_accuracy = calc_accuracy_loader(valid_loader, model, device, num_batches=10)
+    test_accuracy = calc_accuracy_loader(test_loader, model, device, num_batches=10)
 
     logger.info(f"Train accuracy: {train_accuracy * 100:.2f}%")
     logger.info(f"Valid accuracy: {valid_accuracy * 100:.2f}%")
     logger.info(f"Test accuracy: {test_accuracy * 100:.2f}%")
-
-
 
 
 

@@ -21,14 +21,6 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import numpy as np
 import torch
-from transformers import GPT2Model
-
-from models.gpt import Model
-from model_train.gpt_generate import generate
-from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
-from utils.device import device
-from utils.argsparser_tools import DotDict
-from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -77,7 +69,16 @@ def load_weights(gpt, gpt_hf, CONFIG):
 
 
 # 测试代码 main 函数
-def main():  
+def main(): 
+    from transformers import GPT2Model
+
+    from models.gpt import Model
+    from model_train.gpt_generate import generate
+    from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+    from utils.device import device
+    from utils.argsparser_tools import DotDict
+    from utils.log_util import logger
+
     # huggingface gpt2 model
     choose_model = "gpt2-small (124M)"
     
@@ -109,11 +110,14 @@ def main():
     }
     base_config.update(model_configs[choose_model])
     base_config = DotDict(base_config)
+    
     # custom model
     gpt = Model(base_config)
 
     # update weights
     load_weights(gpt, gpt_hf, base_config)
+    
+    # model inference mode
     gpt.to(device)
 
     # model inference

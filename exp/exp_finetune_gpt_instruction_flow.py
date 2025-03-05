@@ -35,10 +35,9 @@ from model_train.gpt_generate import generate
 # other model
 from model_load.openai_gpt2_models import load_pretrained_gpt2_model
 # model training
-from model_train.calc_loss import _calc_loss_batch, _calc_loss_loader
-from model_train.train_funcs import _select_optimizer
+from model_train.calc_loss import calc_loss_batch, calc_loss_loader
+from model_train.train_funcs import select_optimizer
 from model_train.plot_losses import plot_losses
-from model_train.save_load_model import _save_model
 # tools
 from utils.device import device
 from utils.log_util import logger
@@ -111,8 +110,8 @@ class ModelFinetuningInstructionFlow:
         self.model.eval()
         # calculate loss
         with torch.no_grad():
-            train_loss = _calc_loss_loader(train_loader, self.model, self.device, num_batches=eval_iter)
-            val_loss = _calc_loss_loader(val_loader, self.model, self.device, num_batches=eval_iter)
+            train_loss = calc_loss_loader(train_loader, self.model, self.device, num_batches=eval_iter)
+            val_loss = calc_loss_loader(val_loader, self.model, self.device, num_batches=eval_iter)
         # train mode
         self.model.train()
 
@@ -129,7 +128,7 @@ class ModelFinetuningInstructionFlow:
         # move model to device
         self.model.to(self.device)
         # optimizer
-        self.optimizer = _select_optimizer(self.model)
+        self.optimizer = select_optimizer(self.model)
 
         # training start time
         training_start_time = time.time()
@@ -148,7 +147,7 @@ class ModelFinetuningInstructionFlow:
             for input_batch, target_batch in train_loader:
                 # Reset loss gradients from previous batch iteration
                 self.optimizer.zero_grad()
-                loss = _calc_loss_batch(input_batch, target_batch, self.model, self.device)
+                loss = calc_loss_batch(input_batch, target_batch, self.model, self.device)
                 # Calculate loss gradients
                 loss.backward()
                 # Update model weights using loss gradients

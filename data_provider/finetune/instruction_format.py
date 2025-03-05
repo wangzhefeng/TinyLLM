@@ -60,7 +60,7 @@ def format_input_phi3(entry):
 def main():
     # data
     from finetuning.instruction_follow.data_load import load_file
-    data = load_file(file_path = "./dataset/finetuning/instruction-data.json")
+    data = load_file(file_path = "./dataset/finetune/instruction-data.json")
 
     # prompt format
     formated_entry = format_input_alpaca(data[0])

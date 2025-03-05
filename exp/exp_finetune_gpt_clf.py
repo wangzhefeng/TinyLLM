@@ -33,11 +33,12 @@ from model_finetune.model_finetune_clf import (
     finetune_model_lora,
 )
 # other model
+from tokenizer.tokenization import choose_tokenizer
 from model_load.openai_gpt2_models import load_pretrained_gpt2_model
 # training
-from model_train.calc_loss import _calc_loss_batch, _calc_loss_loader
-from model_train.calc_accuracy import _calc_accuracy_loader
-from model_train.train_funcs import _select_optimizer
+from model_train.calc_loss import calc_loss_batch, calc_loss_loader
+from model_train.calc_accuracy import calc_accuracy_loader
+from model_train.train_funcs import select_optimizer
 from model_train.plot_losses import plot_values_classifier
 # utils
 from utils.log_util import logger
@@ -81,15 +82,7 @@ class ModelFinetuningClassifier:
             drop_last = False,
         )
 
-        return train_loader, valid_loader, test_loader 
- 
-    def _choose_tokenizer(self, tokenizer_model: str = "gpt2"):
-        """
-        choose tokenizer
-        """
-        tokenizer = tiktoken.get_encoding(tokenizer_model)
-
-        return tokenizer
+        return train_loader, valid_loader, test_loader  
     # ------------------------------
     # finetuning the model on supervised data
     # ------------------------------
@@ -101,8 +94,8 @@ class ModelFinetuningClassifier:
         self.model.eval()
         # calculate loss
         with torch.no_grad():
-            train_loss = _calc_loss_loader(train_loader, self.model, self.device, num_batches=eval_iter)
-            val_loss = _calc_loss_loader(val_loader, self.model, self.device, num_batches=eval_iter)
+            train_loss = calc_loss_loader(train_loader, self.model, self.device, num_batches=eval_iter)
+            val_loss = calc_loss_loader(val_loader, self.model, self.device, num_batches=eval_iter)
         # train mode
         self.model.train()
 
@@ -122,7 +115,7 @@ class ModelFinetuningClassifier:
         elif self.args.finetune_method == "lora":
             finetune_model_lora(self.model, self.base_config, self.device, self.args.num_classes)
         # optimizer
-        self.optimizer = _select_optimizer(self.model)
+        self.optimizer = select_optimizer(self.model)
 
         # record training start time
         training_start_time = time.time()
@@ -141,7 +134,7 @@ class ModelFinetuningClassifier:
             for input_batch, target_batch in train_loader:
                 # Reset loss gradients from previous batch iteration
                 self.optimizer.zero_grad()
-                loss = _calc_loss_batch(input_batch, target_batch, self.model, self.device)
+                loss = calc_loss_batch(input_batch, target_batch, self.model, self.device)
                 # Calculate loss gradients
                 loss.backward()
                 # Update model weights using loss gradients
@@ -157,8 +150,8 @@ class ModelFinetuningClassifier:
                     logger.info(f"Ep {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
             # Calculate accuracy after each epoch
-            train_accuracy = _calc_accuracy_loader(train_loader, self.model, self.device, num_batches=eval_iter)
-            val_accuracy = _calc_accuracy_loader(valid_loader, self.model, self.device, num_batches=eval_iter)
+            train_accuracy = calc_accuracy_loader(train_loader, self.model, self.device, num_batches=eval_iter)
+            val_accuracy = calc_accuracy_loader(valid_loader, self.model, self.device, num_batches=eval_iter)
             logger.info(f"Training accuracy: {train_accuracy*100:.2f}% | ")
             logger.info(f"Validation accuracy: {val_accuracy*100:.2f}%")
             train_accs.append(train_accuracy)
@@ -180,9 +173,9 @@ class ModelFinetuningClassifier:
         plot_values_classifier(epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy")
 
         # accuracy
-        train_accuracy = _calc_accuracy_loader(train_loader, self.model, self.device)
-        val_accuracy = _calc_accuracy_loader(valid_loader, self.model, self.device)
-        test_accuracy = _calc_accuracy_loader(test_loader, self.model, self.device)
+        train_accuracy = calc_accuracy_loader(train_loader, self.model, self.device)
+        val_accuracy = calc_accuracy_loader(valid_loader, self.model, self.device)
+        test_accuracy = calc_accuracy_loader(test_loader, self.model, self.device)
         logger.info(f"Training accuracy: {train_accuracy*100:.2f}%")
         logger.info(f"Validation accuracy: {val_accuracy*100:.2f}%")
         logger.info(f"Test accuracy: {test_accuracy*100:.2f}%")
@@ -192,7 +185,7 @@ class ModelFinetuningClassifier:
         using the LLM as a spam classifier
         """
         # tokenizer
-        tokenizer = self._choose_tokenizer()
+        tokenizer = choose_tokenizer(tokenizer_model=self.args.tokenizer_model)
         # eval mode
         self.model.eval()
         # Prepare inputs to the model

@@ -55,7 +55,7 @@ def load_file(file_path):
 
 # 测试代码 main 函数
 def main():
-    data_path = "./dataset/finetuning/"
+    data_path = "./dataset/finetune/"
     os.makedirs(data_path, exist_ok=True)
     file_path = os.path.join(data_path, "instruction-data.json")
     url = (

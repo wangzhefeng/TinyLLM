@@ -200,7 +200,7 @@ def main():
     # 基础模型路径
     base_model_path = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
     # 数据集路径
-    data_path = "dataset/finetuning/AI-ModelScope/medical-o1-reasoning-SFT/medical_o1_sft_Chinese.json"
+    data_path = "dataset/finetune/AI-ModelScope/medical-o1-reasoning-SFT/medical_o1_sft_Chinese.json"
     # 微调后模型保存路径
     output_path = "saved_results/finetuning_pretrained_models/medical_o1_sft_Chinese"
     os.makedirs(output_path, exist_ok=True)

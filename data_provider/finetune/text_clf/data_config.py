@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : data_load.py
+# * File        : config.py
 # * Author      : Zhefeng Wang
 # * Email       : wangzhefengr@163.com
-# * Date        : 2025-02-22
-# * Version     : 0.1.022201
+# * Date        : 2025-03-05
+# * Version     : 0.1.030522
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
@@ -17,34 +17,33 @@ import sys
 ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
-import json
-    
+from pathlib import Path
+
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def load_instruction_data(data_path: str):
-    """
-    load instruction entries json data
-    """
-    # instruction entries json data
-    with open(data_path, "r") as file:
-        data = json.load(file)
+# zip file path
+zip_data_path = Path("dataset/finetune/sms_spam_collection.zip")
+logger.info(f"zip_path: {zip_data_path}")
 
-    return data
+# data dir
+data_dir = Path("dataset/finetune/sms_spam_collection")
+os.makedirs(data_dir, exist_ok=True)
+logger.info(f"data_dir: {data_dir}")
+
+# data file path
+tsv_file_path = Path(data_dir) / "SMSSpamCollection.tsv"
+logger.info(f"tsv_file_path: {tsv_file_path}")
 
 
 
 
 # 测试代码 main 函数
 def main():
-    inst_entries_with_pref_path = "./dataset/finetune/instruction-preference-data.json"
-    inst_entries_with_pref_data = load_instruction_data(
-        data_path =inst_entries_with_pref_path 
-    )
-    logger.info(f"Number of entries: {len(inst_entries_with_pref_data)}")
+    pass
 
 if __name__ == "__main__":
     main()

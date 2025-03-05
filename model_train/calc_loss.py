@@ -26,7 +26,7 @@ from model_train.train_funcs import _select_criterion
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def _calc_loss_batch(task, input_batch, target_batch, model, device):
+def calc_loss_batch(task, input_batch, target_batch, model, device):
     """
     calculate loss in batch training
     """
@@ -44,7 +44,7 @@ def _calc_loss_batch(task, input_batch, target_batch, model, device):
 
     return loss
 
-def _calc_loss_loader(task, data_loader, model, device, num_batches=None):
+def calc_loss_loader(task, data_loader, model, device, num_batches=None):
     """
     calculate loss in all batches
     """
@@ -63,7 +63,7 @@ def _calc_loss_loader(task, data_loader, model, device, num_batches=None):
     # calculate batch loss
     for i, (input_batch, target_batch) in enumerate(data_loader):
         if i < num_batches:
-            loss = _calc_loss_batch(task, input_batch, target_batch, model, device)
+            loss = calc_loss_batch(task, input_batch, target_batch, model, device)
             total_loss += loss.item()
         else:
             break
@@ -71,12 +71,12 @@ def _calc_loss_loader(task, data_loader, model, device, num_batches=None):
     return total_loss / num_batches
 
 
-def _calc_loss(task, model, train_loader, valid_loader, test_loader, device):
+def calc_loss(task, model, train_loader, valid_loader, test_loader, device):
     # Disable gradient tracking for efficiency because we are not training, yet
     with torch.no_grad(): 
-        train_loss = _calc_loss_loader(task, train_loader, model, device, num_batches=5)
-        val_loss = _calc_loss_loader(task, valid_loader, model, device, num_batches=5)
-        test_loss = _calc_loss_loader(task, test_loader, model, device, num_batches=5)
+        train_loss = calc_loss_loader(task, train_loader, model, device, num_batches=5)
+        val_loss = calc_loss_loader(task, valid_loader, model, device, num_batches=5)
+        test_loss = calc_loss_loader(task, test_loader, model, device, num_batches=5)
     print(f"Training loss: {train_loss:.3f}")
     print(f"Validation loss: {val_loss:.3f}")
     print(f"Test loss: {test_loss:.3f}")

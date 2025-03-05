@@ -24,7 +24,6 @@ import re
 import torch
 
 from models.gpt import Model
-from utils.device import device
 from utils.log_util import logger
 
 # global variable
@@ -48,42 +47,28 @@ def load_model_weights(args, model_path: str, device: str):
     model.eval();
 
 
-def _save_model(model):
-    # model save
-    torch.save(
-        model.state_dict(), 
-        "./saved_results/pretrained_models/review_classifier.pth"
-    )
-
-
-def _load_model(model):
-    # model load
-    model_state_dict = torch.load(
-        "./saved_results/pretrained_models/review_classifier.pth", 
-        map_location=device, 
-        weights_only=True
-    )
-    model.load_state_dict(model_state_dict)
-
-
-def _save_model(model, pretrained_model_path: str, choose_model: str):
+def save_model(model, finetuned_model_path: str, choose_model: str):
     """
     Save model
     """
-    file_name = os.path.join(pretrained_model_path, f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
+    file_name = os.path.join(
+        finetuned_model_path, 
+        f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth"
+    )
     torch.save(model.state_dict(), file_name)
     logger.info(f"Model saved to {file_name}")
 
 
-def _load_model(model, pretrained_model_path: str, choose_model: str):
+def load_model(model, finetuned_model_path: str, choose_model: str):
     """
     Load model
     """
-    file_name = os.path.join(pretrained_model_path, f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
+    file_name = os.path.join(
+        finetuned_model_path, 
+        f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth"
+    )
     model.load_state_dict(torch.load(file_name))
     logger.info(f"Model loaded from {file_name}")
-
-
 
 
 def save_model_optim_weights(model, optimizer, model_path: str):
@@ -100,19 +85,27 @@ def save_model_optim_weights(model, optimizer, model_path: str):
     )
 
 
-def load_model_optim_weights(args, model_path: str):
+def load_model_optim_weights(args, model_cls, model_path: str):
     """
     Load model weights and optimizer parameters
     """
     # model and optimizer weights loading
     checkpoint = torch.load(model_path, weights_only = True)
+
     # model
-    model = Model(args)
+    model = model_cls(args)
     model.load_state_dict(checkpoint["model_state_dict"])
+    model.train()
+
     # optimizer
-    optimizer = torch.optim.AdamW(model.parameters(), lr = 0.0005, weight_decay = 0.1)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), 
+        lr = args.learning_rate, 
+        weight_decay = args.weight_decay
+    )
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    model.train();
+
+    return model, optimizer
 
 
 

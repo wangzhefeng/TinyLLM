@@ -155,7 +155,7 @@ def main():
     batch_size = 2
     # data
     from finetuning.direct_preference_optimization.data_load import load_instruction_data
-    data_path = "./dataset/finetuning/instruction-preference-data.json"
+    data_path = "./dataset/finetune/instruction-preference-data.json"
     data = load_instruction_data(data_path = data_path)
     # example
     import pprint  

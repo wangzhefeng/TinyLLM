@@ -23,7 +23,6 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 
-from data_provider.finetune.text_clf.data_load import load_data
 from utils.log_util import logger
 
 # global variable
@@ -70,7 +69,7 @@ def random_split(df, train_frac, valid_frac):
     return train_df, valid_df, test_df
 
 
-def data_to_csv(data_path, train_df, valid_df, test_df):
+def data_to_csv(data_dir, train_df, valid_df, test_df):
     """
     save data to csv
 
@@ -79,8 +78,6 @@ def data_to_csv(data_path, train_df, valid_df, test_df):
         valid_df (_type_): _description_
         test_df (_type_): _description_
     """
-    # data dir
-    os.makedirs(data_path, exist_ok=True)
     data_map = {
         "train.csv": train_df,
         "valid.csv": valid_df,
@@ -88,7 +85,7 @@ def data_to_csv(data_path, train_df, valid_df, test_df):
     }
     # data file path
     for data_name, data_obj in data_map.items():
-        data_path = os.path.join(data_path, data_name)
+        data_path = data_dir / data_name
         if not os.path.exists(data_path):
             data_obj.to_csv(data_path, index=None)
             logger.info(f"{data_name} saved to {data_path}")
@@ -99,12 +96,11 @@ def data_to_csv(data_path, train_df, valid_df, test_df):
 
 # 测试代码 main 函数
 def main():
-    # data path
-    data_dir = "dataset\finetuning\sms_spam_collection"
+    from data_provider.finetune.text_clf.data_config import data_dir, tsv_file_path
+    from data_provider.finetune.text_clf.data_load import load_data
 
     # data load
-    data_path = os.path.join(data_dir, "SMSSpamCollection.tsv")
-    df = load_data(data_path)
+    df = load_data(tsv_file_path)
     logger.info(f"df: \n{df.head()} \ndf.shape: {df.shape}")
     
     # create balanced dataset

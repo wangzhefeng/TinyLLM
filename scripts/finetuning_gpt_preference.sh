@@ -5,7 +5,7 @@ python -u run_gpt_preference_sft.py \
     --task_name tiny_gpt_instruction_sft \
     --is_training 1 \
     --is_inference 0 \
-    --data_source ./dataset/finetuning/instruction-preference-data.json \
+    --data_source ./dataset/finetune/instruction-preference-data.json \
     --train_ratio 0.85 \
     --test_ratio 0.10 \
     --batch_size 2 \
@@ -15,6 +15,7 @@ python -u run_gpt_preference_sft.py \
     --qkv_bias 1 \
     --pretrained_model 'gpt2-medium (355)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
+    --tokenizer_model "gpt2" \
     --finetuned_model_path ./saved_results/finetuning_pretrained_models/gpt2-medium355M-sft.pth \
     --num_classes 2 \
     --train_epochs 1 \

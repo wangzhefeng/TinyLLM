@@ -26,7 +26,6 @@ import numpy as np
 import torch
 
 from models.gpt import Model 
-from model_train.gpt_generate import generate
 from tokenizer.tokenization import token_ids_to_text, text_to_token_ids
 from model_load.gtp_download import download_and_load_gpt2
 from utils.argsparser_tools import DotDict
@@ -182,6 +181,8 @@ def build_model():
 
 # 测试代码 main 函数
 def main():
+    from model_train.gpt_generate import generate
+
     # model
     gpt, base_config, choose_model = build_model()
     gpt.to(device)

@@ -30,6 +30,7 @@ from collections import Counter, deque
 from functools import lru_cache
 
 import torch
+import tiktoken
 
 from utils.log_util import logger
 
@@ -395,7 +396,16 @@ class BPETokenizerSimple:
         return replaced
 
 
-def text_to_token_ids(text: str):
+def choose_tokenizer(tokenizer_model: str = "gpt2"):
+    """
+    choose tokenizer
+    """
+    tokenizer = tiktoken.get_encoding(tokenizer_model)
+
+    return tokenizer
+
+
+def text_to_token_ids(text: str, tokenizer_model: str = "gpt2"):
     """
     tokenizer text to token_ids
 
@@ -406,8 +416,7 @@ def text_to_token_ids(text: str):
         _type_: _description_
     """
     # tokenizer
-    import tiktoken
-    tokenizer = tiktoken.get_encoding("gpt2")
+    tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
     # text encode to token ids
     encoded = tokenizer.encode(text, allowed_special = {"<|endoftext|>"})
     # add batch dimension
@@ -416,7 +425,7 @@ def text_to_token_ids(text: str):
     return encoded_tensor
 
 
-def token_ids_to_text(token_ids: List):
+def token_ids_to_text(token_ids: List, tokenizer_model: str = "gpt2"):
     """
     tokenizer decoded token_ids to text
 
@@ -427,7 +436,7 @@ def token_ids_to_text(token_ids: List):
         _type_: _description_
     """
     # tokenizer
-    import tiktoken
+    tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
     tokenizer = tiktoken.get_encoding("gpt2")
     # remove batch dimension
     flat = token_ids.squeeze(0)

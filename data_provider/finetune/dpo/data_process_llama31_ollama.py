@@ -86,8 +86,8 @@ def save_instruction_with_preference(json_data, save_path: str):
 
 # 测试代码 main 函数
 def main():
-    instruction_entries_path = "./dataset/finetuning/instruction-data.json"
-    instruction_entries_with_preference_path = "./dataset/finetuning/instruction-preference-data.json"
+    instruction_entries_path = "./dataset/finetune/instruction-data.json"
+    instruction_entries_with_preference_path = "./dataset/finetune/instruction-preference-data.json"
     instruction_entries_data = load_instruction_data(
         data_path = instruction_entries_path
     )

@@ -1,0 +1,262 @@
+{
+    // Place your snippets for markdown here. Each snippet is defined under a snippet name and has a prefix, body and 
+    // description. The prefix is what is used to trigger the snippet and the body will be expanded and inserted. Possible variables are:
+    // $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. Placeholders with the 
+    // same ids are connected.
+    // Example:
+    // "Print to console": {
+    // 	"prefix": "log",
+    // 	"body": [
+    // 		"console.log('$1');",
+    // 		"$2"
+    // 	],
+    // 	"description": "Log output to console"
+    // }
+    "Python Script": {
+        "prefix": "py",
+        "body": [
+            "```python",
+            "$1",
+            "```"
+        ],
+        "description": "generate python script chunk"
+    },
+    "Matlab Script": {
+        "prefix": "mat",
+        "body": [
+            "```matlab",
+            "$1",
+            "```"
+        ],
+        "description": "generate matlab script chunk"
+    },
+    "Bash Script": {
+        "prefix": "bash",
+        "body": [
+            "```bash",
+            "$ $1",
+            "```"
+        ],
+        "description": "generate bash script chunk"
+    },
+    "Not Script": {
+        "prefix": "noscript",
+        "body": [
+            "```",
+            "$1",
+            "```"
+        ],
+        "description": "generate bash script chunk"
+    },
+    "Image Link": {
+        "prefix": "img",
+        "body": [
+            "![img](images/$2)",
+        ],
+        "description": "generate img"
+    },
+    "Link": {
+        "prefix": "link",
+        "body": [
+            "[$1]($2)",
+        ],
+        "description": "generate img"
+    },
+    "Table": {
+        "prefix": "table",
+        "body": [
+            "| $1 | $2 | $3 | $4 | $5 |",
+            "|----|----|----|----|----|",
+            "| | | | | |",
+            "| | | | | |",
+            "| | | | | |",
+            "| | | | | |",
+            "| | | | | |",
+        ],
+        "description": "generate table"
+    },
+    "Style": {
+        "prefix": "style",
+        "body": [
+            "<style>",
+            "h1 {",
+            "    background-color: #2B90B6;",
+            "    background-image: linear-gradient(45deg, #4EC5D4 10%, #146b8c 20%);",
+            "    background-size: 100%;",
+            "    -webkit-background-clip: text;",
+            "    -moz-background-clip: text;",
+            "    -webkit-text-fill-color: transparent;",
+            "    -moz-text-fill-color: transparent;",
+            "}",
+            "h2 {",
+            "    background-color: #2B90B6;",
+            "    background-image: linear-gradient(45deg, #4EC5D4 10%, #146b8c 20%);",
+            "    background-size: 100%;",
+            "    -webkit-background-clip: text;",
+            "    -moz-background-clip: text;",
+            "    -webkit-text-fill-color: transparent;",
+            "    -moz-text-fill-color: transparent;",
+            "}",
+            "h3 {",
+            "    background-color: #2B90B6;",
+            "    background-image: linear-gradient(45deg, #4EC5D4 10%, #146b8c 20%);",
+            "    background-size: 100%;",
+            "    -webkit-background-clip: text;",
+            "    -moz-background-clip: text;",
+            "    -webkit-text-fill-color: transparent;",
+            "    -moz-text-fill-color: transparent;",
+            "}",
+            "details {",
+            "    border: 1px solid #aaa;",
+            "    border-radius: 4px;",
+            "    padding: .5em .5em 0;",
+            "}",
+            "summary {",
+            "    font-weight: bold;",
+            "    margin: -.5em -.5em 0;",
+            "    padding: .5em;",
+            "}",
+            "details[open] {",
+            "    padding: .5em;",
+            "}",
+            "details[open] summary {",
+            "    border-bottom: 1px solid #aaa;",
+            "    margin-bottom: .5em;",
+            "}",
+            "</style>",
+        ],
+        "description": "generate content"
+    },
+    "Style Mini": {
+        "prefix": "style_mini",
+        "body": [
+            "<style>",
+            "details {",
+            "    border: 1px solid #aaa;",
+            "    border-radius: 4px;",
+            "    padding: .5em .5em 0;",
+            "}",
+            "summary {",
+            "    font-weight: bold;",
+            "    margin: -.5em -.5em 0;",
+            "    padding: .5em;",
+            "}",
+            "details[open] {",
+            "    padding: .5em;",
+            "}",
+            "details[open] summary {",
+            "    border-bottom: 1px solid #aaa;",
+            "    margin-bottom: .5em;",
+            "}",
+            "img {",
+            "    pointer-events: none;",
+            "}",
+            "</style>",
+        ],
+        "description": "generate content"
+    },
+    "Content": {
+        "prefix": "toc",
+        "body": [
+            "<details><summary>目录</summary><p>",
+            "",
+            "- [TODO](#TODO)",
+            "</p></details><p></p>"
+        ],
+        "description": "generate content"
+    },
+    "Math": {
+        "prefix": "math",
+        "body": [
+            "`$$1$`"
+        ],
+        "description": "generate content"
+    },
+    "Math2": {
+        "prefix": "mathh",
+        "body": [
+            "`$$$1$$`"
+        ],
+        "description": "generate content"
+    },
+    "C++ chunk": {
+        "prefix": "cpp",
+        "body": [
+            "```cpp",
+            "$1",
+            "```"
+        ],
+        "description": "generate content"
+    },
+    "sql chunk": {
+        "prefix": "sql",
+        "body": [
+            "```sql",
+            "$1",
+            "```"
+        ],
+        "description": "generate content"
+    },
+    "Note": {
+        "prefix": "note",
+        "body": [
+            "***",
+            "**Note:**",
+            "",
+            "* $1",
+            "***"
+        ],
+        "description": "generate content"
+    },
+    "chunk": {
+        "prefix": "chunk",
+        "body": [
+            "```",
+            "$1",
+            "```"
+        ],
+        "description": "generate content"
+    },
+    "RETURN_TOP": {
+        "prefix": "top",
+        "body": [
+            "<p align='right'><a href='#top'><返回顶端></a></p>",
+        ],
+        "description": "返回顶部 HTML"
+    },
+    "FRAC": {
+        "prefix": "frac",
+        "body": [
+            "\\frac{}{}",
+        ],
+        "description": "数学公式分数"
+    },
+    "XML chunk": {
+        "prefix": "xml",
+        "body": [
+            "```xml",
+            "$1",
+            "```"
+        ],
+        "description": "generate content"
+    },
+    "Post Head": {
+        "prefix": "header",
+        "body": [
+            "---",
+            "title: TODO",
+            "subtitle: TODO",
+            "list_pages: true",
+            "# order_by: title",
+            "---",
+        ],
+        "description": "generate content"
+    },
+    "Dash under line": {
+        "prefix": "underline",
+        "body": [
+            "<span style='border-bottom:1.5px dashed red;'>${1}</span>",
+        ],
+        "description": "generate dash under line"
+    },
+}

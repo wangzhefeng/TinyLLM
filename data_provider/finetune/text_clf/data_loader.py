@@ -96,8 +96,8 @@ def create_dataloader(data_path,
 
 # 测试代码 main 函数
 def main():
+    from data_provider.finetune.text_clf.data_config import data_dir
     # params
-    data_dir = r"dataset\finetuning\sms_spam_collection"
     batch_size = 8
 
     # dataset and dataloader

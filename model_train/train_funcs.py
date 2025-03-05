@@ -32,7 +32,7 @@ plt.switch_backend('agg')
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def _select_optimizer(model, cfgs):
+def select_optimizer(model, cfgs):
     """
     optimizer
     """
@@ -45,7 +45,7 @@ def _select_optimizer(model, cfgs):
     return optimizer
 
 
-def _select_criterion():
+def select_criterion():
     """
     loss
     """
@@ -102,7 +102,13 @@ def adjust_learning_rate(optimizer, epoch, args):
         logger.info(f'\tEpoch {epoch} \t\tUpdating learning rate to {lr}')
 
 
-def learning_rate_warmup(optimizer, train_loader, train_epochs, global_step, initial_lr = 3e-5, min_lr=1e-6):
+# TODO
+def learning_rate_warmup(optimizer, 
+                         train_loader, 
+                         train_epochs, 
+                         global_step, 
+                         initial_lr = 3e-5, 
+                         min_lr=1e-6):
     """
     learning rate warmup
 
@@ -146,6 +152,7 @@ def learning_rate_warmup(optimizer, train_loader, train_epochs, global_step, ini
     return track_lrs
 
 
+# TODO
 def gradient_clipping(model, global_step, warmup_steps):
     """
     在预热阶段后应用梯度裁剪，防止梯度爆炸

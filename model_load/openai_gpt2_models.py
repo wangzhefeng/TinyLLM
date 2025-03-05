@@ -78,7 +78,14 @@ def load_pretrained_model(cfgs, model_cls):
     """
     initializing a model with pretrained weights
     """
-    # Loading pretrained LLM
+    # huggingface gpt2 pretrained model
+    gpt2_hf = GPT2Model.from_pretrained(
+        gpt2_huggingface_models[cfgs.choose_model],
+        cache_dir = cfgs.pretrained_model_path,
+    )
+    gpt2_hf.eval()
+
+    # update pretrained model's config
     base_config = {
         "vocab_size": cfgs.vocab_size,          # Vocabulary size: 50257
         "context_length": cfgs.context_length,  # Context length: 1024
@@ -87,22 +94,19 @@ def load_pretrained_model(cfgs, model_cls):
     }
     base_config.update(gpt2_model_configs[cfgs.choose_model])
     base_config = DotDict(base_config)
-
-    # huggingface gpt2 model
-    gpt2_hf = GPT2Model.from_pretrained(
-        gpt2_huggingface_models[cfgs.choose_model],
-        cache_dir = cfgs.pretrained_model_path,
-    )
-    gpt2_hf.eval()
-
-    # custom gpt model
+    
+    # pretrained model instance
     model = model_cls(base_config)
     model.load_state_dict(torch.load(
         cfgs.model_path, 
-        map_location=torch.device("cpu"), 
-        weights_only=True)
-    )
+        map_location = torch.device("cpu"), 
+        weights_only = True
+    ))
+
+    # 
     load_weights(model, gpt2_hf, base_config)
+
+    # model inference mode
     model.eval()
 
     return model, base_config

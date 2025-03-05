@@ -5,7 +5,7 @@ python -u run_gpt_instruction_sft.py \
     --task_name tiny_gpt_instruction_sft \
     --is_training 1 \
     --is_inference 0 \
-    --data_source ./dataset/finetuning/instruction-data.json \
+    --data_source ./dataset/finetune/instruction-data.json \
     --train_ratio 0.85 \
     --test_ratio 0.10 \
     --batch_size 8 \

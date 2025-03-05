@@ -27,12 +27,13 @@ import tiktoken
 from data_provider.finetune.dpo.data_load import load_instruction_data
 from data_provider.finetune.dpo.data_loader import create_dataloader
 from data_provider.finetune.instruction_format import format_input_alpaca
-# data
+# model
 from models.gpt import Model
 from model_train.gpt_generate import generate
-from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+# tokenzier
+from tokenizer.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
 from model_load.openai_gpt2_models import load_pretrained_model
-from model_train.train_funcs import _select_optimizer
+from model_train.train_funcs import select_optimizer
 # utils
 from utils.log_util import logger
 
@@ -121,14 +122,6 @@ class ModelFinetuningPreference:
     #     response = response_text[len(input_text):].replace("### Response:", "").strip()
 
     #     return response
-
-    def _choose_tokenizer(self, tokenizer_model: str = "gpt2"):
-        """
-        choose tokenizer
-        """
-        tokenizer = tiktoken.get_encoding(tokenizer_model)
-
-        return tokenizer
 
     def _compute_dpo_loss(self, 
                           model_chosen_logprobs,
@@ -314,9 +307,9 @@ class ModelFinetuningPreference:
         # model
         self.model, self.base_config = load_pretrained_model(cfgs=self.args, model_cls=Model)
         # tokenizer
-        tokenizer = self._choose_tokenizer()
+        tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
         # optimizer
-        self.optimizer = _select_optimizer(self.model)
+        self.optimizer = select_optimizer(self.model)
 
         # record training start time
         training_start_time = time.time()

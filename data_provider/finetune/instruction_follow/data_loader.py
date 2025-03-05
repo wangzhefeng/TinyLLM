@@ -125,7 +125,7 @@ def main():
     logger.info(f"targets: \n{targets}")
 
     # data
-    data = load_file(file_path = "./dataset/finetuning/instruction-data.json")
+    data = load_file(file_path = "./dataset/finetune/instruction-data.json")
 
     # data split
     train_portion = int(len(data) * 0.85)

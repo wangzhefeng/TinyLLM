@@ -216,7 +216,7 @@ def main():
     # 批量测试
     # ------------------------------
     # 加载测试数据
-    data_path = "dataset/finetuning/AI-ModelScope/medical-o1-reasoning-SFT/medical_o1_sft_Chinese.json"
+    data_path = "dataset/finetune/AI-ModelScope/medical-o1-reasoning-SFT/medical_o1_sft_Chinese.json"
     with open(data_path) as f:
         test_data = json.load(f) 
     # 数据量比较大，只选择 10 条数据进行测试
