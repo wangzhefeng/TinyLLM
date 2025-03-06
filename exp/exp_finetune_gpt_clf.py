@@ -21,7 +21,6 @@ import time
 import warnings
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-import tiktoken
 import torch
 
 # data
@@ -54,6 +53,7 @@ class ModelFinetuningClassifier:
     def __init__(self, args):
         super(ModelFinetuningClassifier, self).__init__()
         self.args = args
+        self.tokenizer=choose_tokenizer(tokenizer_model=self.args.tokenizer_model),
 
     def _build_data(self):
         """
@@ -66,6 +66,8 @@ class ModelFinetuningClassifier:
             batch_size = self.args.batch_size,
             shuffle = True,
             drop_last = True,
+            num_workers = self.args.num_workers,
+            tokenizer = self.tokenizer,
         )
         valid_dataset, valid_loader = create_dataloader(
             data_path = os.path.join(self.args.data_source, "valid.csv"),
@@ -73,6 +75,8 @@ class ModelFinetuningClassifier:
             batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
+            num_workers = self.args.num_workers,
+            tokenizer = self.tokenizer,
         )
         test_dataset, test_loader = create_dataloader(
             data_path = os.path.join(self.args.data_source, "test.csv"),
@@ -80,22 +84,36 @@ class ModelFinetuningClassifier:
             batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
+            num_workers = self.args.num_workers,
+            tokenizer = self.tokenizer,
         )
 
         return train_loader, valid_loader, test_loader  
     # ------------------------------
     # finetuning the model on supervised data
     # ------------------------------
-    def _evaluate_model(self, train_loader, val_loader, eval_iter):
+    def _evaluate_model(self, train_loader, valid_loader, eval_iter: int):
         """
-        evaluate model
+        evaluate model on train and valid_loader
         """
         # eval mode
         self.model.eval()
         # calculate loss
         with torch.no_grad():
-            train_loss = calc_loss_loader(train_loader, self.model, self.device, num_batches=eval_iter)
-            val_loss = calc_loss_loader(val_loader, self.model, self.device, num_batches=eval_iter)
+            train_loss = calc_loss_loader(
+                self.args.task_name, 
+                train_loader, 
+                self.model, 
+                self.device, 
+                num_batches = eval_iter
+            )
+            val_loss = calc_loss_loader(
+                self.args.task_name, 
+                valid_loader, 
+                self.model, 
+                self.device, 
+                num_batches = eval_iter
+            )
         # train mode
         self.model.train()
 
@@ -107,23 +125,41 @@ class ModelFinetuningClassifier:
         """
         # data loader
         train_loader, valid_loader, test_loader = self._build_data()
-        # model
-        self.model, self.base_config = load_pretrained_gpt2_model(cfgs=self.args, model_cls=Model)
-        # model finetuning
+        # load pretained model's weights 
+        model = load_pretrained_gpt2_model(
+            cfgs = self.args, 
+            model_cls = Model, 
+            model_source = self.args.pretrained_model_source
+        )
+        # modify model for finetuning
         if self.args.finetune_method == "simple":
-            finetune_model_simple(self.model, self.base_config, self.device, self.args.num_classes)
+            self.model = finetune_model_simple(
+                model, 
+                self.device, 
+                self.args.emb_dim, 
+                self.args.num_classes
+            )
         elif self.args.finetune_method == "lora":
-            finetune_model_lora(self.model, self.base_config, self.device, self.args.num_classes)
+            self.model = finetune_model_lora(
+                model, 
+                self.device, 
+                self.args.emb_dim, 
+                self.args.num_classes
+            )
         # optimizer
-        self.optimizer = select_optimizer(self.model)
+        self.optimizer = select_optimizer(
+            self.model, 
+            self.args.learning_rate, 
+            self.args.weight_decay
+        )
 
         # record training start time
         training_start_time = time.time()
 
         # model training
         # Initialize lists to track losses and examples seen
-        train_losses, val_losses = [], []
-        train_accs, val_accs = [], []
+        train_losses, valid_losses = [], []
+        train_accs, valid_accs = [], []
         examples_seen = 0
         global_step = -1
         # Main training loop
@@ -134,7 +170,7 @@ class ModelFinetuningClassifier:
             for input_batch, target_batch in train_loader:
                 # Reset loss gradients from previous batch iteration
                 self.optimizer.zero_grad()
-                loss = calc_loss_batch(input_batch, target_batch, self.model, self.device)
+                loss = calc_loss_batch(self.args.task_name, input_batch, target_batch, self.model, self.device)
                 # Calculate loss gradients
                 loss.backward()
                 # Update model weights using loss gradients
@@ -146,7 +182,7 @@ class ModelFinetuningClassifier:
                 if global_step % eval_freq == 0:
                     train_loss, val_loss = self._evaluate_model(train_loader, valid_loader, eval_iter)
                     train_losses.append(train_loss)
-                    val_losses.append(val_loss)
+                    valid_losses.append(val_loss)
                     logger.info(f"Ep {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
             # Calculate accuracy after each epoch
@@ -155,7 +191,7 @@ class ModelFinetuningClassifier:
             logger.info(f"Training accuracy: {train_accuracy*100:.2f}% | ")
             logger.info(f"Validation accuracy: {val_accuracy*100:.2f}%")
             train_accs.append(train_accuracy)
-            val_accs.append(val_accuracy)
+            valid_accs.append(val_accuracy)
         
         # training end time
         training_end_time = time.time()
@@ -165,12 +201,12 @@ class ModelFinetuningClassifier:
         # training loss plot
         epochs_tensor = torch.linspace(0, self.args.train_epochs, len(train_losses))
         examples_seen_tensor = torch.linspace(0, examples_seen, len(train_losses))
-        plot_values_classifier(epochs_tensor, examples_seen_tensor, train_losses, val_losses)
+        plot_values_classifier(epochs_tensor, examples_seen_tensor, train_losses, valid_losses)
 
         # training accuracy plot
         epochs_tensor = torch.linspace(0, self.args.train_epochs, len(train_accs))
         examples_seen_tensor = torch.linspace(0, examples_seen, len(train_accs))
-        plot_values_classifier(epochs_tensor, examples_seen_tensor, train_accs, val_accs, label="accuracy")
+        plot_values_classifier(epochs_tensor, examples_seen_tensor, train_accs, valid_accs, label="accuracy")
 
         # accuracy
         train_accuracy = calc_accuracy_loader(train_loader, self.model, self.device)
@@ -184,12 +220,10 @@ class ModelFinetuningClassifier:
         """
         using the LLM as a spam classifier
         """
-        # tokenizer
-        tokenizer = choose_tokenizer(tokenizer_model=self.args.tokenizer_model)
         # eval mode
         self.model.eval()
         # Prepare inputs to the model
-        input_ids = tokenizer.encode(text)
+        input_ids = self.tokenizer.encode(text)
         # Truncate sequences if they too long
         supported_context_length = self.model.pos_emb.weight.shape[0]
         input_ids = input_ids[:min(self.train_dataset.max_length, supported_context_length)]

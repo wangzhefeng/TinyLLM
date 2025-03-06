@@ -21,7 +21,7 @@ import argparse
 
 import torch
 
-from exp.exp_finetune_gpt_classification import ModelFinetuningClassifier
+from exp.exp_finetune_gpt_clf import ModelFinetuningClassifier
 from utils.random_seed import set_seed
 from utils.log_util import logger
 
@@ -193,10 +193,10 @@ def run(args):
 
 # 测试代码 main 函数
 def main():
-    # 设置随机数
-    set_seed()
     # 参数解析
     args = args_parse()
+    # 设置随机数
+    set_seed(args.seed)
     # 参数使用
     run(args)
 

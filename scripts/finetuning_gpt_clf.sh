@@ -11,11 +11,20 @@ python -u run_gpt_classification_sft.py \
     --context_length 1024 \
     --dropout 0.0 \
     --qkv_bias 1 \
+    --emb_dim 768 \
+    --n_layers 12 \
+    --n_heads 12 \
     --pretrained_model 'gpt2-small (124)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
-    --tokenizer_model "gpt2" \
+    --pretrained_model_source huggingface_gpt2 \
+    --finetune_method simple \
+    --tokenizer_model gpt2 \
+    --seed 123 \
     --num_classes 2 \
-    --train_epochs 10 \
+    --train_epochs 5 \
+    --num_workers 0 \
+    --learning_rate 0.00005 \
+    --weight_decay 0.1 \
     --use_gpu 1 \
     --use_multi_gpu 0 \
     --gpu_type cuda \

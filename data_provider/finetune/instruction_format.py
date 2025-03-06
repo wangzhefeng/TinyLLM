@@ -59,7 +59,7 @@ def format_input_phi3(entry):
 # 测试代码 main 函数
 def main():
     # data
-    from finetuning.instruction_follow.data_load import load_file
+    from data_provider.finetune.instruction_follow.data_load import load_file
     data = load_file(file_path = "./dataset/finetune/instruction-data.json")
 
     # prompt format

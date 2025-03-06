@@ -20,22 +20,22 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from model_train.train_funcs import _select_criterion
+from model_train.train_funcs import select_criterion
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def calc_loss_batch(task, input_batch, target_batch, model, device):
+def calc_loss_batch(task_name, input_batch, target_batch, model, device):
     """
     calculate loss in batch training
     """
     # move data to device
     input_batch, target_batch = input_batch.to(device), target_batch.to(device)
     # criterion
-    criterion = _select_criterion()
+    criterion = select_criterion()
     # Logits of last output token, loss
-    if task == "classifier_sft":
+    if task_name == "tiny_gpt_classification_sft":
         logits = model(input_batch)[:, -1, :]
         loss = criterion(logits, target_batch)
     else:
@@ -44,7 +44,8 @@ def calc_loss_batch(task, input_batch, target_batch, model, device):
 
     return loss
 
-def calc_loss_loader(task, data_loader, model, device, num_batches=None):
+
+def calc_loss_loader(task_name, data_loader, model, device, num_batches=None):
     """
     calculate loss in all batches
     """
@@ -63,7 +64,7 @@ def calc_loss_loader(task, data_loader, model, device, num_batches=None):
     # calculate batch loss
     for i, (input_batch, target_batch) in enumerate(data_loader):
         if i < num_batches:
-            loss = calc_loss_batch(task, input_batch, target_batch, model, device)
+            loss = calc_loss_batch(task_name, input_batch, target_batch, model, device)
             total_loss += loss.item()
         else:
             break

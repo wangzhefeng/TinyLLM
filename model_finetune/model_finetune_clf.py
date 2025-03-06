@@ -27,7 +27,7 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def finetune_model_simple(model, base_config, device, num_classes: int):
+def finetune_model_simple(model, device, emb_dim: int, num_classes: int):
     """
     add a classification head
     """
@@ -44,7 +44,7 @@ def finetune_model_simple(model, base_config, device, num_classes: int):
 
     # replace output layer
     model.out_head = nn.Linear(
-        in_features = base_config.emb_dim, 
+        in_features = emb_dim, 
         out_features = num_classes
     )
 
@@ -62,7 +62,8 @@ def finetune_model_simple(model, base_config, device, num_classes: int):
 
     return model
 
-def finetune_model_lora(model, base_config, device, num_classes: int):
+
+def finetune_model_lora(model, device, emb_dim: int, num_classes: int):
     """
     add a classification head
     """
@@ -79,7 +80,7 @@ def finetune_model_lora(model, base_config, device, num_classes: int):
 
     # replace output layer
     model.out_head = nn.Linear(
-        in_features = base_config.emb_dim, 
+        in_features = emb_dim, 
         out_features = num_classes
     )
 

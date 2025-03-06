@@ -71,9 +71,8 @@ def create_dataloader(data_path,
                       batch_size = 8, 
                       shuffle = False, 
                       drop_last = True, 
-                      num_workers = 0):
-    # tokenizer
-    tokenizer = tiktoken.get_encoding("gpt2")
+                      num_workers = 0,
+                      tokenizer = None):
     # data set
     dataset = SpamDataset(
         data_path = data_path,

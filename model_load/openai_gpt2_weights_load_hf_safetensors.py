@@ -20,23 +20,14 @@ if str(ROOT) not in sys.path:
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import urllib.request
 
-from safetensors.torch import load_file
-import numpy as np
 import torch
-from transformers import GPT2Model
-
-from models.gpt import Model
-from model_train.gpt_generate import generate
-from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
-from utils.device import device
-from utils.argsparser_tools import DotDict
-from utils.log_util import logger
+from safetensors.torch import load_file
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def load_weights_into_gpt(gpt, params):
+def load_weights_hf_safetensors(gpt, params):
     def assign(left, right):
         if left.shape != right.shape:
             raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
@@ -102,10 +93,32 @@ def load_weights_into_gpt(gpt, params):
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte.weight"])
 
 
+def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
+    # params
+    url = f"https://huggingface.co/openai-community/{gpt_model_names[pretrained_model]}/resolve/main/model.safetensors"
+    output_file = f"downloaded_models/gpt2_model/model-{gpt_model_names[pretrained_model]}.safetensors"
+    # download
+    if not os.path.exists(output_file):
+        urllib.request.urlretrieve(url, output_file)
+    # load
+    state_dict = load_file(output_file)
+
+    return state_dict
+
+
 
 
 # 测试代码 main 函数
 def main():
+    import torch
+
+    from models.gpt import Model
+    from model_train.gpt_generate import generate
+    from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+    from utils.device import device
+    from utils.argsparser_tools import DotDict
+    from utils.log_util import logger
+
     # huggingface allowed model names
     model_names = {
         "gpt2-small (124M)": "gpt2",         # works ok
@@ -122,11 +135,7 @@ def main():
 
     # huggingface gpt2 model
     choose_model = "gpt2-small (124M)"
-    url = f"https://huggingface.co/openai-community/{model_names[choose_model]}/resolve/main/model.safetensors"
-    output_file = f"downloaded_models/gpt2_model/model-{model_names[choose_model]}.safetensors"
-    if not os.path.exists(output_file):
-        urllib.request.urlretrieve(url, output_file)
-    state_dict = load_file(output_file)
+    state_dict = download_and_load_gpt2_st(model_names, choose_model)
 
     # custom model config
     base_config = {
@@ -142,7 +151,7 @@ def main():
     gpt = Model(base_config)
 
     # update weights
-    load_weights_into_gpt(gpt, state_dict)
+    load_weights_hf_safetensors(gpt, state_dict)
     gpt.to(device)
 
     # model inference

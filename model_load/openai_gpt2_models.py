@@ -21,14 +21,23 @@ if str(ROOT) not in sys.path:
 import torch
 from transformers import GPT2Model
 
-from model_load.openai_gpt2_weights_load_hf import load_weights
+from model_load.openai_gpt2_weights_load_hf import load_weights_hf
+from model_load.openai_gpt2_weights_load_hf_safetensors import download_and_load_gpt2_st, load_weights_hf_safetensors
+from model_load.openai_gpt2_weights_load import download_and_load_gpt2, load_weights_download
 from utils.argsparser_tools import DotDict
+from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
 # huggingface allowed model names
+gpt2_model_names = {
+    "gpt2-small (124M)": "gpt2",         # works ok
+    "gpt2-medium (355M)": "gpt2-medium", # this file seems to have issues via `generate`
+    "gpt2-large (774M)": "gpt2-large",   # works ok
+    "gpt2-xl (1558M)": "gpt2-xl"         # works ok
+}
 gpt2_model_configs = {
     "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
     "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
@@ -45,7 +54,7 @@ gpt2_huggingface_models = {
 }
 
 
-def load_pretrained_gpt2_model(cfgs, model_cls):
+def load_pretrained_gpt2_model(cfgs, model_cls, model_source: str = "huggingface_gpt2"):
     """
     initializing a model with pretrained weights
     """
@@ -55,23 +64,51 @@ def load_pretrained_gpt2_model(cfgs, model_cls):
         "context_length": cfgs.context_length,  # Context length: 1024
         "dropout": cfgs.dropout,                # Dropout rate: 0.0
         "qkv_bias": cfgs.qkv_bias,              # Query-key-value bias: True
+        "emb_dim": cfgs.emb_dim,                # Embedding dimension: 768
+        "n_layers": cfgs.n_layers,              # Number of layers: 12
+        "n_heads": cfgs.n_heads,                # Number of heads: 12
     }
-    base_config.update(gpt2_model_configs[cfgs.choose_model])
+    base_config.update(gpt2_model_configs[cfgs.pretrained_model])
     base_config = DotDict(base_config)
+    logger.info(f"New config: {base_config}")
 
-    # huggingface gpt2 model
-    gpt2_hf = GPT2Model.from_pretrained(
-        gpt2_huggingface_models[cfgs.choose_model],
-        cache_dir = cfgs.pretrained_model_path,
-    )
-    gpt2_hf.eval()
-
-    # custom gpt model
+    # pretrained LLM model
     model = model_cls(base_config)
-    load_weights(model, gpt2_hf, base_config)
     model.eval()
 
-    return model, base_config
+    # load pretrained model's weights
+    if model_source == "huggingface_gpt2":
+        # huggingface gpt2 model
+        gpt2_hf = GPT2Model.from_pretrained(
+            gpt2_huggingface_models[cfgs.pretrained_model],
+            cache_dir = cfgs.pretrained_model_path,
+        )
+        gpt2_hf.eval()
+        # load weights of gpt2 model to pretrained LLM model
+        load_weights_hf(model, gpt2_hf, base_config) 
+    elif model_source == "huggingface_gpt2_safetensors":
+        state_dict = download_and_load_gpt2_st(
+            gpt2_model_names, 
+            cfgs.pretrained_model
+        )
+        load_weights_hf_safetensors(model, state_dict)
+    elif model_source == "download_and_load_gpt2":
+        model_size = cfgs.pretrained_model.split(" ")[-1].lstrip("(").rstrip(")")
+        settings, params = download_and_load_gpt2(
+            model_size = model_size, 
+            models_dir = cfgs.pretrained_model_path,
+        )
+        logger.info(f"Settings: {settings}")
+        logger.info(f"Parameter dictionary keys: {params.keys()}")
+        logger.info(f"Token embedding weight tensor(wte): \n{params['wte']}")
+        logger.info(f"Token embedding weight tensor dimensions: {params['wte'].shape}")
+        # load weights of gpt2 model to pretrained LLM model
+        load_weights_download(model, params)
+
+    # model inference mode
+    model.eval()
+
+    return model
 
 
 def load_pretrained_model(cfgs, model_cls):
@@ -103,8 +140,8 @@ def load_pretrained_model(cfgs, model_cls):
         weights_only = True
     ))
 
-    # 
-    load_weights(model, gpt2_hf, base_config)
+    # assign pretrained model's weights
+    load_weights_hf(model, gpt2_hf, base_config)
 
     # model inference mode
     model.eval()

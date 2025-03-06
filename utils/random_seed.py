@@ -30,11 +30,11 @@ import torch
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def set_seed():
+def set_seed(seed):
     """
     设置可重复随机数
     """
-    fix_seed = 2023
+    fix_seed = seed
     random.seed(fix_seed)
     np.random.seed(fix_seed)
     torch.manual_seed(fix_seed)

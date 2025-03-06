@@ -17,8 +17,10 @@ import sys
 ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import json
 import time
+import warnings
 from tqdm import tqdm
 
 import torch
@@ -39,8 +41,9 @@ from model_train.calc_loss import calc_loss_batch, calc_loss_loader
 from model_train.train_funcs import select_optimizer
 from model_train.plot_losses import plot_losses
 # tools
-from utils.device import device
 from utils.log_util import logger
+
+warnings.filterwarnings("ignore")
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -110,8 +113,20 @@ class ModelFinetuningInstructionFlow:
         self.model.eval()
         # calculate loss
         with torch.no_grad():
-            train_loss = calc_loss_loader(train_loader, self.model, self.device, num_batches=eval_iter)
-            val_loss = calc_loss_loader(val_loader, self.model, self.device, num_batches=eval_iter)
+            train_loss = calc_loss_loader(
+                self.task_name, 
+                train_loader, 
+                self.model, 
+                self.device, 
+                num_batches=eval_iter
+            )
+            val_loss = calc_loss_loader(
+                self.task_name, 
+                val_loader, 
+                self.model, 
+                self.device, 
+                num_batches=eval_iter
+            )
         # train mode
         self.model.train()
 
@@ -124,11 +139,19 @@ class ModelFinetuningInstructionFlow:
         # data loader
         train_loader, valid_loader, test_loader = self._build_data()
         # model
-        self.model, self.base_config = load_pretrained_gpt2_model(cfgs=self.args, model_cls=Model)
+        self.model, self.base_config = load_pretrained_gpt2_model(
+            cfgs=self.args, 
+            model_cls=Model, 
+            model_source=self.args.pretrained_model_source
+        )
         # move model to device
         self.model.to(self.device)
         # optimizer
-        self.optimizer = select_optimizer(self.model)
+        self.optimizer = select_optimizer(
+            self.model,
+            self.args.learning_rate,
+            self.args.weight_decay
+        )
 
         # training start time
         training_start_time = time.time()
@@ -147,7 +170,7 @@ class ModelFinetuningInstructionFlow:
             for input_batch, target_batch in train_loader:
                 # Reset loss gradients from previous batch iteration
                 self.optimizer.zero_grad()
-                loss = calc_loss_batch(input_batch, target_batch, self.model, self.device)
+                loss = calc_loss_batch(self.args.task_name, input_batch, target_batch, self.model, self.device)
                 # Calculate loss gradients
                 loss.backward()
                 # Update model weights using loss gradients

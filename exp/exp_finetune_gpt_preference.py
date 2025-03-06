@@ -21,7 +21,6 @@ import time
 
 import torch
 import torch.nn.functional as F
-import tiktoken
 
 # data
 from data_provider.finetune.dpo.data_load import load_instruction_data
@@ -46,6 +45,8 @@ class ModelFinetuningPreference:
     def __init__(self, args):
         super(ModelFinetuningPreference, self).__init__()
         self.args = args
+        # tokenizer
+        self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
 
     def _build_data(self):
         # data load
@@ -305,11 +306,13 @@ class ModelFinetuningPreference:
             valid_data, valid_dataset, valid_loader,
         ) = self._build_data()
         # model
-        self.model, self.base_config = load_pretrained_model(cfgs=self.args, model_cls=Model)
-        # tokenizer
-        tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        self.model, self.base_config = load_pretrained_model(cfgs=self.args, model_cls=Model) 
         # optimizer
-        self.optimizer = select_optimizer(self.model)
+        self.optimizer = select_optimizer(
+            self.model,
+            self.args.learning_rate,
+            self.args.weight_decay
+        )
 
         # record training start time
         training_start_time = time.time()
@@ -369,7 +372,7 @@ class ModelFinetuningPreference:
             start_context = format_input_alpaca(valid_data[2])
             generate(
                 model=self.model,
-                tokenizer=tokenizer,
+                tokenizer=self.tokenizer,
                 device=loss.device,
                 start_context=start_context
             )

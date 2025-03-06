@@ -26,7 +26,7 @@ import torch
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def load_weights(gpt, gpt_hf, CONFIG):
+def load_weights_hf(gpt, gpt_hf, CONFIG):
     def assign_check(left, right):
         if left.shape != right.shape:
             raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
