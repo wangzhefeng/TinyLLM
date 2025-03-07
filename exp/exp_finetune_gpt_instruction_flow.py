@@ -30,6 +30,7 @@ from data_provider.finetune.instruction_follow.data_load import load_file
 from data_provider.finetune.instruction_follow.data_loader import create_dataloader
 from data_provider.finetune.instruction_format import format_input_alpaca
 # tokenizer
+from tokenizer.tokenization import choose_tokenizer
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
@@ -56,6 +57,8 @@ class ModelFinetuningInstructionFlow:
         super(ModelFinetuningInstructionFlow, self).__init__()
         self.args = args
         self.device = device
+        tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        self.pad_token_id = tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
     def _build_data(self):
         """
@@ -215,7 +218,7 @@ class ModelFinetuningInstructionFlow:
                 token_idx = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = 256,
                 context_size = self.base_config.context_length,
-                eos_id = 50256
+                eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
             response_text = (
@@ -235,7 +238,7 @@ class ModelFinetuningInstructionFlow:
                 token_idx = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = 256,
                 context_size = self.base_config.context_length,
-                eos_id = 50256
+                eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
             response_text = generated_text[len(input_text):].replace("### Response:", "").strip()

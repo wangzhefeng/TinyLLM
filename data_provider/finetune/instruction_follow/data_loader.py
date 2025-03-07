@@ -53,7 +53,11 @@ class InstructionDataset(Dataset):
         return len(self.data)
 
 
-def collate_fn(batch, pad_token_id=50256, ignore_index=-100, allowed_max_length=None, device="cuda"):
+def collate_fn(batch, 
+               pad_token_id=50256, 
+               ignore_index=-100, 
+               allowed_max_length=None, 
+               device="cuda"):
     # Find the longest sequence in the batch
     batch_max_length = max(len(item) + 1 for item in batch)
     

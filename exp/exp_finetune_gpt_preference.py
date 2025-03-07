@@ -47,6 +47,7 @@ class ModelFinetuningPreference:
         self.args = args
         # tokenizer
         self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
     def _build_data(self):
         # data load
@@ -387,7 +388,7 @@ class ModelFinetuningPreference:
             token_idx = text_to_token_ids(prompt),
             max_new_tokens = 35,
             context_size = self.base_config.context_length,
-            eos_id = 50256,
+            eos_id = self.pad_token_id,
         )
         response = token_ids_to_text(token_ids)
         logger.info(f"response: \n{response}")

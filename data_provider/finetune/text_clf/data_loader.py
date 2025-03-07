@@ -43,7 +43,7 @@ class SpamDataset(Dataset):
             # truncate sequences if they are longer than max_length
             self.encoded_texts = [encoded_text[:self.max_length] for encoded_text in self.encoded_texts]
         # pad sequences to the longest sequence
-        self.pad_token_id = tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]  # 50256
+        self.pad_token_id = tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
         self.encoded_texts = [
             encoded_text + [self.pad_token_id] * (self.max_length - len(encoded_text))
             for encoded_text in self.encoded_texts
