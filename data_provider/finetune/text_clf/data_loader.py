@@ -19,7 +19,6 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 import pandas as pd
-import tiktoken
 import torch
 from torch.utils.data import Dataset, DataLoader
 
@@ -96,6 +95,10 @@ def create_dataloader(data_path,
 # 测试代码 main 函数
 def main():
     from data_provider.finetune.text_clf.data_config import data_dir
+    import tiktoken
+
+    # tokenizer
+    tokenizer = tiktoken.get_encoding("gpt2")
     # params
     batch_size = 8
 
@@ -106,6 +109,7 @@ def main():
         batch_size = batch_size,
         shuffle = True,
         drop_last = True,
+        tokenizer = tokenizer
     )
     valid_dataset, valid_loader = create_dataloader(
         data_path = os.path.join(data_dir, "valid.csv"),
@@ -113,6 +117,7 @@ def main():
         batch_size = batch_size,
         shuffle = False,
         drop_last = False,
+        tokenizer = tokenizer
     )
     test_dataset, test_loader = create_dataloader(
         data_path = os.path.join(data_dir, "test.csv"),
@@ -120,6 +125,7 @@ def main():
         batch_size = batch_size,
         shuffle = False,
         drop_last = False,
+        tokenizer = tokenizer
     )
     logger.info(f"train_dataset.max_length: {train_dataset.max_length}")
     logger.info(f"valid_dataset.max_length: {valid_dataset.max_length}")

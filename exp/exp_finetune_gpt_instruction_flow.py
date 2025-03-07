@@ -41,6 +41,7 @@ from model_train.calc_loss import calc_loss_batch, calc_loss_loader
 from model_train.train_funcs import select_optimizer
 from model_train.plot_losses import plot_losses
 # tools
+from utils.device import device
 from utils.log_util import logger
 
 warnings.filterwarnings("ignore")
@@ -54,6 +55,7 @@ class ModelFinetuningInstructionFlow:
     def __init__(self, args):
         super(ModelFinetuningInstructionFlow, self).__init__()
         self.args = args
+        self.device = device
 
     def _build_data(self):
         """

@@ -40,6 +40,7 @@ from model_train.calc_accuracy import calc_accuracy_loader
 from model_train.train_funcs import select_optimizer
 from model_train.plot_losses import plot_values_classifier
 # utils
+from utils.device import device
 from utils.log_util import logger
 
 warnings.filterwarnings("ignore")
@@ -53,7 +54,8 @@ class ModelFinetuningClassifier:
     def __init__(self, args):
         super(ModelFinetuningClassifier, self).__init__()
         self.args = args
-        self.tokenizer=choose_tokenizer(tokenizer_model=self.args.tokenizer_model),
+        self.device = device
+        self.tokenizer = choose_tokenizer(tokenizer_model=self.args.tokenizer_model)
 
     def _build_data(self):
         """

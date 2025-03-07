@@ -40,6 +40,8 @@ def args_parse():
     # task params
     parser.add_argument("--task_name", type=str, required=True, default="tiny_gpt_classification_sft",
                         help="task name")
+    parser.add_argument("--model_name", type=str, required=True, default="gpt_finetune_clf",
+                        help="model name")
     parser.add_argument("--is_training", type=int, required=True, default=1,
                         help="training flag")
     parser.add_argument("--is_inference", type=int, required=True, default=0,
@@ -51,6 +53,8 @@ def args_parse():
     parser.add_argument("--context_length", type=int, required=True, default=1024,
                         help="context length")
     # model params
+    parser.add_argument("--num_classes", type=int, required=True, default=2,
+                        help="number of classes")
     parser.add_argument("--vocab_size", type=int, required=True, default=50257,
                         help="vocab size")
     parser.add_argument("--emb_dim", type=int, required=True, default=768,
@@ -59,39 +63,51 @@ def args_parse():
                         help="number of heads")
     parser.add_argument("--n_layers", type=int, required=True, default=12,  
                         help="number of layers")
-    parser.add_argument("--dropout", type=float, required=True, default=0.1, 
+    parser.add_argument("--dropout", type=float, required=True, default=0.0, 
                         help="dropout")
-    parser.add_argument("--qkv_bias", type=int, required=True, default=0, 
+    parser.add_argument("--qkv_bias", type=int, required=True, default=1, 
                         help="use bias in qkv")
-    parser.add_argument("--max_new_tokens", type=int, required=True, default=50,
-                        help="max new tokens")
     # model pretrain params
+    parser.add_argument("--model_path", type=str, required=True, default="./saved_results/pretrained_models/tiny_gpt_pretrain_gpt_the-verdict_cl256_te10_bs2/checkpoint.pth",
+                        help="model path")
+    parser.add_argument("--pretrained_model", type=str, required=True, default="gpt2-small (124)",
+                        help="pretrained model")
+    parser.add_argument("--pretrained_model_path", type=str, required=True, default="./downloaded_models/gpt2_model",
+                        help="pretrained model path")
+    parser.add_argument("--pretrained_model_source", type=str, required=True, default="huggingface_gpt2",
+                        help="pretrained model source")
+    parser.add_argument("--finetune_method", type=str, required=True, default="simple",
+                        help="finetune method")
+    parser.add_argument("--tokenizer_model", type=str, required=True, default="gpt2",
+                        help="tokenizer model")
+    parser.add_argument("--seed", type=int, required=True, default=123,
+                        help="random seed")
     parser.add_argument("--iters", type=int, required=True, default=10, 
                         help="number of iterations")
     parser.add_argument("--train_epochs", type=int, required=True, default=10, 
                         help="number of training epochs")
     parser.add_argument("--batch_size", type=int, required=True, default=2, 
                         help="batch size")
-    parser.add_argument("--train_ratio", type=float, required=True, default=0.9, 
-                        help="train data ratio")
-    parser.add_argument("--learning_rate", type=float, required=True, default=5e-4, 
+    parser.add_argument("--num_workers", type=int, required=True, default=0,
+                        help="num_workers")
+    parser.add_argument("--learning_rate", type=float, required=True, default=5e-5, 
                         help="learning rate")
-    parser.add_argument("--initial_lr", type=float, required=True, default=3e-5, 
+    parser.add_argument("--initial_lr", type=float, default=3e-5, 
                         help="initial learning rate")
-    parser.add_argument("--min_lr", type=float, required=True, default=1e-6,
+    parser.add_argument("--min_lr", type=float, default=1e-6,
                         help="minimum learning rate")
     parser.add_argument("--weight_decay", type=float, required=True, default=0.1, 
                         help="weight decay")
     parser.add_argument('--lradj', type = str, default = 'type1', 
                         help = 'adjust learning rate')
-    parser.add_argument("--patience", type=int, required=True, default=7, 
+    parser.add_argument("--patience", type=int, default=7, 
                         help="early stopping patience")
-    parser.add_argument("--checkpoints", type=str, required=False, 
+    parser.add_argument("--checkpoints", type=str, 
                         default="./saved_results/pretrained_models/", 
                         help="checkpoints path")
-    parser.add_argument("--test_results", type=str, required=False, default="./saved_results/test_results/",
+    parser.add_argument("--test_results", type=str, default="./saved_results/test_results/",
                         help="test results path")
-    parser.add_argument("--use_amp", type=int, required=True, default=1,
+    parser.add_argument("--use_amp", type=int, default=1,
                         help="Use amp")
     # model pretrain device params
     parser.add_argument("--use_gpu", type=int, required=True, default=1, 
@@ -101,7 +117,7 @@ def args_parse():
     parser.add_argument("--gpu_type", type=str, required=True, default="cuda", 
                         help="gpu type")
     parser.add_argument("--devices", type=str, required=True, default="0,1,2,3",
-                        help="devices") 
+                        help="devices")
     # ------------------------------
     # arguments parse
     # ------------------------------
@@ -145,14 +161,14 @@ def run(args):
             logger.info(f"{50 * '='}")
 
             # setting record of experiments
-            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1][:-4]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
+            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
 
             logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
             # set experiments
             exp = Exp(args)
 
             # model training
-            exp.train(training_iter = itr, setting=setting, eval_freq=5, eval_iter=1, start_context="Every effort moves you")
+            exp.train(eval_freq=50, eval_iter=5)
 
             # model testing
             # logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
