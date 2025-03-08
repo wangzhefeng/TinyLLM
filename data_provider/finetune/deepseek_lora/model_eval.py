@@ -159,7 +159,7 @@ def load_models():
     # 原始预训练模型路径
     base_model_path = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
     # LoRA 微调后保存的适配器路径
-    peft_model_path = "saved_results/finetuning_pretrained_models/medical_o1_sft_Chinese"
+    peft_model_path = "saved_results/finetuned_models/medical_o1_sft_Chinese"
 
     # 初始化分词器（使用与训练时相同的 tokenizer）
     tokenizer = AutoTokenizer.from_pretrained(base_model_path)

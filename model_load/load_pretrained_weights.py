@@ -54,7 +54,7 @@ gpt2_huggingface_models = {
 }
 
 
-def load_pretrained_gpt2_model(cfgs, model_cls, model_source: str = "huggingface_gpt2"):
+def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gpt2"):
     """
     initializing a model with pretrained weights
     """

@@ -61,24 +61,22 @@ def args_parse():
                         help="vocab size")
     parser.add_argument("--emb_dim", type=int, required=True, default=768,
                         help="embedding dimension")
-    parser.add_argument("--n_heads", type=int, required=True, default=12,
-                        help="number of heads")
     parser.add_argument("--n_layers", type=int, required=True, default=12,  
                         help="number of layers")
+    parser.add_argument("--n_heads", type=int, required=True, default=12,
+                        help="number of heads") 
     parser.add_argument("--dropout", type=float, required=True, default=0.0, 
                         help="dropout")
     parser.add_argument("--qkv_bias", type=int, required=True, default=1, 
                         help="use bias in qkv")
-    # model pretrain params
-    parser.add_argument("--model_path", type=str, default="./saved_results/pretrained_models/tiny_gpt_pretrain_gpt_the-verdict_cl256_te10_bs2/checkpoint.pth",
-                        help="model path")
+    # model pretrain params 
     parser.add_argument("--pretrained_model", type=str, required=True, default="gpt2-small (124)",
                         help="pretrained model")
     parser.add_argument("--pretrained_model_path", type=str, required=True, default="./downloaded_models/gpt2_model",
                         help="pretrained model path")
     parser.add_argument("--pretrained_model_source", type=str, required=True, default="huggingface_gpt2",
                         help="pretrained model source")
-    parser.add_argument("--finetuned_model_path", type=str, required=True, default="./saved_results/finetuning_pretrained_models",
+    parser.add_argument("--finetuned_model_path", type=str, required=True, default="./saved_results/finetuned_models",
                         help="finetuned model path")
     parser.add_argument("--tokenizer_model", type=str, required=True, default="gpt2",
                         help="tokenizer model")
@@ -92,10 +90,10 @@ def args_parse():
                         help="batch size") 
     parser.add_argument("--learning_rate", type=float, required=True, default=5e-5, 
                         help="learning rate")
-    parser.add_argument("--initial_lr", type=float, default=3e-5, 
-                        help="initial learning rate") 
     parser.add_argument("--weight_decay", type=float, required=True, default=0.1, 
                         help="weight decay")
+    parser.add_argument("--initial_lr", type=float, default=3e-5, 
+                        help="initial learning rate")  
     parser.add_argument("--min_lr", type=float, default=1e-6,
                         help="minimum learning rate")
     parser.add_argument('--lradj', type = str, default = 'type1', 
@@ -103,7 +101,7 @@ def args_parse():
     parser.add_argument("--patience", type=int, default=7, 
                         help="early stopping patience")
     parser.add_argument("--checkpoints", type=str, 
-                        default="./saved_results/pretrained_models/", 
+                        default="./saved_results/finetuned_models", 
                         help="checkpoints path")
     parser.add_argument("--test_results", type=str, default="./saved_results/test_results",
                         help="test results path")

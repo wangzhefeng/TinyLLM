@@ -16,7 +16,7 @@ python -u run_gpt_preference_sft.py \
     --pretrained_model 'gpt2-medium (355M)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
     --tokenizer_model "gpt2" \
-    --finetuned_model_path ./saved_results/finetuning_pretrained_models/gpt2-medium355M-sft.pth \
+    --finetuned_model_path ./saved_results/finetuned_models/gpt2-medium355M-sft.pth \
     --num_classes 2 \
     --train_epochs 1 \
     --learning_rate 5e-6 \

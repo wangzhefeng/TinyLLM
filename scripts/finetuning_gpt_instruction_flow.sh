@@ -19,7 +19,7 @@ python -u run_gpt_instruction_sft.py \
     --pretrained_model 'gpt2-medium (355M)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
     --pretrained_model_source huggingface_gpt2 \
-    --finetuned_model_path ./saved_results/finetuning_pretrained_models \
+    --finetuned_model_path ./saved_results/finetuned_models \
     --tokenizer_model gpt2 \
     --seed 123 \
     --iters 10 \
@@ -27,8 +27,8 @@ python -u run_gpt_instruction_sft.py \
     --batch_size 8 \
     --learning_rate 0.00005 \
     --weight_decay 0.1 \
-    --checkpoints ./saved_results/pretrained_models/ \
-    --test_results ./saved_results/test_results/ \
+    --checkpoints ./saved_results/finetuned_models \
+    --test_results ./saved_results/test_results \
     --num_workers 0 \
     --use_gpu 1 \
     --use_multi_gpu 0 \

@@ -55,11 +55,10 @@ def calc_accuracy_loader(dataloader, model, device, num_batches = None):
     return correct_preds / num_examples
 
 
-def calc_accuracy(train_loader, valid_loader, test_loader, model, device):
-    train_accuracy = calc_accuracy_loader(train_loader, model, device, num_batches=10)
-    valid_accuracy = calc_accuracy_loader(valid_loader, model, device, num_batches=10)
-    test_accuracy = calc_accuracy_loader(test_loader, model, device, num_batches=10)
-
+def calc_final_accuracy(train_loader, valid_loader, test_loader, model, device):
+    train_accuracy = calc_accuracy_loader(train_loader, model, device)
+    valid_accuracy = calc_accuracy_loader(valid_loader, model, device)
+    test_accuracy = calc_accuracy_loader(test_loader, model, device)
     logger.info(f"Train accuracy: {train_accuracy * 100:.2f}%")
     logger.info(f"Valid accuracy: {valid_accuracy * 100:.2f}%")
     logger.info(f"Test accuracy: {test_accuracy * 100:.2f}%")

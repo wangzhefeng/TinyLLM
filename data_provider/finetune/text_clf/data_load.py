@@ -82,6 +82,7 @@ def main():
         data_dir, 
         tsv_file_path
     )
+
     # data download
     download_and_unzip_spam_data(tsv_file_path, zip_data_path, data_dir)
     
@@ -92,4 +93,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

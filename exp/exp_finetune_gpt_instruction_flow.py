@@ -36,7 +36,7 @@ from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models.gpt import Model
 from model_train.gpt_generate import generate
 # other model
-from model_load.openai_gpt2_models import load_pretrained_gpt2_model
+from model_load.load_pretrained_weights import model_with_gpt2_weights
 # model training
 from model_train.calc_loss import calc_loss_batch, calc_loss_loader
 from model_train.train_funcs import select_optimizer
@@ -57,7 +57,9 @@ class ModelFinetuningInstructionFlow:
         super(ModelFinetuningInstructionFlow, self).__init__()
         self.args = args
         self.device = device
+        # tokenizer
         tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        # pad token
         self.pad_token_id = tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
     def _build_data(self):
@@ -167,8 +169,9 @@ class ModelFinetuningInstructionFlow:
             test_data, test_dataset, test_loader,
             self.valid_data, valid_dataset, valid_loader,
         ) = self._build_data()
+
         # model
-        self.model = load_pretrained_gpt2_model(
+        self.model = model_with_gpt2_weights(
             cfgs=self.args, 
             model_cls=Model, 
             model_source=self.args.pretrained_model_source
@@ -181,10 +184,12 @@ class ModelFinetuningInstructionFlow:
             self.args.learning_rate,
             self.args.weight_decay
         )
+
         # checkpoint path
         best_model_path = self._get_model_path(setting)
         # test results path
         results_path = self._get_results_path(setting, training_iter)
+
         # training start time
         training_start_time = time.time()
          

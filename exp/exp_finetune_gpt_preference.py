@@ -31,7 +31,7 @@ from models.gpt import Model
 from model_train.gpt_generate import generate
 # tokenzier
 from tokenizer.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
-from model_load.openai_gpt2_models import load_pretrained_model
+from model_load.load_pretrained_weights import load_pretrained_model
 from model_train.train_funcs import select_optimizer
 # utils
 from utils.log_util import logger
@@ -47,6 +47,7 @@ class ModelFinetuningPreference:
         self.args = args
         # tokenizer
         self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        # pad token id
         self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
     def _build_data(self):
@@ -372,10 +373,11 @@ class ModelFinetuningPreference:
             # 在每个训练周期后打印示例文本
             start_context = format_input_alpaca(valid_data[2])
             generate(
-                model=self.model,
-                tokenizer=self.tokenizer,
-                device=loss.device,
-                start_context=start_context
+                model = self.model,
+                token_idx = text_to_token_ids(start_),
+                max_new_tokens = 35,
+                context_size = self.base_config.context_length,
+            eos_id = self.pad_token_id,
             )
         
         training_end_time = time.time()

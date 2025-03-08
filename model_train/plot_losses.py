@@ -26,26 +26,29 @@ import torch
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def plot_values_classifier(
-    epochs_seen, 
-    examples_seen, 
-    train_values, 
-    val_values, 
-    label="loss"
-):
-    fig, ax1 = plt.subplots(figsize=(5, 3))
+def plot_values_classifier(train_epochs, examples_seen, train_values, val_values, label: str = "loss", results_path: str = None):
+    # epochs tensor
+    epochs_tensor = torch.linspace(0, train_epochs, len(train_values))
+    
+    fig, ax1 = plt.subplots(figsize = (5, 3))
     # Plot training and validation loss against epochs
-    ax1.plot(epochs_seen, train_values, label=f"Training {label}")
-    ax1.plot(epochs_seen, val_values, linestyle="-.", label=f"Validation {label}")
+    ax1.plot(epochs_tensor, train_values, label = f"Training {label}")
+    ax1.plot(epochs_tensor, val_values, linestyle = "-.", label = f"Validation {label}")
     ax1.set_xlabel("Epochs")
     ax1.set_ylabel(label.capitalize())
     ax1.legend()
+
     # Create a second x-axis for examples seen
     ax2 = ax1.twiny()  # Create a second x-axis that shares the same y-axis
-    ax2.plot(examples_seen, train_values, alpha=0)  # Invisible plot for aligning ticks
+    examples_seen_tensor = torch.linspace(0, examples_seen, len(train_values))
+    ax2.plot(examples_seen_tensor, train_values, alpha=0)  # Invisible plot for aligning ticks
     ax2.set_xlabel("Examples seen")
-    fig.tight_layout()  # Adjust layout to make room
-    # plt.savefig(f"{label}-plot.pdf")
+    
+    # Adjust layout to make room
+    fig.tight_layout()
+    # save fig
+    plt.savefig(os.path.join(results_path, f"{label}-plot.pdf"))
+    # show fig on notebook
     plt.show()
 
 
@@ -69,6 +72,7 @@ def plot_losses(train_epochs, tokens_seen, train_losses, val_losses, results_pat
     fig.tight_layout()
     # save fig
     plt.savefig(os.path.join(results_path, "loss_plot.pdf"))
+    # show fig
     plt.show()
 
 

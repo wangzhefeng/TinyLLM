@@ -115,7 +115,7 @@ def main():
     gpt = Model(base_config)
 
     # update weights
-    load_weights(gpt, gpt_hf, base_config)
+    load_weights_hf(gpt, gpt_hf, base_config)
     
     # model inference mode
     gpt.to(device)

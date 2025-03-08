@@ -27,16 +27,13 @@ import torch
 from data_provider.finetune.text_clf.data_loader import create_dataloader
 # model
 from models.gpt import Model
-from model_finetune.model_finetune_clf import (
-    finetune_model_simple,
-    finetune_model_lora,
-)
+from model_finetune.model_finetune_clf import finetune_model
 # other model
 from tokenizer.tokenization import choose_tokenizer
-from model_load.openai_gpt2_models import load_pretrained_gpt2_model
+from model_load.load_pretrained_weights import model_with_gpt2_weights
 # training
 from model_train.calc_loss import calc_loss_batch, calc_loss_loader
-from model_train.calc_accuracy import calc_accuracy_loader
+from model_train.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
 from model_train.train_funcs import select_optimizer
 from model_train.plot_losses import plot_values_classifier
 # utils
@@ -54,8 +51,12 @@ class ModelFinetuningClassifier:
     def __init__(self, args):
         super(ModelFinetuningClassifier, self).__init__()
         self.args = args
+        # device
         self.device = device
-        self.tokenizer = choose_tokenizer(tokenizer_model=self.args.tokenizer_model)
+        # tokenizer
+        self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        # pad token
+        self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
     def _build_data(self):
         """
@@ -70,6 +71,7 @@ class ModelFinetuningClassifier:
             drop_last = True,
             num_workers = self.args.num_workers,
             tokenizer = self.tokenizer,
+            pad_token_id = self.pad_token_id,
         )
         valid_dataset, valid_loader = create_dataloader(
             data_path = os.path.join(self.args.data_source, "valid.csv"),
@@ -79,6 +81,7 @@ class ModelFinetuningClassifier:
             drop_last = False,
             num_workers = self.args.num_workers,
             tokenizer = self.tokenizer,
+            pad_token_id = self.pad_token_id,
         )
         test_dataset, test_loader = create_dataloader(
             data_path = os.path.join(self.args.data_source, "test.csv"),
@@ -88,9 +91,37 @@ class ModelFinetuningClassifier:
             drop_last = False,
             num_workers = self.args.num_workers,
             tokenizer = self.tokenizer,
+            pad_token_id = self.pad_token_id,
         )
+        logger.info(f"train_dataset.max_length: {self.train_dataset.max_length}")
+        logger.info(f"valid_dataset.max_length: {valid_dataset.max_length}")
+        logger.info(f"test_dataset.max_length: {test_dataset.max_length}")
+        logger.info(f"training batches: {len(train_loader)}")
+        logger.info(f"validation batches: {len(valid_loader)}")
+        logger.info(f"test batches: {len(test_loader)}")
 
-        return train_loader, valid_loader, test_loader  
+        return train_loader, valid_loader, test_loader
+
+    def _get_model_path(self, setting, training_iter = None):
+        """
+        模型保存路径
+        """
+        # 模型保存路径
+        model_path = os.path.join(self.args.checkpoints, setting)
+        os.makedirs(model_path, exist_ok=True)
+        # 最优模型保存路径
+        best_model_path = f"{model_path}/checkpoint.pth"
+        
+        return best_model_path
+    
+    def _get_results_path(self, setting, training_iter):
+        """
+        结果保存路径
+        """
+        results_path = os.path.join(self.args.test_results, setting, str(training_iter))
+        os.makedirs(results_path, exist_ok=True)
+        
+        return results_path
     # ------------------------------
     # finetuning the model on supervised data
     # ------------------------------
@@ -100,6 +131,7 @@ class ModelFinetuningClassifier:
         """
         # eval mode
         self.model.eval()
+        
         # calculate loss
         with torch.no_grad():
             train_loss = calc_loss_loader(
@@ -116,38 +148,35 @@ class ModelFinetuningClassifier:
                 self.device, 
                 num_batches = eval_iter
             )
+        
         # train mode
         self.model.train()
 
         return train_loss, val_loss
 
-    def train(self, eval_freq: int = 50, eval_iter: int = 5):
+    def train(self, training_iter, setting, eval_freq: int = 50, eval_iter: int = 5):
         """
         model training
         """
         # data loader
+        torch.manual_seed(self.args.seed)
         train_loader, valid_loader, test_loader = self._build_data()
-        # load pretained model's weights 
-        model = load_pretrained_gpt2_model(
+        
+        # load pretained model's weights
+        model = model_with_gpt2_weights(
             cfgs = self.args, 
             model_cls = Model, 
             model_source = self.args.pretrained_model_source
         )
         # modify model for finetuning
-        if self.args.finetune_method == "simple":
-            self.model = finetune_model_simple(
-                model, 
-                self.device, 
-                self.args.emb_dim, 
-                self.args.num_classes
-            )
-        elif self.args.finetune_method == "lora":
-            self.model = finetune_model_lora(
-                model, 
-                self.device, 
-                self.args.emb_dim, 
-                self.args.num_classes
-            )
+        torch.manual_seed(self.args.seed)
+        self.model = finetune_model(
+            model, 
+            self.args.emb_dim, 
+            self.args.num_classes,
+            self.args.finetune_method,
+        )
+        self.model.to(self.device)
         # optimizer
         self.optimizer = select_optimizer(
             self.model, 
@@ -155,7 +184,12 @@ class ModelFinetuningClassifier:
             self.args.weight_decay
         )
 
-        # record training start time
+        # checkpoint path
+        best_model_path = self._get_model_path(setting)
+        # test results path
+        results_path = self._get_results_path(setting, training_iter)
+
+        # training start time
         training_start_time = time.time()
 
         # model training
@@ -172,7 +206,14 @@ class ModelFinetuningClassifier:
             for input_batch, target_batch in train_loader:
                 # Reset loss gradients from previous batch iteration
                 self.optimizer.zero_grad()
-                loss = calc_loss_batch(self.args.task_name, input_batch, target_batch, self.model, self.device)
+                # Calculate loss
+                loss = calc_loss_batch(
+                    self.args.task_name, 
+                    input_batch, 
+                    target_batch, 
+                    self.model, 
+                    self.device
+                )
                 # Calculate loss gradients
                 loss.backward()
                 # Update model weights using loss gradients
@@ -185,12 +226,12 @@ class ModelFinetuningClassifier:
                     train_loss, val_loss = self._evaluate_model(train_loader, valid_loader, eval_iter)
                     train_losses.append(train_loss)
                     valid_losses.append(val_loss)
-                    logger.info(f"Ep {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
-
-            # Calculate accuracy after each epoch
+                    logger.info(f"Epoch {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+            # Calculate classification accuracy of the model 
+            torch.manual_seed(self.args.seed)
             train_accuracy = calc_accuracy_loader(train_loader, self.model, self.device, num_batches=eval_iter)
             val_accuracy = calc_accuracy_loader(valid_loader, self.model, self.device, num_batches=eval_iter)
-            logger.info(f"Training accuracy: {train_accuracy*100:.2f}% | ")
+            logger.info(f"Training accuracy: {train_accuracy*100:.2f}%")
             logger.info(f"Validation accuracy: {val_accuracy*100:.2f}%")
             train_accs.append(train_accuracy)
             valid_accs.append(val_accuracy)
@@ -201,63 +242,59 @@ class ModelFinetuningClassifier:
         logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
         
         # training loss plot
-        epochs_tensor = torch.linspace(0, self.args.train_epochs, len(train_losses))
-        examples_seen_tensor = torch.linspace(0, examples_seen, len(train_losses))
-        plot_values_classifier(epochs_tensor, examples_seen_tensor, train_losses, valid_losses)
-
+        plot_values_classifier(
+            self.args.train_epochs, examples_seen, 
+            train_losses, valid_losses, 
+            label = "loss", results_path = results_path,
+        )
         # training accuracy plot
-        epochs_tensor = torch.linspace(0, self.args.train_epochs, len(train_accs))
-        examples_seen_tensor = torch.linspace(0, examples_seen, len(train_accs))
-        plot_values_classifier(epochs_tensor, examples_seen_tensor, train_accs, valid_accs, label="accuracy")
-
-        # accuracy
-        train_accuracy = calc_accuracy_loader(train_loader, self.model, self.device)
-        val_accuracy = calc_accuracy_loader(valid_loader, self.model, self.device)
-        test_accuracy = calc_accuracy_loader(test_loader, self.model, self.device)
-        logger.info(f"Training accuracy: {train_accuracy*100:.2f}%")
-        logger.info(f"Validation accuracy: {val_accuracy*100:.2f}%")
-        logger.info(f"Test accuracy: {test_accuracy*100:.2f}%")
+        plot_values_classifier(
+            self.args.train_epochs, examples_seen, 
+            train_accs, valid_accs, 
+            label = "accuracy", results_path = results_path,
+        )
+        # calculate accuracy over complete dataset
+        calc_final_accuracy(train_loader, valid_loader, test_loader, self.model, self.device)
 
     def inference(self, text: str):
         """
         using the LLM as a spam classifier
         """
-        # eval mode
+        # Eval mode
         self.model.eval()
+
         # Prepare inputs to the model
         input_ids = self.tokenizer.encode(text)
         # Truncate sequences if they too long
         supported_context_length = self.model.pos_emb.weight.shape[0]
         input_ids = input_ids[:min(self.train_dataset.max_length, supported_context_length)]
         # Pad sequences to the longest sequence
-        input_ids += [self.train_dataset.pad_token_id] * (self.train_dataset.max_length - len(input_ids))
-        input_tensor = torch.tensor(input_ids, device = self.device).unsqueeze(0)  # add batch dimension
+        input_ids += [self.pad_token_id] * (self.train_dataset.max_length - len(input_ids))
+        # add batch dimension
+        input_tensor = torch.tensor(input_ids, device = self.device).unsqueeze(0)
+
         # Model inference
         with torch.no_grad():
             logits = self.model(input_tensor)[:, -1, :]  # Logits of the last output token
-        # probability
-        predicted_label = torch.argmax(logits, dim=-1).item()
+
+        # probability[optional]
+        # probability = torch.softmax(logits, dim = -1)
+        # predicted_label = torch.argmax(probability, dim = -1).item()
+
+        # predicted label
+        predicted_label = torch.argmax(logits, dim = -1).item()
 
         # Return the classified result
-        return "spam" if predicted_label == 1 else "not spam"
+        classified_result = "spam" if predicted_label == 1 else "not spam"
+
+        return classified_result
 
 
 
 
 # 测试代码 main 函数
 def main():
-    # before finetune
-    input_prompt = "Every effort moves you"
-    # usage 1
-    text_1 = (
-        "You are a winner you have been specially"
-        " selected to receive $1000 cash or a $2000 award."
-    )
-    # usage 2
-    text_2 = (
-        "Hey, just wanted to check if we're still on"
-        " for dinner tonight? Let me know!"
-    ) 
+    pass 
 
 if __name__ == "__main__":
     main()

@@ -27,18 +27,20 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def finetune_model_simple(model, device, emb_dim: int, num_classes: int):
+def finetune_model(model, emb_dim: int, num_classes: int, finetune_method: str):
     """
     add a classification head
     """
-    # build model and print model architecture
-    logger.info(f"model: \n{model}")  # model architecture
+    # model architecture before finetune
+    logger.info(f"model architecture before finetune: \n{model}") 
+
+    # model params numbers before freeze
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Total trainable parameters before freeze: {total_params}")
-
     # freeze model(make all layers non-trainable)
     for param in model.parameters():
         param.requires_grad = False
+    # model params numbers after freeze
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Total trainable parameters after freeze: {total_params}")
 
@@ -47,6 +49,11 @@ def finetune_model_simple(model, device, emb_dim: int, num_classes: int):
         in_features = emb_dim, 
         out_features = num_classes
     )
+    if finetune_method == "lora":
+        # replace linear with LinearWithLoRA
+        replace_linear_with_lora(model, rank = 16, alpha = 16)
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logger.info(f"Total trainable LoRA parameters: {total_params}")
 
     # make the last transformer block and final LayerNorm module 
     # connecting the last transformer block to the output layer trainable
@@ -56,50 +63,8 @@ def finetune_model_simple(model, device, emb_dim: int, num_classes: int):
     for param in model.final_norm.parameters():
         param.requires_grad = True
 
-    # move model to device 
-    model.to(device) 
-    logger.info(f"model: \n{model}")  # model architecture
-
-    return model
-
-
-def finetune_model_lora(model, device, emb_dim: int, num_classes: int):
-    """
-    add a classification head
-    """
-    # build model and print model architecture
-    logger.info(f"model: \n{model}")  # model architecture
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"Total trainable parameters before freeze: {total_params}")
-
-    # freeze model(make all layers non-trainable)
-    for param in model.parameters():
-        param.requires_grad = False
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"Total trainable parameters after freeze: {total_params}")
-
-    # replace output layer
-    model.out_head = nn.Linear(
-        in_features = emb_dim, 
-        out_features = num_classes
-    )
-
-    # TODO replace linear with LinearWithLoRA
-    replace_linear_with_lora(model, rank = 16, alpha = 16)
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"Total trainable LoRA parameters: {total_params}")
-
-    # make the last transformer block and final LayerNorm module 
-    # connecting the last transformer block to the output layer trainable
-    for param in model.trf_blocks[-1].parameters():
-        param.requires_grad = True
-
-    for param in model.final_norm.parameters():
-        param.requires_grad = True
-
-    # move model to device 
-    model.to(device) 
-    logger.info(f"model: \n{model}")  # model architecture
+    # model architecture after finetune
+    logger.info(f"model architecture after finetune: \n{model}")
 
     return model
 

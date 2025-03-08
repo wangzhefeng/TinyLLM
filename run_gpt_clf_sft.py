@@ -67,15 +67,15 @@ def args_parse():
                         help="dropout")
     parser.add_argument("--qkv_bias", type=int, required=True, default=1, 
                         help="use bias in qkv")
-    # model pretrain params
-    parser.add_argument("--model_path", type=str, required=True, default="./saved_results/pretrained_models/tiny_gpt_pretrain_gpt_the-verdict_cl256_te10_bs2/checkpoint.pth",
-                        help="model path")
+    # model pretrain params 
     parser.add_argument("--pretrained_model", type=str, required=True, default="gpt2-small (124)",
                         help="pretrained model")
     parser.add_argument("--pretrained_model_path", type=str, required=True, default="./downloaded_models/gpt2_model",
                         help="pretrained model path")
     parser.add_argument("--pretrained_model_source", type=str, required=True, default="huggingface_gpt2",
                         help="pretrained model source")
+    parser.add_argument("--finetuned_model_path", type=str, required=True, default="./saved_results/finetuned_models",
+                        help="finetuned model path")
     parser.add_argument("--finetune_method", type=str, required=True, default="simple",
                         help="finetune method")
     parser.add_argument("--tokenizer_model", type=str, required=True, default="gpt2",
@@ -87,28 +87,28 @@ def args_parse():
     parser.add_argument("--train_epochs", type=int, required=True, default=10, 
                         help="number of training epochs")
     parser.add_argument("--batch_size", type=int, required=True, default=2, 
-                        help="batch size")
-    parser.add_argument("--num_workers", type=int, required=True, default=0,
-                        help="num_workers")
+                        help="batch size") 
     parser.add_argument("--learning_rate", type=float, required=True, default=5e-5, 
                         help="learning rate")
+    parser.add_argument("--weight_decay", type=float, required=True, default=0.1, 
+                        help="weight decay")
     parser.add_argument("--initial_lr", type=float, default=3e-5, 
                         help="initial learning rate")
     parser.add_argument("--min_lr", type=float, default=1e-6,
-                        help="minimum learning rate")
-    parser.add_argument("--weight_decay", type=float, required=True, default=0.1, 
-                        help="weight decay")
+                        help="minimum learning rate") 
     parser.add_argument('--lradj', type = str, default = 'type1', 
                         help = 'adjust learning rate')
     parser.add_argument("--patience", type=int, default=7, 
                         help="early stopping patience")
     parser.add_argument("--checkpoints", type=str, 
-                        default="./saved_results/pretrained_models/", 
+                        default="./saved_results/finetuned_models", 
                         help="checkpoints path")
-    parser.add_argument("--test_results", type=str, default="./saved_results/test_results/",
+    parser.add_argument("--test_results", type=str, default="./saved_results/test_results",
                         help="test results path")
     parser.add_argument("--use_amp", type=int, default=1,
                         help="Use amp")
+    parser.add_argument("--num_workers", type=int, required=True, default=0,
+                        help="num_workers")
     # model pretrain device params
     parser.add_argument("--use_gpu", type=int, required=True, default=1, 
                         help="user gpu")
@@ -159,50 +159,42 @@ def run(args):
             logger.info(f"{50 * '='}")
             logger.info(f"training iter: {itr}")
             logger.info(f"{50 * '='}")
-
             # setting record of experiments
             setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
-
             logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
             # set experiments
             exp = Exp(args)
-
             # model training
-            exp.train(eval_freq=50, eval_iter=5)
-
-            # model testing
-            # logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-            # exp.test(setting)
-
+            exp.train(training_iter=itr, setting=setting, eval_freq=50, eval_iter=5)
             # empty cache
             torch.cuda.empty_cache()
-    
-    """
-    # ------------------------------
-    # 模型测试
-    # ------------------------------
-    if args.is_testing:
-        ii = 0
-        # setting record of experiments
-        setting = f"{args.task_name}_{args.model_id}_{args.model}_{args.data}_ft{args.features} \
-                    _sl{args.seq_len}_ll{args.label_len}_pl{args.pred_len}_dm{args.d_model} \
-                    _nh{args.n_heads}_el{args.e_layers}_dl{args.d_layers}_df{args.d_ff}_expand{args.expand}_dc{args.d_conv} \
-                    _fc{args.factor}_eb{args.embed}_dt{args.distil}_{args.des}_{ii}"
-        # set experiments
-        exp = Exp(args)
-        logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-        exp.test(setting, test = 1)
-        torch.cuda.empty_cache()
-    
     # ------------------------------
     # 模型推理预测
     # ------------------------------
     if args.is_inference:
+        # before finetune
+        input_prompt = "Every effort moves you"
+        # test input text 1
+        text_1 = (
+            "You are a winner you have been specially"
+            " selected to receive $1000 cash or a $2000 award."
+        )
+        # test input text2
+        text_2 = (
+            "Hey, just wanted to check if we're still on"
+            " for dinner tonight? Let me know!"
+        )
         logger.info(f">>>>>>>predicting : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-        prediction = exp.predict(setting, True)
-        torch.cuda.empty_cache()
-        logger.info(prediction.shape)
-    """
+        # test inference on text 1
+        logger.info(f"input_text: {text_1}")
+        prediction = exp.inference(text = text_1)
+        logger.info(f"prediction label: {prediction}")
+        # test inference on text 2
+        logger.info(f"input_text: {text_2}")
+        prediction = exp.inference(text = text_2)
+        logger.info(f"prediction: {prediction}")
+        # empty cache
+        torch.cuda.empty_cache() 
 
 
 
