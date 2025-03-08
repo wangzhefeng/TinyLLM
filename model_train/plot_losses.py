@@ -49,9 +49,9 @@ def plot_values_classifier(
     plt.show()
 
 
-def plot_losses(self, setting, tokens_seen, train_losses, val_losses, test_results):
+def plot_losses(train_epochs, tokens_seen, train_losses, val_losses, results_path):
     # epochs seen
-    epochs_seen = torch.linspace(0, self.args.train_epochs, len(train_losses))
+    epochs_seen = torch.linspace(0, train_epochs, len(train_losses))
     # plot training and validation loss against epochs
     fig, ax1 = plt.subplots(figsize = (5, 3))
     ax1.plot(epochs_seen, train_losses, label = "Training loss")
@@ -67,7 +67,8 @@ def plot_losses(self, setting, tokens_seen, train_losses, val_losses, test_resul
     ax2.set_xlabel("Tokens seen")
     # adjust layout to make room
     fig.tight_layout()
-    plt.savefig(f"{test_results}/{setting}/loss_plot.pdf")
+    # save fig
+    plt.savefig(os.path.join(results_path, "loss_plot.pdf"))
     plt.show()
 
 

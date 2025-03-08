@@ -163,16 +163,16 @@ class Model_Pretrain(Exp_Basic):
         
         return best_model_path
 
-    def _get_results_path(self, setting):
+    def _get_results_path(self, setting, training_iter):
         """
         结果保存路径
         """
-        results_path = os.path.join(self.args.test_results, setting)
+        results_path = os.path.join(self.args.test_results, setting, str(training_iter))
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
 
-    def _plot_losses(self, training_iter, tokens_seen, train_losses, valid_losses, results_path):
+    def _plot_losses(self, tokens_seen, train_losses, valid_losses, results_path):
         # epochs seen
         epochs_seen = torch.linspace(0, self.args.train_epochs, len(train_losses))
         # Plot training and validation loss against epochs
@@ -190,9 +190,7 @@ class Model_Pretrain(Exp_Basic):
         # Aesthetic settings
         fig.tight_layout()
         # Fig save
-        fig_path = os.path.join(results_path, str(training_iter))
-        os.makedirs(fig_path, exist_ok=True)
-        plt.savefig(os.path.join(fig_path, "loss_plot.pdf"))
+        plt.savefig(os.path.join(results_path, "loss_plot.pdf"))
         # Fig show
         plt.show()
 
@@ -209,7 +207,7 @@ class Model_Pretrain(Exp_Basic):
         # checkpoint path
         best_model_path = self._get_model_path(setting)
         # test results path
-        results_path = self._get_results_path(setting)
+        results_path = self._get_results_path(setting, training_iter)
         # early stopping
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True) 
         # train optimizer
@@ -344,7 +342,7 @@ class Model_Pretrain(Exp_Basic):
         logger.info(f"\t\tTraining Iter {training_iter + 1} \tcost time: {((time.time() - training_start_time) / 60):.2f}mins.")
 
         # loss visual
-        self._plot_losses(training_iter, track_tokens_seen, train_losses, valid_losses, results_path)
+        self._plot_losses(track_tokens_seen, train_losses, valid_losses, results_path)
 
         # model load
         logger.info("\t\tLoading best model...")

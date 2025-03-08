@@ -65,7 +65,7 @@ class ModelFinetuningInstructionFlow:
         create dataset and dataloader
         """
         # data
-        data = load_file(file_path = self.args.data_path)
+        data = load_file(file_path = self.args.data_source)
         logger.info(f"Number of entries: {len(data)}")
         # data split ratio
         train_portion = int(len(data) * self.args.train_ratio)
@@ -74,13 +74,13 @@ class ModelFinetuningInstructionFlow:
         # data split
         train_data = data[:train_portion]
         test_data = data[train_portion:(train_portion + test_portion)]
-        valid_data = data[(train_portion + test_portion):]
+        self.valid_data = data[(train_portion + test_portion):]
         # logger.info(f"train_data: \n{train_data[0]}")
         # logger.info(f"test_data: \n{test_data[0]}")
         # logger.info(f"valid_data: \n{valid_data[0]}")
         logger.info(f"Training data length: {len(train_data)}")
         logger.info(f"Test data length: {len(test_data)}")
-        logger.info(f"Validation data length: {len(valid_data)}")
+        logger.info(f"Validation data length: {len(self.valid_data)}")
         # dataset and dataloader
         train_dataset, train_dataloader = create_dataloader(
             data = train_data,
@@ -90,13 +90,13 @@ class ModelFinetuningInstructionFlow:
         )
         test_dataset, test_dataloader = create_dataloader(
             data = test_data,
-            batch_size = self.batch_size,
+            batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
         )
         valid_dataset, valid_dataloader = create_dataloader(
-            data = valid_data,
-            batch_size = self.batch_size,
+            data = self.valid_data,
+            batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
         )
@@ -104,9 +104,29 @@ class ModelFinetuningInstructionFlow:
         return (
             train_data, train_dataset, train_dataloader, 
             test_data, test_dataset, test_dataloader,
-            valid_data, valid_dataset, valid_dataloader,
+            self.valid_data, valid_dataset, valid_dataloader,
         )
-
+    
+    def _get_model_path(self, setting):
+        """
+        模型保存路径
+        """
+        # 模型保存路径
+        model_path = os.path.join(self.args.checkpoints, setting)
+        os.makedirs(model_path, exist_ok=True)
+        # 最优模型保存路径
+        best_model_path = f"{model_path}/checkpoint.pth"
+        
+        return best_model_path
+    
+    def _get_results_path(self, setting, training_iter):
+        """
+        结果保存路径
+        """
+        results_path = os.path.join(self.args.test_results, setting, str(training_iter))
+        os.makedirs(results_path, exist_ok=True)
+        
+        return results_path
     # ------------------------------
     # Finetuning LLM on instruction data
     # ------------------------------
@@ -119,14 +139,14 @@ class ModelFinetuningInstructionFlow:
         # calculate loss
         with torch.no_grad():
             train_loss = calc_loss_loader(
-                self.task_name, 
+                self.args.task_name, 
                 train_loader, 
                 self.model, 
                 self.device, 
                 num_batches=eval_iter
             )
             val_loss = calc_loss_loader(
-                self.task_name, 
+                self.args.task_name, 
                 val_loader, 
                 self.model, 
                 self.device, 
@@ -137,14 +157,18 @@ class ModelFinetuningInstructionFlow:
 
         return train_loss, val_loss
 
-    def train(self, valid_data, eval_freq: int = 5, eval_iter: int = 5):
+    def train(self, training_iter, setting, eval_freq: int = 5, eval_iter: int = 5):
         """
         model training
         """
         # data loader
-        train_loader, valid_loader, test_loader = self._build_data()
+        (
+            train_data, train_dataset, train_loader, 
+            test_data, test_dataset, test_loader,
+            self.valid_data, valid_dataset, valid_loader,
+        ) = self._build_data()
         # model
-        self.model, self.base_config = load_pretrained_gpt2_model(
+        self.model = load_pretrained_gpt2_model(
             cfgs=self.args, 
             model_cls=Model, 
             model_source=self.args.pretrained_model_source
@@ -157,7 +181,10 @@ class ModelFinetuningInstructionFlow:
             self.args.learning_rate,
             self.args.weight_decay
         )
-
+        # checkpoint path
+        best_model_path = self._get_model_path(setting)
+        # test results path
+        results_path = self._get_results_path(setting, training_iter)
         # training start time
         training_start_time = time.time()
          
@@ -175,7 +202,13 @@ class ModelFinetuningInstructionFlow:
             for input_batch, target_batch in train_loader:
                 # Reset loss gradients from previous batch iteration
                 self.optimizer.zero_grad()
-                loss = calc_loss_batch(self.args.task_name, input_batch, target_batch, self.model, self.device)
+                loss = calc_loss_batch(
+                    self.args.task_name, 
+                    input_batch, 
+                    target_batch, 
+                    self.model, 
+                    self.device
+                )
                 # Calculate loss gradients
                 loss.backward()
                 # Update model weights using loss gradients
@@ -193,8 +226,14 @@ class ModelFinetuningInstructionFlow:
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
             # Print a sample text after each epoch
-            start_context = format_input_alpaca(valid_data[0])
-            generate(self.model, self.device, start_context)
+            start_context = format_input_alpaca(self.valid_data[0])
+            generate(
+                model = self.model,
+                token_idx = text_to_token_ids(start_context).to(self.device),
+                max_new_tokens = 256,
+                context_size = self.args.context_length,
+                eos_id = self.pad_token_id
+            )
         
         # training end time
         training_end_time = time.time()
@@ -203,8 +242,13 @@ class ModelFinetuningInstructionFlow:
         logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
 
         # plot losses
-        epochs_tensor = torch.linspace(0, self.args.train_epochs, len(train_losses))
-        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
+        plot_losses(
+            self.args.train_epochs, 
+            track_tokens_seen, 
+            train_losses, 
+            val_losses, 
+            results_path
+        )
 
     def _extract_save_responses(self, test_data):
         """
@@ -217,7 +261,7 @@ class ModelFinetuningInstructionFlow:
                 model = self.model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = 256,
-                context_size = self.base_config.context_length,
+                context_size = self.args.context_length,
                 eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
@@ -237,7 +281,7 @@ class ModelFinetuningInstructionFlow:
                 model = self.model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = 256,
-                context_size = self.base_config.context_length,
+                context_size = self.args.context_length,
                 eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)

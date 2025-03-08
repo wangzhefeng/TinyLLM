@@ -13,7 +13,7 @@ python -u run_gpt_preference_sft.py \
     --context_length 1024 \
     --dropout 0.0 \
     --qkv_bias 1 \
-    --pretrained_model 'gpt2-medium (355)' \
+    --pretrained_model 'gpt2-medium (355M)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
     --tokenizer_model "gpt2" \
     --finetuned_model_path ./saved_results/finetuning_pretrained_models/gpt2-medium355M-sft.pth \
