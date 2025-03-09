@@ -18,6 +18,7 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+import re
 import json
 import time
 import warnings
@@ -58,9 +59,9 @@ class ModelFinetuningInstructionFlow:
         # device
         self.device = device
         # tokenizer
-        tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
         # pad token
-        self.pad_token_id = tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
+        self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
     def _build_data(self):
         """
@@ -74,6 +75,9 @@ class ModelFinetuningInstructionFlow:
             data = train_data,
             device = self.device,
             tokenizer = self.tokenizer,
+            pad_token_id = self.pad_token_id,
+            ignore_index = -100,
+            allowed_max_length = 1024,
             batch_size = self.args.batch_size,
             shuffle = True,
             drop_last = True,
@@ -83,6 +87,9 @@ class ModelFinetuningInstructionFlow:
             data = test_data,
             device = self.device,
             tokenizer = self.tokenizer,
+            pad_token_id = self.pad_token_id,
+            ignore_index = -100,
+            allowed_max_length = 1024,
             batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
@@ -92,14 +99,17 @@ class ModelFinetuningInstructionFlow:
             data = valid_data,
             device = self.device,
             tokenizer = self.tokenizer,
+            pad_token_id = self.pad_token_id,
+            ignore_index = -100,
+            allowed_max_length = 1024,
             batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
             num_workers = self.args.num_workers
         )
-        logger.info(f"Training batches: {len(train_dataloader)}")
-        logger.info(f"Test batches: {len(test_dataloader)}")
-        logger.info(f"Validation batches: {len(valid_dataloader)}")
+        logger.info(f"Training data length: {len(train_data)} Training batches: {len(train_dataloader)}")
+        logger.info(f"Test data length: {len(test_data)} Test batches: {len(test_dataloader)}")
+        logger.info(f"Valid data length: {len(valid_data)} Validation batches: {len(valid_dataloader)}")
 
         return (
             train_data, train_dataset, train_dataloader, 
@@ -112,12 +122,15 @@ class ModelFinetuningInstructionFlow:
         模型保存路径
         """
         # 模型保存路径
-        model_path = os.path.join(self.args.checkpoints, setting, str(training_iter))
-        os.makedirs(model_path, exist_ok=True)
+        model_dir = os.path.join(self.args.finetuned_model_path, setting, str(training_iter))
+        os.makedirs(model_dir, exist_ok=True)
         # 最优模型保存路径
-        best_model_path = f"{model_path}/checkpoint.pth"
-        
-        return best_model_path
+        self.model_path = os.path.join(
+            model_dir, 
+            f"{re.sub(r'[ ()]', '', self.args.pretrained_model) }-sft.pth"
+        )
+        # best_model_path = f"{self.model_dir}/checkpoint.pth"
+        # return best_model_path
     
     def _get_results_path(self, setting, training_iter):
         """
@@ -127,6 +140,22 @@ class ModelFinetuningInstructionFlow:
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
+    
+    def _save_model(self, model):
+        """
+        Save model
+        """
+        torch.save(model.state_dict(), self.model_path)
+        logger.info(f"Model saved to {self.model_path}")
+
+    def _load_model(self, model):
+        """
+        Load model
+        """
+        model.load_state_dict(torch.load(self.model_path, map_location=device, weights_only=True))
+        logger.info(f"Model loaded from {self.model_path}")
+        
+        return model
 
     def valid(self, train_loader, val_loader, eval_iter: int):
         """
@@ -183,13 +212,13 @@ class ModelFinetuningInstructionFlow:
         )
 
         # checkpoint path
-        best_model_path = self._get_model_path(setting)
+        self._get_model_path(setting, training_iter)
         # test results path
         results_path = self._get_results_path(setting, training_iter)
 
         # training start time
         training_start_time = time.time()
-         
+        
         # model training
         # Initialize lists to track losses and tokens seen
         train_losses, val_losses = [], []
@@ -224,45 +253,75 @@ class ModelFinetuningInstructionFlow:
                     train_losses.append(train_loss)
                     val_losses.append(val_loss)
                     track_tokens_seen.append(tokens_seen)
-                    logger.info(f"Ep {epoch+1} (Step {global_step:06d}): "
-                        f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                    logger.info(f"Epoch {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
-            # Print a sample text after each epoch
-            start_context = instruction_format.format_input_alpaca(valid_data[0])
-            generate(
+            # TODO Print a sample text after each epoch
+            start_context = valid_data[0]
+            formated_start_context = instruction_format.format_input_alpaca(start_context)
+            token_ids = generate(
                 model = self.model,
-                token_idx = text_to_token_ids(start_context).to(self.device),
-                max_new_tokens = 256,
+                token_idx = text_to_token_ids(formated_start_context).to(self.device),
+                max_new_tokens = self.args.max_new_tokens,
                 context_size = self.args.context_length,
                 eos_id = self.pad_token_id
             )
+            generated_text = token_ids_to_text(token_ids)
+            response_text = (
+                generated_text[len(formated_start_context):]
+                .replace("### Response:", "")
+                .strip()
+            )
+            logger.info(f"Epoch {epoch+1}: start_context: \n{formated_start_context}") 
+            logger.info(f"Epoch {epoch+1}: response_text: \n{response_text}") 
         
         # training end time
         training_end_time = time.time()
         # training time
         execution_time_minutes = (training_end_time - training_start_time) / 60
         logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
-
+        
         # plot losses
         plot_losses(
-            self.args.train_epochs, 
-            track_tokens_seen, 
-            train_losses, 
-            val_losses, 
-            results_path
+            self.args.train_epochs, track_tokens_seen, 
+            train_losses, val_losses, results_path
         )
+        
+        # model save
+        self._save_model(self.model)
+        
+        # parpare eval data
+        if self.args.is_eval:
+            self.eval_data_papare(test_data)
 
-    def _extract_save_responses(self, test_data):
+    def test(self, test_entry_num: int = 3, training_iter = None, setting = None):
         """
         Extracting and saving responses
-        """
-        torch.manual_seed(123)
-        for entry in test_data[:3]:
+        """ 
+        # load data
+        (
+            train_data, train_dataset, train_loader, 
+            test_data, test_dataset, test_loader,
+            valid_data, valid_dataset, valid_loader,
+        ) = self._build_data()
+        
+        # TODO load model
+        self._get_model_path(setting, training_iter)
+        model = model_with_gpt2_weights(
+            cfgs = self.args, 
+            model_cls = Model, 
+            model_source = self.args.pretrained_model_source
+        )
+        model = self._load_model(model)
+        model.to(self.device)
+        
+        # inference
+        torch.manual_seed(self.args.seed)
+        for entry in test_data[:test_entry_num]:
             input_text = instruction_format.format_input_alpaca(entry)
             token_ids = generate(
-                model = self.model,
+                model = model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
-                max_new_tokens = 256,
+                max_new_tokens = self.args.max_new_tokens,
                 context_size = self.args.context_length,
                 eos_id = self.pad_token_id
             )
@@ -272,35 +331,78 @@ class ModelFinetuningInstructionFlow:
                 .replace("### Response:", "")
                 .strip()
             )
-            logger.info(input_text)
+            logger.info("-------------------------------------")
+            logger.info(f"input_text:\n{input_text}")
             logger.info(f"\nCorrect response:\n>> {entry['output']}")
             logger.info(f"\nModel response:\n>> {response_text.strip()}")
-            logger.info("-------------------------------------")
 
-        for i, entry in tqdm(enumerate(test_data), total=len(test_data)):
+    def eval_data_papare(self, eval_data):
+        """
+        build instruction data with response
+        """
+        # TODO load model
+        # model = self._load_model()
+        model = model_with_gpt2_weights(
+            cfgs = self.args, 
+            model_cls = Model, 
+            model_source = self.args.pretrained_model_source
+        )
+        model = self._load_model(model)
+        model.to(self.device)
+
+        # data process
+        for i, entry in tqdm(enumerate(eval_data), total = len(eval_data)):
             input_text = instruction_format.format_input_alpaca(entry)
             token_ids = generate(
-                model = self.model,
+                model = model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
-                max_new_tokens = 256,
+                max_new_tokens = self.args.max_new_tokens,
                 context_size = self.args.context_length,
                 eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
-            response_text = generated_text[len(input_text):].replace("### Response:", "").strip()
-            test_data[i]["model_response"] = response_text
+            response_text = (
+                generated_text[len(input_text):]
+                .replace("### Response:", "")
+                .strip()
+            )
+            eval_data[i]["model_response"] = response_text
+        # save test data
+        with open(self.args.eval_data_path, "w") as file:
+            json.dump(eval_data, file, indent = 4)
 
-    def _build_test_data(self, test_data):
-        """
-        build instruction data with response
-        """
-        result_path = "./saved_results/test_results/"
-        os.makedirs(result_path, exist_ok=True)
-        with open(os.path.join(result_path, "instruction-data-with-response.json"), "w") as file:
-            json.dump(test_data, file, indent=4)
+    # TODO
+    def inference(self, entry, training_iter = None,setting = None):
+        # TODO load model
+        # model = self._load_model()
+        self._get_model_path(setting, training_iter)
+        model = model_with_gpt2_weights(
+            cfgs = self.args, 
+            model_cls = Model, 
+            model_source = self.args.pretrained_model_source
+        )
+        model = self._load_model(model)
+        model.to(self.device)
 
-    def inference(self):
-        pass
+        # inference
+        input_text = instruction_format.format_input_alpaca(entry)
+        token_ids = generate(
+            model = model,
+            token_idx = text_to_token_ids(input_text).to(self.device),
+            max_new_tokens = self.args.max_new_tokens,
+            context_size = self.args.context_length,
+            eos_id = self.pad_token_id
+        )
+        generated_text = token_ids_to_text(token_ids)
+        response_text = (
+            generated_text[len(input_text):]
+            .replace("### Response:", "")
+            .strip()
+        )
+        logger.info("-------------------------------------")
+        logger.info(f"input_text:\n{input_text}")
+        logger.info(f"\nCorrect response:\n>> {entry['output']}")
+        logger.info(f"\nModel response:\n>> {response_text.strip()}")
 
 
 

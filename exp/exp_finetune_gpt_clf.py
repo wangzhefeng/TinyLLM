@@ -234,7 +234,7 @@ class ModelFinetuningClassifier:
             train_accs.append(train_accuracy)
             valid_accs.append(val_accuracy)
         
-        # training end time
+        # training end time and training time
         training_end_time = time.time()
         execution_time_minutes = (training_end_time - training_start_time) / 60
         logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")

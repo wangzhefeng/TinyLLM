@@ -4,7 +4,7 @@ export CUDA_VISIBLE_DEVICES="0"
 python -u ./model_finetuning/run_gpt_clf_sft.py \
     --task_name tiny_gpt_classification_sft \
     --model_name gpt_finetune_clf \
-    --is_training 1 \
+    --is_train 1 \
     --is_inference 1 \
     --data_source ./dataset/finetune/sms_spam_collection \
     --context_length 1024 \

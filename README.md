@@ -18,3 +18,23 @@
 ### Agent
 
 * [mannaandpoem/OpenManus](https://github.com/mannaandpoem/OpenManus)
+
+### Model Evaluation
+
+#### Instruction Follow Finetune
+
+* [Short-answer and multiple choice benchmarks: MMLU](https://arxiv.org/abs/2009.03300)
+* [Human perference comparison to other LLMs: LMSYS chatbot arena](https://arena.lmsys.org)
+* [Automated conversational benchmarks: AlpacaEval](https://tatsu-lab.github.io/alpaca_eval/)
+
+## Usage
+
+### Pretraining
+
+
+
+### Finetuning
+
+
+### Agent
+

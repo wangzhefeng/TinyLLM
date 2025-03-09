@@ -42,8 +42,12 @@ def args_parse():
                         help="task name")
     parser.add_argument("--model_name", type=str, required=True, default="gpt_finetune_instruction",
                         help="model name")
-    parser.add_argument("--is_training", type=int, required=True, default=1,
-                        help="training flag")
+    parser.add_argument("--is_train", type=int, required=True, default=1,
+                        help="train flag")
+    parser.add_argument("--is_test", type=int, required=True, default=0,
+                        help="test flag")
+    parser.add_argument("--is_eval", type=int, required=True, default=0,
+                        help="eval flag")
     parser.add_argument("--is_inference", type=int, required=True, default=0,
                         help="inference flag")
     # data params
@@ -86,6 +90,8 @@ def args_parse():
                         help="number of iterations")
     parser.add_argument("--train_epochs", type=int, required=True, default=10, 
                         help="number of training epochs")
+    parser.add_argument("--max_new_tokens", type=int, required=True, default=256,
+                        help="max new tokens")
     parser.add_argument("--batch_size", type=int, required=True, default=8, 
                         help="batch size") 
     parser.add_argument("--learning_rate", type=float, required=True, default=5e-5, 
@@ -105,6 +111,8 @@ def args_parse():
                         help="checkpoints path")
     parser.add_argument("--test_results", type=str, default="./saved_results/test_results",
                         help="test results path")
+    parser.add_argument("--eval_data_path", type=str, default="./dataset/finetune/instruction-data-with-response.json",
+                        help="eval data path")
     parser.add_argument("--use_amp", type=int, default=1,
                         help="Use amp")
     # model pretrain device params
@@ -151,58 +159,42 @@ def run(args):
         Exp = ModelFinetuningInstructionFlow
     else:
         Exp = ModelFinetuningInstructionFlow
+    
+    # setting record of experiments
+    setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1][:-6]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
     # ------------------------------
     # 模型训练
     # ------------------------------
-    if args.is_training:
-        for itr in range(args.iters):
-            logger.info(f"{50 * '='}")
-            logger.info(f"training iter: {itr}")
-            logger.info(f"{50 * '='}")
+    for itr in range(args.iters):
+        logger.info(f"{50 * '='}")
+        logger.info(f"training iter: {itr}")
+        logger.info(f"{50 * '='}")
 
-            # setting record of experiments
-            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1][:-6]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
-
-            logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            # set experiments
-            exp = Exp(args)
-
-            # model training
-            exp.train(training_iter = itr, setting = setting, eval_freq=5, eval_iter=5)
-
-            # model testing
-            # logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-            # exp.test(setting)
-
-            # empty cache
-            torch.cuda.empty_cache()
-    
-    """
-    # ------------------------------
-    # 模型测试
-    # ------------------------------
-    if args.is_testing:
-        ii = 0
-        # setting record of experiments
-        setting = f"{args.task_name}_{args.model_id}_{args.model}_{args.data}_ft{args.features} \
-                    _sl{args.seq_len}_ll{args.label_len}_pl{args.pred_len}_dm{args.d_model} \
-                    _nh{args.n_heads}_el{args.e_layers}_dl{args.d_layers}_df{args.d_ff}_expand{args.expand}_dc{args.d_conv} \
-                    _fc{args.factor}_eb{args.embed}_dt{args.distil}_{args.des}_{ii}"
         # set experiments
         exp = Exp(args)
-        logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-        exp.test(setting, test = 1)
+
+        # model training
+        if args.is_train:
+            logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>") 
+            exp.train(training_iter = itr, setting = setting, eval_freq=5, eval_iter=5)
+
+        # model testing
+        if args.is_test:
+            logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+            exp.test(test_entry_num = 3, training_iter=itr, setting = setting)
+
+        # model inference
+        if args.is_inference:
+            logger.info(f">>>>>>>inference : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+            entry = {
+                "instruction": "Evaluate the following phrase by transforming it into the spelling given.",
+                "input": "freind --> friend",
+                "output": "The spelling of the given phrase \"freind\" is incorrect, the correct spelling is \"friend\"."
+            }
+            exp.inference(entry = entry, training_iter=itr, setting = setting)
+        
+        # empty cache
         torch.cuda.empty_cache()
-    
-    # ------------------------------
-    # 模型推理预测
-    # ------------------------------
-    if args.is_inference:
-        logger.info(f">>>>>>>predicting : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-        prediction = exp.predict(setting, True)
-        torch.cuda.empty_cache()
-        logger.info(prediction.shape)
-    """
 
 
 

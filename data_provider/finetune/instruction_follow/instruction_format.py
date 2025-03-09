@@ -25,6 +25,8 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 def format_input_alpaca(entry):
     """
     format the input to the LLM use Alpaca-style prompt formatting
+    
+    Alpaca: https://crfm.stanford.edu/2023/03/13/alpaca.html
     """
     instruction_text = (
         f"Below is an instruction that describes a task. "
@@ -39,6 +41,9 @@ def format_input_alpaca(entry):
 
 # TODO
 def format_input_phi3(entry):
+    """
+    Phi-3 paper:https://arxiv.org/abs/2404.14219
+    """
     instruction_text = f"<|user|>\n{entry['instruction']}"
     input_text = f": '{entry['input']}'"
     # response_text = f"<|assistant|>\n{entry["output"]}"

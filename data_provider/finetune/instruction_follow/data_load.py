@@ -56,9 +56,10 @@ def main():
 
     # data download 
     download_data(data_url = data_url, data_path = data_path)
+    
     # data load
     data = load_data(data_path = data_path)
-    logger.info(f"Number of entries: {len(data)}")
+    logger.info(f"Number of entries of instruction data: {len(data)}")
     logger.info(f"Example entry: \n{data[50]}")
     logger.info(f"Example entry: \n{data[999]}")
 

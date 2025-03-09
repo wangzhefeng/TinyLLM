@@ -35,15 +35,16 @@ class InstructionDataset(Dataset):
     def __init__(self, data, tokenizer):
         # load data
         self.data = data
-        logger.info(f"Number of entries of instruction data: {len(self.data)}")
         # pre-tokenize texts
         self.encoded_texts = []
         for entry in self.data:
             # format input into instruction-response template
-            full_text = instruction_format.format_input_alpaca(entry)
+            instruction_plus_input = instruction_format.format_input_alpaca(entry)
+            response_text = f"\n\n### Response: \n{entry['output']}"
+            full_text = instruction_plus_input + response_text
             # convert instruction-response entry into token IDs
             token_ids = tokenizer.encode(full_text)
-            
+            # collect token IDs
             self.encoded_texts.append(token_ids)
     
     def __getitem__(self, index):
@@ -53,11 +54,11 @@ class InstructionDataset(Dataset):
         return len(self.data)
 
 
-def collate_fn_raw(batch, 
-                   pad_token_id=50256, 
-                   ignore_index=-100, 
-                   allowed_max_length=None, 
-                   device="cuda"):
+def custom_collate_fn(batch, 
+                      pad_token_id = 50256, 
+                      ignore_index = -100, 
+                      allowed_max_length = None, 
+                      device = "cpu"):
     # Find the longest sequence in the batch
     batch_max_length = max(len(item) + 1 for item in batch)
     
@@ -65,31 +66,44 @@ def collate_fn_raw(batch,
     inputs_lst, targets_lst = [], []
     for item in batch:
         # item
-        new_item = item.copy() 
+        new_item = item.copy()
         # Add an <|endoftext|> token
         new_item += [pad_token_id]
         # Pad sequences to max_length
         padded = new_item + [pad_token_id] * (batch_max_length - len(new_item))
+        
         # inputs and targets
         inputs = torch.tensor(padded[:-1])  # Truncate the last token for inputs
         targets = torch.tensor(padded[1:])  # Shift +1 to the right for targets
+        
         # Replace all but the first padding tokens in targets by ignore_index
         mask = targets == pad_token_id
         indices = torch.nonzero(mask).squeeze()
         if indices.numel() > 1:
             targets[indices[1:]] = ignore_index
+        
         # Optionally truncate to maximum sequence length
         if allowed_max_length is not None:
             inputs = inputs[:allowed_max_length]
             targets = targets[:allowed_max_length]
+        
         # collect inputs_lst, target_lst
         inputs_lst.append(inputs)
         targets_lst.append(targets)
+    
     # Convert list of inputs and targets to tensors and transfer to target device
     inputs_tensor = torch.stack(inputs_lst).to(device)
     targets_tensor = torch.stack(targets_lst).to(device)
 
     return inputs_tensor, targets_tensor
+
+
+def custom_collate_fn_mask_out_instruction(batch, 
+                                           pad_token_id = 50256, 
+                                           ignore_index = -100, 
+                                           allowed_max_length = None, 
+                                           device = "cpu"):
+    pass
 
 
 def load_split_data(data_path: str):
@@ -98,6 +112,7 @@ def load_split_data(data_path: str):
     """
     # data
     data = data_load.load_data(data_path = data_path)
+    # logger.info(f"data type: {type(data)}")
     # data split ratio
     train_ratio = 0.85
     test_ratio = 0.10
@@ -108,9 +123,6 @@ def load_split_data(data_path: str):
     train_data = data[:train_portion]
     test_data = data[train_portion:(train_portion+test_portion)]
     valid_data = data[(train_portion+test_portion):]
-    logger.info(f"Training data: \n{train_data[0]} \nTraining data length: {len(train_data)}")
-    logger.info(f"Test data: \n{test_data[0]} \nTest data length: {len(test_data)}")
-    logger.info(f"Valid data: \n{valid_data[0]} \nValidation data length: {len(valid_data)}")
     
     return train_data, test_data, valid_data
 
@@ -118,14 +130,23 @@ def load_split_data(data_path: str):
 def create_dataloader(data, 
                       device, 
                       tokenizer, 
+                      pad_token_id = 50256,
+                      ignore_index = -100,
+                      allowed_max_length = 1024,
                       batch_size = 8, 
                       shuffle = True, 
                       drop_last = True, 
                       num_workers = 0):
     # collate function
-    collate_fn = partial(collate_fn_raw, device = device, allowed_max_length = 1024)
+    collate_fn = partial(
+        custom_collate_fn, 
+        pad_token_id = pad_token_id, 
+        ignore_index = ignore_index,
+        allowed_max_length = allowed_max_length, 
+        device = device
+    )
     # data set
-    dataset = InstructionDataset(data = data, tokenizer=tokenizer)
+    dataset = InstructionDataset(data = data, tokenizer = tokenizer)
     # data loader
     dataloader = DataLoader(
         dataset = dataset,
@@ -178,6 +199,9 @@ def main():
         data = train_data,
         device = device,
         tokenizer = tokenizer,
+        pad_token_id = 50256,
+        ignore_index = -100,
+        allowed_max_length = 1024,
         batch_size = 8,
         shuffle = True,
         drop_last = True,
@@ -187,6 +211,9 @@ def main():
         data = test_data,
         device = device,
         tokenizer = tokenizer,
+        pad_token_id = 50256,
+        ignore_index = -100,
+        allowed_max_length = 1024,
         batch_size = 8,
         shuffle = False,
         drop_last = False,
@@ -196,18 +223,24 @@ def main():
         data = valid_data,
         device = device,
         tokenizer = tokenizer,
+        pad_token_id = 50256,
+        ignore_index = -100,
+        allowed_max_length = 1024,
         batch_size = 8,
         shuffle = False,
         drop_last = False,
         num_workers = 0,
     )
+    logger.info(f"Training data length: {len(train_data)} Training batches: {len(train_dataloader)}")
+    logger.info(f"Test data length: {len(test_data)} Test batches: {len(test_dataloader)}")
+    logger.info(f"Valid data length: {len(valid_data)} Validation batches: {len(valid_dataloader)}")
 
     # test
     logger.info(f"Train loader:")
-    for inputs, targets in train_dataloader:
-        # logger.info(f"inputs: \n{inputs[7]}")
-        # logger.info(f"targets: \n{targets[7]}")
-        logger.info(f"inputs.shap: {inputs.shape}, targets.shape: {targets.shape}")
+    for batch, (inputs, targets) in enumerate(train_dataloader):
+        # logger.info(f"batch: {batch} inputs: \n{inputs[7]}")
+        # logger.info(f"batch: {batch} targets: \n{targets[7]}")
+        logger.info(f"batch: {batch} inputs.shape: {inputs.shape}, targets.shape: {targets.shape}")
 
 if __name__ == "__main__":
     main()

@@ -40,7 +40,7 @@ def args_parse():
     # task params
     parser.add_argument("--task_name", type=str, required=True, default="tiny_gpt_pretrain",
                         help="task name")
-    parser.add_argument("--is_training", type=int, required=True, default=1,
+    parser.add_argument("--is_train", type=int, required=True, default=1,
                         help="training flag")
     parser.add_argument("--is_inference", type=int, required=True, default=0,
                         help="inference flag")
@@ -140,7 +140,7 @@ def run(args):
     # ------------------------------
     # 模型训练
     # ------------------------------
-    if args.is_training:
+    if args.is_train:
         for itr in range(args.iters):
             logger.info(f"{50 * '='}")
             logger.info(f"training iter: {itr}")

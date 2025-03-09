@@ -145,18 +145,6 @@ def generate(
     ):
     """
     get logits, and only focus on last time step
-
-    Args:
-        model (_type_): _description_
-        token_idx (torch.tensor): _description_
-        max_new_tokens (int): _description_
-        context_size (int): _description_
-        temperature (float, optional): _description_. Defaults to 0.0.
-        top_k (float, optional): _description_. Defaults to None.
-        eos_id (int, optional): _description_. Defaults to None.
-
-    Returns:
-        _type_: _description_
     """
     for i in range(max_new_tokens):
         # logger.info(f"generate text step: {i}")

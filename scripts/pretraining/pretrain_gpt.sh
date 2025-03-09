@@ -3,7 +3,7 @@ export CUDA_VISIBLE_DEVICES=0
 
 python -u ./model_pretraining/run_gpt_pretrain.py \
     --task_name tiny_gpt_pretrain \
-    --is_training 1 \
+    --is_train 1 \
     --is_inference 0 \
     --data_source https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt \
     --context_length 256 \

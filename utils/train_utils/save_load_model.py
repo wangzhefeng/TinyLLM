@@ -46,7 +46,7 @@ def load_model_weights(args, model_path: str, device: str):
     model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.eval();
 
-
+'''
 def save_model(model, finetuned_model_path: str, choose_model: str):
     """
     Save model
@@ -59,7 +59,7 @@ def save_model(model, finetuned_model_path: str, choose_model: str):
     logger.info(f"Model saved to {file_name}")
 
 
-def load_model(model, finetuned_model_path: str, choose_model: str):
+def load_model(model, finetuned_model_path: str, choose_model: str, device):
     """
     Load model
     """
@@ -67,9 +67,9 @@ def load_model(model, finetuned_model_path: str, choose_model: str):
         finetuned_model_path, 
         f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth"
     )
-    model.load_state_dict(torch.load(file_name))
+    model.load_state_dict(torch.load(file_name, map_location=device, weights_only=True))
     logger.info(f"Model loaded from {file_name}")
-
+'''
 
 def save_model_optim_weights(model, optimizer, model_path: str):
     """
