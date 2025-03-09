@@ -26,21 +26,20 @@ from tqdm import tqdm
 import torch
 
 # data
-from data_provider.finetune.instruction_follow.data_load import load_file
-from data_provider.finetune.instruction_follow.data_loader import create_dataloader
-from data_provider.finetune.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_follow import data_loader
+from data_provider.finetune.instruction_follow import instruction_format
 # tokenizer
 from tokenizer.tokenization import choose_tokenizer
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
-from model_train.gpt_generate import generate
+from utils.train_utils.gpt_generate import generate
 # other model
 from model_load.load_pretrained_weights import model_with_gpt2_weights
 # model training
-from model_train.calc_loss import calc_loss_batch, calc_loss_loader
-from model_train.train_funcs import select_optimizer
-from model_train.plot_losses import plot_losses
+from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.train_utils.train_funcs import select_optimizer
+from utils.train_utils.plot_losses import plot_losses
 # tools
 from utils.device import device
 from utils.log_util import logger
@@ -56,6 +55,7 @@ class ModelFinetuningInstructionFlow:
     def __init__(self, args):
         super(ModelFinetuningInstructionFlow, self).__init__()
         self.args = args
+        # device
         self.device = device
         # tokenizer
         tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
@@ -66,55 +66,53 @@ class ModelFinetuningInstructionFlow:
         """
         create dataset and dataloader
         """
-        # data
-        data = load_file(file_path = self.args.data_source)
-        logger.info(f"Number of entries: {len(data)}")
-        # data split ratio
-        train_portion = int(len(data) * self.args.train_ratio)
-        test_portion = int(len(data) * self.args.test_ratio)
-        valid_portion = len(data) - train_portion - test_portion
-        # data split
-        train_data = data[:train_portion]
-        test_data = data[train_portion:(train_portion + test_portion)]
-        self.valid_data = data[(train_portion + test_portion):]
-        # logger.info(f"train_data: \n{train_data[0]}")
-        # logger.info(f"test_data: \n{test_data[0]}")
-        # logger.info(f"valid_data: \n{valid_data[0]}")
-        logger.info(f"Training data length: {len(train_data)}")
-        logger.info(f"Test data length: {len(test_data)}")
-        logger.info(f"Validation data length: {len(self.valid_data)}")
+        # data load and split
+        train_data, test_data, valid_data = data_loader.load_split_data(self.args.data_source)
         # dataset and dataloader
-        train_dataset, train_dataloader = create_dataloader(
+        torch.manual_seed(self.args.seed)
+        train_dataset, train_dataloader = data_loader.create_dataloader(
             data = train_data,
+            device = self.device,
+            tokenizer = self.tokenizer,
             batch_size = self.args.batch_size,
             shuffle = True,
             drop_last = True,
+            num_workers = self.args.num_workers
         )
-        test_dataset, test_dataloader = create_dataloader(
+        test_dataset, test_dataloader = data_loader.create_dataloader(
             data = test_data,
+            device = self.device,
+            tokenizer = self.tokenizer,
             batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
+            num_workers = self.args.num_workers
         )
-        valid_dataset, valid_dataloader = create_dataloader(
-            data = self.valid_data,
+        valid_dataset, valid_dataloader = data_loader.create_dataloader(
+            data = valid_data,
+            device = self.device,
+            tokenizer = self.tokenizer,
             batch_size = self.args.batch_size,
             shuffle = False,
             drop_last = False,
+            num_workers = self.args.num_workers
         )
+        logger.info(f"Training batches: {len(train_dataloader)}")
+        logger.info(f"Test batches: {len(test_dataloader)}")
+        logger.info(f"Validation batches: {len(valid_dataloader)}")
 
         return (
             train_data, train_dataset, train_dataloader, 
             test_data, test_dataset, test_dataloader,
-            self.valid_data, valid_dataset, valid_dataloader,
+            valid_data, valid_dataset, valid_dataloader,
         )
     
-    def _get_model_path(self, setting):
+    def _get_model_path(self, setting, training_iter: int = None):
         """
         模型保存路径
         """
         # 模型保存路径
-        model_path = os.path.join(self.args.checkpoints, setting)
+        model_path = os.path.join(self.args.checkpoints, setting, str(training_iter))
         os.makedirs(model_path, exist_ok=True)
         # 最优模型保存路径
         best_model_path = f"{model_path}/checkpoint.pth"
@@ -129,10 +127,8 @@ class ModelFinetuningInstructionFlow:
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
-    # ------------------------------
-    # Finetuning LLM on instruction data
-    # ------------------------------
-    def valid(self, train_loader, val_loader, eval_iter):
+
+    def valid(self, train_loader, val_loader, eval_iter: int):
         """
         model evaluate
         """
@@ -167,17 +163,18 @@ class ModelFinetuningInstructionFlow:
         (
             train_data, train_dataset, train_loader, 
             test_data, test_dataset, test_loader,
-            self.valid_data, valid_dataset, valid_loader,
+            valid_data, valid_dataset, valid_loader,
         ) = self._build_data()
 
         # model
         self.model = model_with_gpt2_weights(
-            cfgs=self.args, 
-            model_cls=Model, 
-            model_source=self.args.pretrained_model_source
+            cfgs = self.args, 
+            model_cls = Model, 
+            model_source = self.args.pretrained_model_source
         )
         # move model to device
         self.model.to(self.device)
+        
         # optimizer
         self.optimizer = select_optimizer(
             self.model,
@@ -231,7 +228,7 @@ class ModelFinetuningInstructionFlow:
                         f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
             # Print a sample text after each epoch
-            start_context = format_input_alpaca(self.valid_data[0])
+            start_context = instruction_format.format_input_alpaca(valid_data[0])
             generate(
                 model = self.model,
                 token_idx = text_to_token_ids(start_context).to(self.device),
@@ -261,7 +258,7 @@ class ModelFinetuningInstructionFlow:
         """
         torch.manual_seed(123)
         for entry in test_data[:3]:
-            input_text = format_input_alpaca(entry)
+            input_text = instruction_format.format_input_alpaca(entry)
             token_ids = generate(
                 model = self.model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
@@ -281,7 +278,7 @@ class ModelFinetuningInstructionFlow:
             logger.info("-------------------------------------")
 
         for i, entry in tqdm(enumerate(test_data), total=len(test_data)):
-            input_text = format_input_alpaca(entry)
+            input_text = instruction_format.format_input_alpaca(entry)
             token_ids = generate(
                 model = self.model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
@@ -301,6 +298,9 @@ class ModelFinetuningInstructionFlow:
         os.makedirs(result_path, exist_ok=True)
         with open(os.path.join(result_path, "instruction-data-with-response.json"), "w") as file:
             json.dump(test_data, file, indent=4)
+
+    def inference(self):
+        pass
 
 
 

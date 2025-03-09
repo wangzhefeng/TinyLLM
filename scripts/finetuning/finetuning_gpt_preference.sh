@@ -1,7 +1,7 @@
 export CUDA_VISIBLE_DEVICES="0"
 
 
-python -u run_gpt_preference_sft.py \
+python -u ./model_finetuning/run_gpt_preference_sft.py \
     --task_name tiny_gpt_instruction_sft \
     --is_training 1 \
     --is_inference 0 \

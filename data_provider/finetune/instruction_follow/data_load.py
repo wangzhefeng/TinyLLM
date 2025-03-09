@@ -26,26 +26,23 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def download_file(file_path, url):
+def download_data(data_url, data_path):
     """
     数据下载
     """
-    if not os.path.exists(file_path):
-        with urllib.request.urlopen(url) as response:
+    # data download
+    if not os.path.exists(data_path):
+        with urllib.request.urlopen(data_url) as response:
             text_data = response.read().decode("utf-8")
-        with open(file_path, "w", encoding = "utf-8") as file:
-            file.write(text_data)
-    # with open(file_path, "r", encoding = "utf-8") as file:
-        # data = json.load(file)
-    
-    # return data
+        with open(data_path, "w", encoding = "utf-8") as file:
+            file.write(text_data) 
 
 
-def load_file(file_path):
+def load_data(data_path):
     """
     数据加载
     """
-    with open(file_path, "r", encoding = "utf-8") as file:
+    with open(data_path, "r", encoding = "utf-8") as file:
         data = json.load(file)
     
     return data
@@ -54,16 +51,13 @@ def load_file(file_path):
 
 
 # 测试代码 main 函数
-def main():
-    data_path = "./dataset/finetune/"
-    os.makedirs(data_path, exist_ok=True)
-    file_path = os.path.join(data_path, "instruction-data.json")
-    url = (
-        "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch"
-        "/main/ch07/01_main-chapter-code/instruction-data.json"
-    )
-    download_file(file_path, url)
-    data = load_file(file_path)
+def main(): 
+    from data_provider.finetune.instruction_follow.data_config import data_url, data_path
+
+    # data download 
+    download_data(data_url = data_url, data_path = data_path)
+    # data load
+    data = load_data(data_path = data_path)
     logger.info(f"Number of entries: {len(data)}")
     logger.info(f"Example entry: \n{data[50]}")
     logger.info(f"Example entry: \n{data[999]}")

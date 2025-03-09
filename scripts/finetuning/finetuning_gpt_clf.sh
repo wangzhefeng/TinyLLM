@@ -1,7 +1,7 @@
 export CUDA_VISIBLE_DEVICES="0"
 
 
-python -u run_gpt_clf_sft.py \
+python -u ./model_finetuning/run_gpt_clf_sft.py \
     --task_name tiny_gpt_classification_sft \
     --model_name gpt_finetune_clf \
     --is_training 1 \

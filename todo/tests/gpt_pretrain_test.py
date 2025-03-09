@@ -24,7 +24,7 @@ import torch.nn as nn
 from data_provider.pretrain.data_load import data_load
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models.gpt import Model
-from model_train.gpt_generate import generate_text_simple
+from utils.train_utils.gpt_generate import generate_text_simple
 from utils.device import device
 from utils.argsparser_tools import DotDict
 from utils.log_util import logger

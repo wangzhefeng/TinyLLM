@@ -36,8 +36,8 @@ from data_provider.pretrain.data_loader import create_dataloader
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from exp.exp_basic import Exp_Basic
-from model_train.gpt_generate import generate
-from model_train.train_funcs import adjust_learning_rate, EarlyStopping
+from utils.train_utils.gpt_generate import generate
+from utils.train_utils.train_funcs import adjust_learning_rate, EarlyStopping
 # utils
 from utils.log_util import logger
 

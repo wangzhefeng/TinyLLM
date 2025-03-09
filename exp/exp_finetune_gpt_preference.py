@@ -25,14 +25,14 @@ import torch.nn.functional as F
 # data
 from data_provider.finetune.dpo.data_load import load_instruction_data
 from data_provider.finetune.dpo.data_loader import create_dataloader
-from data_provider.finetune.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_follow.instruction_format import format_input_alpaca
 # model
 from models.gpt import Model
-from model_train.gpt_generate import generate
+from utils.train_utils.gpt_generate import generate
 # tokenzier
 from tokenizer.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
 from model_load.load_pretrained_weights import load_pretrained_model
-from model_train.train_funcs import select_optimizer
+from utils.train_utils.train_funcs import select_optimizer
 # utils
 from utils.log_util import logger
 

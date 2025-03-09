@@ -22,7 +22,7 @@ import psutil
 from tqdm import tqdm
 import urllib.request
 
-from finetuning.instruction_follow.data_load import load_file
+from data_provider.finetune.instruction_follow.data_load import load_data
 from utils.log_util import logger
 
 # global variable
@@ -112,7 +112,7 @@ def generate_model_scores(json_data, json_key, model="llama3"):
 # 测试代码 main 函数
 def main():
     # data
-    data = load_file(file_path = "./dataset/finetune/instruction-data.json")
+    data = load_data(file_path = "./dataset/finetune/instruction-data.json")
 
     # data split
     train_portion = int(len(data) * 0.85)

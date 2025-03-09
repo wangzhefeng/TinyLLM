@@ -19,13 +19,11 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 from functools import partial
 
-import tiktoken
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from data_provider.finetune.instruction_follow.data_load import load_file
-from data_provider.finetune.instruction_format import format_input_alpaca
-from utils.device import device
+from data_provider.finetune.instruction_follow import data_load
+from data_provider.finetune.instruction_follow import instruction_format
 from utils.log_util import logger
 
 # global variable
@@ -35,12 +33,14 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class InstructionDataset(Dataset):
     
     def __init__(self, data, tokenizer):
+        # load data
         self.data = data
+        logger.info(f"Number of entries of instruction data: {len(self.data)}")
         # pre-tokenize texts
         self.encoded_texts = []
-        for entry in data:
+        for entry in self.data:
             # format input into instruction-response template
-            full_text = format_input_alpaca(entry)
+            full_text = instruction_format.format_input_alpaca(entry)
             # convert instruction-response entry into token IDs
             token_ids = tokenizer.encode(full_text)
             
@@ -53,11 +53,11 @@ class InstructionDataset(Dataset):
         return len(self.data)
 
 
-def collate_fn(batch, 
-               pad_token_id=50256, 
-               ignore_index=-100, 
-               allowed_max_length=None, 
-               device="cuda"):
+def collate_fn_raw(batch, 
+                   pad_token_id=50256, 
+                   ignore_index=-100, 
+                   allowed_max_length=None, 
+                   device="cuda"):
     # Find the longest sequence in the batch
     batch_max_length = max(len(item) + 1 for item in batch)
     
@@ -91,12 +91,39 @@ def collate_fn(batch,
 
     return inputs_tensor, targets_tensor
 
-collate_fn = partial(collate_fn, device = device, allowed_max_length = 1024)
+
+def load_split_data(data_path: str):
+    """
+    data split
+    """
+    # data
+    data = data_load.load_data(data_path = data_path)
+    # data split ratio
+    train_ratio = 0.85
+    test_ratio = 0.10
+    train_portion = int(len(data) * train_ratio)
+    test_portion = int(len(data) * test_ratio)
+    valid_portion = len(data) - train_portion - test_portion
+    # data split
+    train_data = data[:train_portion]
+    test_data = data[train_portion:(train_portion+test_portion)]
+    valid_data = data[(train_portion+test_portion):]
+    logger.info(f"Training data: \n{train_data[0]} \nTraining data length: {len(train_data)}")
+    logger.info(f"Test data: \n{test_data[0]} \nTest data length: {len(test_data)}")
+    logger.info(f"Valid data: \n{valid_data[0]} \nValidation data length: {len(valid_data)}")
+    
+    return train_data, test_data, valid_data
 
 
-def create_dataloader(data, batch_size = 8, shuffle = True, drop_last = True, num_workers = 0):
-    # tokenizer
-    tokenizer = tiktoken.get_encoding("gpt2")
+def create_dataloader(data, 
+                      device, 
+                      tokenizer, 
+                      batch_size = 8, 
+                      shuffle = True, 
+                      drop_last = True, 
+                      num_workers = 0):
+    # collate function
+    collate_fn = partial(collate_fn_raw, device = device, allowed_max_length = 1024)
     # data set
     dataset = InstructionDataset(data = data, tokenizer=tokenizer)
     # data loader
@@ -116,6 +143,10 @@ def create_dataloader(data, batch_size = 8, shuffle = True, drop_last = True, nu
 
 # 测试代码 main 函数
 def main():
+    """
+    # ------------------------------
+    # collate_fn test
+    # ------------------------------
     # batch
     inputs_1 = [0, 1, 2, 3, 4]
     inputs_2 = [5, 6]
@@ -124,31 +155,29 @@ def main():
     logger.info(f"batch: {batch}")
     
     # batch padding
+    collate_fn = partial(collate_fn, device = device, allowed_max_length = 1024)
     inputs, targets = collate_fn(batch)
     logger.info(f"inputs: \n{inputs}")
     logger.info(f"targets: \n{targets}")
-
-    # data
-    data = load_file(file_path = "./dataset/finetune/instruction-data.json")
-
-    # data split
-    train_portion = int(len(data) * 0.85)
-    test_portion = int(len(data) * 0.10)
-    valid_portion = len(data) - train_portion - test_portion
-    train_data = data[:train_portion]
-    test_data = data[train_portion:(train_portion+test_portion)]
-    valid_data = data[(train_portion+test_portion):]
-    logger.info(f"train_data: \n{train_data[0]}")
-    logger.info(f"test_data: \n{test_data[0]}")
-    logger.info(f"valid_data: \n{valid_data[0]}")
-    logger.info(f"Training data length: {len(train_data)}")
-    logger.info(f"Test data length: {len(test_data)}")
-    logger.info(f"Validation data length: {len(valid_data)}")
+    """
+    # ------------------------------
+    # data loader test
+    # ------------------------------
+    # data load and split
+    from data_provider.finetune.instruction_follow import data_config 
+    train_data, test_data, valid_data = load_split_data(data_config.data_path)
+    # device
+    from utils.device import device
+    # tokenizer
+    import tiktoken
+    tokenizer = tiktoken.get_encoding("gpt2") 
 
     # dataset and dataloader
     torch.manual_seed(123)
     train_dataset, train_dataloader = create_dataloader(
         data = train_data,
+        device = device,
+        tokenizer = tokenizer,
         batch_size = 8,
         shuffle = True,
         drop_last = True,
@@ -156,6 +185,8 @@ def main():
     )
     test_dataset, test_dataloader = create_dataloader(
         data = test_data,
+        device = device,
+        tokenizer = tokenizer,
         batch_size = 8,
         shuffle = False,
         drop_last = False,
@@ -163,6 +194,8 @@ def main():
     )
     valid_dataset, valid_dataloader = create_dataloader(
         data = valid_data,
+        device = device,
+        tokenizer = tokenizer,
         batch_size = 8,
         shuffle = False,
         drop_last = False,

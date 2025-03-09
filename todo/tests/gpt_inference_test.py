@@ -36,7 +36,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 def main():
     from models.gpt import Model
     from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
-    from model_train.gpt_generate import generate_text_simple, generate
+    from utils.train_utils.gpt_generate import generate_text_simple, generate
     from utils.argsparser_tools import DotDict
     from utils.device import device
     # ------------------------------

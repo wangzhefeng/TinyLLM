@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from model_train.train_funcs import select_criterion
+from utils.train_utils.train_funcs import select_criterion
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]

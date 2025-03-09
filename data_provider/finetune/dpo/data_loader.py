@@ -23,7 +23,7 @@ import tiktoken
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from data_provider.finetune.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_follow.instruction_format import format_input_alpaca
 from utils.device import device
 from utils.log_util import logger
 

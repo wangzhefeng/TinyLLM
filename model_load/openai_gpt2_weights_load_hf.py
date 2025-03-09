@@ -73,7 +73,7 @@ def main():
     from transformers import GPT2Model
 
     from models.gpt import Model
-    from model_train.gpt_generate import generate
+    from utils.train_utils.gpt_generate import generate
     from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device
     from utils.argsparser_tools import DotDict

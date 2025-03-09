@@ -27,15 +27,15 @@ import torch
 from data_provider.finetune.text_clf.data_loader import create_dataloader
 # model
 from models.gpt import Model
-from model_finetune.model_finetune_clf import finetune_model
+from model_finetuning.model_finetune_clf import finetune_model
 # other model
 from tokenizer.tokenization import choose_tokenizer
 from model_load.load_pretrained_weights import model_with_gpt2_weights
 # training
-from model_train.calc_loss import calc_loss_batch, calc_loss_loader
-from model_train.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
-from model_train.train_funcs import select_optimizer
-from model_train.plot_losses import plot_values_classifier
+from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.train_utils.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
+from utils.train_utils.train_funcs import select_optimizer
+from utils.train_utils.plot_losses import plot_values_classifier
 # utils
 from utils.device import device
 from utils.log_util import logger
@@ -122,9 +122,7 @@ class ModelFinetuningClassifier:
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
-    # ------------------------------
-    # finetuning the model on supervised data
-    # ------------------------------
+
     def _evaluate_model(self, train_loader, valid_loader, eval_iter: int):
         """
         evaluate model on train and valid_loader
