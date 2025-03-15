@@ -54,7 +54,6 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class ModelFinetuningInstructionFlow:
 
     def __init__(self, args):
-        super(ModelFinetuningInstructionFlow, self).__init__()
         self.args = args
         # device
         self.device = device

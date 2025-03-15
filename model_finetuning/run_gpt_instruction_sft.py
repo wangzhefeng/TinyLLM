@@ -52,7 +52,7 @@ def args_parse():
                         help="inference flag")
     # data params
     parser.add_argument("--data_source", type=str, required=True, 
-                        default="./dataset/finetune/instruction_data.json", 
+                        default="./dataset/finetune/instruction-data.json", 
                         help="data download url")
     parser.add_argument("--context_length", type=int, required=True, default=1024,
                         help="context length")

@@ -49,7 +49,6 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class ModelFinetuningClassifier:
 
     def __init__(self, args):
-        super(ModelFinetuningClassifier, self).__init__()
         self.args = args
         # device
         self.device = device

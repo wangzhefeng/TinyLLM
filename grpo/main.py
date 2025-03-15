@@ -67,6 +67,7 @@ model = get_peft_model(model, lora_config)
 logger.info(f"model trainable parameters: {model.print_trainable_parameters()}")
 
 
+'''
 # reward function
 def reward_len(completions, **kwargs):
     """
@@ -102,7 +103,6 @@ trainer = GRPOTrainer(
 # train model
 wandb.init(project = "GRPO")
 trainer.train()
-
 
 # push model to hub
 merged_model = trainer.model.merge_and_unload()
@@ -143,8 +143,7 @@ generate_kwargs = {
 }
 generated_text = generator(messages, generate_kwargs = generate_kwargs)
 logger.info(f"generated text: {generated_text}")
-
-
+'''
 
 
 

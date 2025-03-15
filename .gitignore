@@ -179,3 +179,4 @@ logs/
 downloaded_models/
 saved_results/
 minbpe/
+wandb/

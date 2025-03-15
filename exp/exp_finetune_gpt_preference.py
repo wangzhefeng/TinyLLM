@@ -43,7 +43,6 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class ModelFinetuningPreference:
 
     def __init__(self, args):
-        super(ModelFinetuningPreference, self).__init__()
         self.args = args
         # tokenizer
         self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
