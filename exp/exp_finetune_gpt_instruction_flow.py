@@ -28,7 +28,7 @@ import torch
 
 # data
 from data_provider.finetune.instruction_follow import data_loader
-from data_provider.finetune.instruction_follow import instruction_format
+from data_provider.finetune import instruction_format
 # tokenizer
 from tokenizer.tokenization import choose_tokenizer
 from tokenizer.tokenization import text_to_token_ids, token_ids_to_text

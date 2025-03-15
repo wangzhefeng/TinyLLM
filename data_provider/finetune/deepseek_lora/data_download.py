@@ -26,9 +26,10 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
 # data download
-ds = MsDataset.load('AI-ModelScope/medical-o1-reasoning-SFT', trust_remote_code = True)
-
-
+ds = MsDataset.load(
+    "AI-ModelScope/medical-o1-reasoning-SFT", 
+    trust_remote_code = True
+)
 
 
 

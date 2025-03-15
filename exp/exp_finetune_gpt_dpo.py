@@ -25,7 +25,7 @@ import torch.nn.functional as F
 # data
 from data_provider.finetune.dpo.data_load import load_instruction_data
 from data_provider.finetune.dpo.data_loader import create_dataloader
-from data_provider.finetune.instruction_follow.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_format import format_input_alpaca
 # model
 from models.gpt import Model
 from utils.train_utils.gpt_generate import generate

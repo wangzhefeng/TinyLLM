@@ -21,7 +21,7 @@ import json
 import random
 from tqdm import tqdm
 
-from data_provider.finetune.instruction_follow.instruction_format import format_input_alpaca
+from data_provider.finetune.instruction_format import format_input_alpaca
 from utils.inference_utils.ollama_api import query_model
 from utils.log_util import logger
 
@@ -34,7 +34,7 @@ def load_instruction_data(data_path: str):
     load instruction entries json data
     """
     # instruction entries json data
-    with open(data_path, "r") as file:
+    with open(data_path, "r", encoding="utf-8") as file:
         data = json.load(file)
 
     return data
@@ -62,7 +62,13 @@ def generate_model_response(json_data):
             "Keep the modification minimal."
             "Only return return the generated response and nothing else."
         )
-        response = query_model(prompt, model='llama3.1')
+        response = query_model(
+            prompt=prompt, 
+            model='llama3.1',
+            url='http://localhost:11434/api/chat',
+            seed=123,
+            num_ctx=2048
+        )
 
         if politeness == "polite":
             json_data[i]["chosen"] = response
@@ -86,24 +92,27 @@ def save_instruction_with_preference(json_data, save_path: str):
 
 # 测试代码 main 函数
 def main():
-    instruction_entries_path = "./dataset/finetune/instruction-data.json"
-    instruction_entries_with_preference_path = "./dataset/finetune/instruction-preference-data.json"
+    from data_provider.finetune.dpo import data_config
+    
     instruction_entries_data = load_instruction_data(
-        data_path = instruction_entries_path
+        data_path = data_config.instruction_data_path
     )
     logger.info(f"Number of entries: {len(instruction_entries_data)}")
 
-    if not os.path.exists(instruction_entries_with_preference_path):
+    if not os.path.exists(data_config.instruction_data_with_preference_path):
         # generate model response
         instruction_entries_with_preference_data = generate_model_response(
             json_data = instruction_entries_data
         )
         logger.info(f"Number of entries: {len(instruction_entries_with_preference_data)}")
+        
         # save instruction entries with preference
         save_instruction_with_preference(
             instruction_entries_data, 
-            save_path = instruction_entries_with_preference_path,
+            save_path = data_config.instruction_data_with_preference_path,
         )
+    else:
+        logger.info(f"{data_config.instruction_data_with_preference_path.split('/')[-1]} already exists!")
 
 if __name__ == "__main__":
     main()

@@ -27,17 +27,31 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def check_if_running(process_name):
+def check_if_running(process_name = "ollama"):
+    """
+    check if ollama is running
+    """
     running = False
     for proc in psutil.process_iter(["name"]):
         if process_name in proc.info["name"]:
             running = True
             break
-        
+    
     return running
 
 
-def query_model(prompt, model="llama3.1:70b", url="http://localhost:11434/api/chat"):
+def query_model(prompt, model="llama3.1:70b", url="http://localhost:11434/api/chat", seed=123, num_ctx=2048):
+    """
+    query ollama REST API in Python
+
+    Args:
+        prompt (_type_): _description_
+        model (str, optional): _description_. Defaults to "llama3".
+        url (str, optional): _description_. Defaults to "http://localhost:11434/api/chat".
+
+    Returns:
+        _type_: _description_
+    """ 
     # Create the data payload as a dictionary
     data = {
         "model": model,
@@ -49,9 +63,9 @@ def query_model(prompt, model="llama3.1:70b", url="http://localhost:11434/api/ch
         ],
         # Settings below are required for deterministic responses
         "options": {
-            "seed": 123,
+            "seed": seed,
             "temperature": 0,
-            "num_ctx": 2048
+            "num_ctx": num_ctx,
         },
     }
     # Convert the dictionary to a JSON formatted string and encode it to bytes
@@ -77,12 +91,16 @@ def query_model(prompt, model="llama3.1:70b", url="http://localhost:11434/api/ch
 
 # 测试代码 main 函数
 def main():
+    model = "llama3"
+    inference_server = "ollama"
+
     # check ollama running
-    ollama_running = check_if_running("ollama")
+    ollama_running = check_if_running(process_name=inference_server)
     # inference
     if ollama_running:
         logger.info(f"Ollama running: {ollama_running}")
-        result = query_model(prompt = "What do Llamas eat?", model = "llama3.1")
+        # query model
+        result = query_model("What do Llamas eat?", model)
         logger.info(f"result: \n{result}")
     else:
         raise RuntimeError("Ollama not running. Launch ollama before proceeding.")

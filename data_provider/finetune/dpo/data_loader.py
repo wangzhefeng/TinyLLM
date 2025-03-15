@@ -19,11 +19,10 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 from functools import partial
 
-import tiktoken
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from data_provider.finetune.instruction_follow.instruction_format import format_input_alpaca
+from data_provider.finetune import instruction_format
 from utils.device import device
 from utils.log_util import logger
 
@@ -34,13 +33,13 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class PreferenceDataset(Dataset):
 
     def __init__(self, data, tokenizer):
+        # load data
         self.data = data
-
-        # 预分词文本
+        # pre-tokenize texts
         self.encoded_texts = []
-        for entry in data:
-            # prompt format
-            prompt = format_input_alpaca(entry)
+        for entry in self.data:
+            # format input into instruction-response template
+            prompt = instruction_format.format_input_alpaca(entry)
             rejected_response = entry["rejected"]
             chosen_response = entry["chosen"]
             # prompt tokenization
@@ -64,11 +63,11 @@ class PreferenceDataset(Dataset):
         return len(self.data)
 
 
-def collate_fn(batch, 
-               pad_token_id = 50256,
-               allowed_max_length = None,
-               mask_prompt_tokens = True,
-               device="cpu"):
+def custom_collate_fn(batch, 
+                      pad_token_id = 50256,
+                      allowed_max_length = None,
+                      mask_prompt_tokens = True,
+                      device="cpu"):
     # 初始化列表以保存批次数据
     batch_data = {
         "prompt": [],
@@ -117,26 +116,29 @@ def collate_fn(batch,
 
     return batch_data
 
-collate_fn = partial(
-    collate_fn, 
-    device = device, 
-    mask_prompt_tokens = True, 
-    allowed_max_length = 1024
-)
-
 
 def create_dataloader(data, 
+                      tokenizer,
+                      pad_token_id = 50256,
+                      mask_prompt_tokens = True,
+                      allowed_max_length = 1024,
                       batch_size: int = 2, 
                       shuffle: bool = False, 
                       drop_last: bool = False, 
                       num_workers: int = 0):
-    # tokenizer
-    tokenizer = tiktoken.get_encoding("gpt2")
+    # collate function
+    collate_fn = partial(
+        custom_collate_fn, 
+        pad_token_id = pad_token_id,
+        mask_prompt_tokens = mask_prompt_tokens, 
+        allowed_max_length = allowed_max_length,
+        device = device, 
+    )
     # data set
     dataset = PreferenceDataset(data = data, tokenizer = tokenizer)
     # data loader
     dataloader = DataLoader(
-        dataset, 
+        dataset = dataset, 
         batch_size = batch_size,
         collate_fn = collate_fn,
         shuffle = shuffle,
@@ -151,26 +153,32 @@ def create_dataloader(data,
 
 # 测试代码 main 函数
 def main():
+    from data_provider.finetune.dpo import data_config
+    from data_provider.finetune.dpo import data_load
+
     # params
     batch_size = 2
+    
     # data
-    from data_provider.finetune.dpo.data_load import load_instruction_data
-    data_path = "./dataset/finetune/instruction-preference-data.json"
-    data = load_instruction_data(data_path = data_path)
+    data = data_load.load_dpo_data(data_path = data_config.data_path)
+    
     # example
-    import pprint  
+    import pprint
     example_data = data[:2]
     for i in example_data:
         logger.info(f"data: \n{i}")
+    
     # dataset and dataloader
-    dataset, dataloader = create_dataloader(data[:2], batch_size = batch_size)
+    dataset, dataloader = create_dataloader(data[:2])
     for batch in dataloader:
         break
     logger.info(f"batch.keys: \n{batch.keys()}")
     logger.info(f"batch['prompt']: \n{batch['prompt']}")
     logger.info(f"batch['chosen']: \n{batch['chosen']}")
+
     # test
     def decode_tokens_from_batch(token_ids):
+        import tiktoken
         tokenizer = tiktoken.get_encoding("gpt2")
         ids_in_python_list = token_ids.flatten().tolist()
 

@@ -22,11 +22,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 from data_provider.finetune.instruction_follow import data_load
-from model_evaluate.ollama_evaluate import (
-    check_if_running,
-    generate_model_scores,
-)
-
+from model_evaluate.ollama_evaluate import generate_model_scores
 from utils.log_util import logger
 
 # global variable
@@ -57,33 +53,23 @@ class ModelFinetuningInstructionFlowEvaluate:
 
         return data, train_data, valid_data, test_data
     
-    def local_llm_check(self):
-        """
-        check if inference serverr(ollama) is running
-        """
-        ollama_running = check_if_running(self.args.inference_server)
-        if not ollama_running:
-            raise RuntimeError("Ollama not running. Launch ollama before proceeding.")
-        logger.info(f"Ollama running: {ollama_running}")
-    
     def evaluate(self):
         """
         evaluate finetuned model using another larger LLM
         """
-        # check server
-        self.local_llm_check()
         # load data
         data, train_data, valid_data, test_data = self._build()
         # evaluate
         scores = generate_model_scores(
             json_data = data, 
             json_key = "model_response", 
+            inference_server = self.args.inference_server,
             model = self.args.inference_model,
-            url=self.args.inference_server_url,
-            seed=self.args.seed,
-            num_ctx=self.args.num_ctx,
+            url = self.args.inference_server_url,
+            seed = self.args.seed,
+            num_ctx = self.args.num_ctx,
         )
-        logger.info(f"Number of scores: {len(scores)} of {len(test_data)}")
+        logger.info(f"Number of scores: {len(scores)} of {len(data)}")
         logger.info(f"Average score: {sum(scores) / len(scores):.2f}\n")
 
 

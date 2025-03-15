@@ -181,7 +181,7 @@ def main():
     # data save
     if args.remove_duplicates:
         save_data(json_data, args.json_output_file)
-    # logger.info(f"JSON data saved to {args.json_output_file}")
+    logger.info(f"JSON data saved to {args.json_output_file}")
 
 if __name__ == "__main__":
     main()

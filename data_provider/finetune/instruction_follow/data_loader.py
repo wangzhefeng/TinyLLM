@@ -23,7 +23,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from data_provider.finetune.instruction_follow import data_load
-from data_provider.finetune.instruction_follow import instruction_format
+from data_provider.finetune import instruction_format
 from utils.log_util import logger
 
 # global variable
