@@ -21,7 +21,6 @@ import re
 import json
 import argparse
 
-from sklearn import __version__ as sklearn_version
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -31,45 +30,21 @@ from utils.log_util import logger
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-# Sample JSON dataset
-example_data = [
-    {
-        "instruction": "What is the capital of Italy?",
-        "input": "", 
-        "output": "The capital of Italy is Rome."
-    },
-    {
-        "instruction": "What's the capital city of Italy?",
-        "input": "", 
-        "output": "The capital city is Rome."
-     },
-    {
-        "instruction": "Identify the main verb in the sentence: 'The cat sleeps on the couch.'",
-        "input": "", 
-        "output": "The verb is 'sleeps'."
-    },
-    {
-        "instruction": "Identify the verb in the following sentence: The cat sleeps on the couch.",
-        "input": "", 
-        "output": "The verb in the sentence is \"sleeps.\""
-    },
-    # ...
-]
-
-
-def preprocess_text(text):
+def _preprocess_text(text):
     # Lowercase the text
     text = text.lower()
     # Remove punctuation
     text = re.sub(r'[^\w\s]', '', text)
+    
     return text
 
 
-def find_near_duplicates(json_data, threshold=0.75, key="instruction"):
-    """The higher the threshold, the more similar the texts have to be to match"""
-
+def find_near_duplicates(json_data, key="instruction", threshold=0.75):
+    """
+    The higher the threshold, the more similar the texts have to be to match
+    """
     # Extract instructions
-    text = [preprocess_text(item[key]) for item in json_data if item[key]]
+    text = [_preprocess_text(item[key]) for item in json_data if item[key]]
     near_duplicates = []
     indices_to_remove = set()
 
@@ -84,7 +59,6 @@ def find_near_duplicates(json_data, threshold=0.75, key="instruction"):
     cos_sim_matrix = cosine_similarity(tfidf_matrix)
 
     # Find pairs of near-duplicate instructions based on the threshold
-
     for i in range(len(cos_sim_matrix)):
         for j in range(i+1, len(cos_sim_matrix)):
             if cos_sim_matrix[i, j] > threshold:
@@ -93,9 +67,12 @@ def find_near_duplicates(json_data, threshold=0.75, key="instruction"):
                 near_duplicates.append((json_data[i], json_data[j], cos_sim_matrix[i, j]))
                 if key in ("input", "output"):  # Don't remove duplicates based on the instruction
                     indices_to_remove.add(j)  # Mark the second entry for removal
-
     # Remove the near-duplicate entries
-    filtered_json_data = [item for index, item in enumerate(json_data) if index not in indices_to_remove]
+    filtered_json_data = [
+        item 
+        for index, item in enumerate(json_data) 
+        if index not in indices_to_remove
+    ]
 
     return filtered_json_data, near_duplicates
 
@@ -106,11 +83,11 @@ def find_print_and_remove_near_duplicates(json_data, remove_duplicates=False, th
     Prints the duplicates if found.
     """
     for key in json_data[0].keys():
-
         if remove_duplicates:
             json_data, near_duplicates = find_near_duplicates(json_data, key=key, threshold=threshold)
         else:
             _, near_duplicates = find_near_duplicates(json_data, key=key, threshold=threshold)
+       
         separator = 50 * '='
         print(f"\n\n{separator}\nSearching '{key}' for duplicates ...\n{separator}")
         if not near_duplicates:
@@ -121,24 +98,55 @@ def find_print_and_remove_near_duplicates(json_data, remove_duplicates=False, th
                     f"Duplicate pair found with similarity {dup[2]:.2f}:\n"
                     f"1. {dup[0][key]}\n2. {dup[1][key]}\n"
                 )
+    
     return json_data
 
 
+def load_data(json_file_path):
+    """
+    save 
+
+    Args:
+        json_file_path (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    with open(json_file_path, "r", encoding="utf-8") as file:
+        json_data = json.load(file)
+
+    return json_data
 
 
-# 测试代码 main 函数
-def main():
-    # command arguments
+def save_data(json_data, json_output_file):
+    """
+    save processed instruciton json data
+
+    Args:
+        json_data (_type_): processed instruction json data
+        json_output_file (_type_): json output path
+    """
+    with open(json_output_file, "w", encoding="utf-8") as file:
+        json.dump(json_data, file, indent=4)
+
+ 
+def args_parse():
+    """
+    define and parse command arguments
+    """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--json_file", type=str, 
+    parser.add_argument("--json_file", type=str, required=True,
+                        default="./dataset/finetune/instruction-example.json",
                         help=("Path to the dataset JSON file"))
-    parser.add_argument("--threshold", type=float, default=0.9,
+    parser.add_argument("--threshold", type=float, 
+                        default=0.9,
                         help=("A sensitivity threshold between 0 and 1 where 1 is strictest"))
-    parser.add_argument("--remove_duplicates", action='store_true', default=False,
-                        help=(
-                            "Removes duplicates based on the 'input' or 'output' keys "
-                            " (but not the 'instruction') and saves the cleaned JSON file as --json_output_file"))
-    parser.add_argument("--json_output_file", type=str, 
+    parser.add_argument("--remove_duplicates", type=bool, required=True, 
+                        default=False,
+                        help=("Removes duplicates based on the 'input' or 'output' keys "
+                              " (but not the 'instruction') and saves the cleaned JSON file as --json_output_file"))
+    parser.add_argument("--json_output_file", type=str, required=True,
+                        default="./dataset/finetune/instruction-example-without-duplicates.json",
                         help="Path to the dataset JSON file")
     args = parser.parse_args()
 
@@ -147,24 +155,33 @@ def main():
             "Provide an output file via --json_output_file "
             "to save the cleaned JSON data."
         )
+    
+    return args
 
-    if not args.json_file:
-        json_data = example_data
-    else:
-        with open(args.json_file, "r") as file:
-            json_data = json.load(file)
-    # ------------------------------
-    # 
-    # ------------------------------
+
+
+
+# 测试代码 main 函数
+def main():
+    # command arguments
+    args = args_parse()
+
+    # data load
+    json_data = load_data(args.json_file)
+    # logger.info(f"json_data: \n{json_data}")
+
+    # data preprocess
     json_data = find_print_and_remove_near_duplicates(
-        json_data=json_data,
-        remove_duplicates=args.remove_duplicates,
-        threshold=args.threshold
+        json_data = json_data,
+        remove_duplicates = args.remove_duplicates,
+        threshold = args.threshold
     )
-
+    # logger.info(f"json_data: \n{json_data}")
+    
+    # data save
     if args.remove_duplicates:
-        with open(args.json_output_file, "w") as file:
-            json.dump(json_data, file, indent=4)
+        save_data(json_data, args.json_output_file)
+    # logger.info(f"JSON data saved to {args.json_output_file}")
 
 if __name__ == "__main__":
     main()
