@@ -18,9 +18,9 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 import re
-import json
 import argparse
 
+from data_provider.load_save_data import load_json_data, save_json_data
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -101,34 +101,6 @@ def find_print_and_remove_near_duplicates(json_data, remove_duplicates=False, th
     
     return json_data
 
-
-def load_data(json_file_path):
-    """
-    save 
-
-    Args:
-        json_file_path (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    with open(json_file_path, "r", encoding="utf-8") as file:
-        json_data = json.load(file)
-
-    return json_data
-
-
-def save_data(json_data, json_output_file):
-    """
-    save processed instruciton json data
-
-    Args:
-        json_data (_type_): processed instruction json data
-        json_output_file (_type_): json output path
-    """
-    with open(json_output_file, "w", encoding="utf-8") as file:
-        json.dump(json_data, file, indent=4)
-
  
 def args_parse():
     """
@@ -167,7 +139,7 @@ def main():
     args = args_parse()
 
     # data load
-    json_data = load_data(args.json_file)
+    json_data = load_json_data(args.json_file)
     # logger.info(f"json_data: \n{json_data}")
 
     # data preprocess
@@ -180,7 +152,7 @@ def main():
     
     # data save
     if args.remove_duplicates:
-        save_data(json_data, args.json_output_file)
+        save_json_data(json_data, args.json_output_file)
     logger.info(f"JSON data saved to {args.json_output_file}")
 
 if __name__ == "__main__":

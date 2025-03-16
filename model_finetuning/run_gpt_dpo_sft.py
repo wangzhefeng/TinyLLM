@@ -21,7 +21,7 @@ import argparse
 
 import torch
 
-from exp.exp_finetune_gpt_instruction_flow import ModelFinetuningInstructionFlow
+from exp.exp_finetune_gpt_dpo import ModelFinetuningPreference
 from utils.random_seed import set_seed
 from utils.log_util import logger
 
@@ -40,19 +40,19 @@ def args_parse():
     # task params
     parser.add_argument("--task_name", type=str, required=True, default="tiny_gpt_dpo_sft",
                         help="task name")
-    parser.add_argument("--model_name", type=str, required=True, default="gpt_finetune_instruction",
+    parser.add_argument("--model_name", type=str, required=True, default="gpt_finetune_instruction_dpo",
                         help="model name")
     parser.add_argument("--is_train", type=int, required=True, default=1,
                         help="train flag")
     parser.add_argument("--is_test", type=int, required=True, default=0,
                         help="test flag")
-    parser.add_argument("--is_eval", type=int, required=True, default=0,
+    parser.add_argument("--is_valid", type=int, required=True, default=0,
                         help="eval flag")
     parser.add_argument("--is_inference", type=int, required=True, default=0,
                         help="inference flag")
     # data params
     parser.add_argument("--data_source", type=str, required=True, 
-                        default="./dataset/finetune/instruction-data.json", 
+                        default="./dataset/finetune/instruction-preference-data.json", 
                         help="data download url")
     parser.add_argument("--context_length", type=int, required=True, default=1024,
                         help="context length")
@@ -73,22 +73,24 @@ def args_parse():
                         help="dropout")
     parser.add_argument("--qkv_bias", type=int, required=True, default=1, 
                         help="use bias in qkv")
+    parser.add_argument("--mask_prompt_tokens", type=int, required=True, default=1,
+                        help="mask prompt tokens")
     # model pretrain params 
-    parser.add_argument("--pretrained_model", type=str, required=True, default="gpt2-small (124)",
+    parser.add_argument("--pretrained_model", type=str, required=True, default="gpt2-medium(335M)",
                         help="pretrained model")
     parser.add_argument("--pretrained_model_path", type=str, required=True, default="./downloaded_models/gpt2_model",
                         help="pretrained model path")
     parser.add_argument("--pretrained_model_source", type=str, required=True, default="huggingface_gpt2",
                         help="pretrained model source")
-    parser.add_argument("--finetuned_model_path", type=str, required=True, default="./saved_results/finetuned_models",
+    parser.add_argument("--finetuned_model_path", type=str, required=True, default="./saved_results/finetuned_models/tiny_gpt_instruction_sft_gpt_finetune_instruction_instruction-dat_cl1024_te10_bs8/0/gpt2-medium335M-sft.pth",
                         help="finetuned model path")
     parser.add_argument("--tokenizer_model", type=str, required=True, default="gpt2",
                         help="tokenizer model")
     parser.add_argument("--seed", type=int, required=True, default=123,
                         help="random seed")
-    parser.add_argument("--iters", type=int, required=True, default=10, 
+    parser.add_argument("--iters", type=int, required=True, default=1, 
                         help="number of iterations")
-    parser.add_argument("--train_epochs", type=int, required=True, default=10, 
+    parser.add_argument("--train_epochs", type=int, required=True, default=1, 
                         help="number of training epochs")
     parser.add_argument("--max_new_tokens", type=int, required=True, default=256,
                         help="max new tokens")
@@ -106,13 +108,20 @@ def args_parse():
                         help = 'adjust learning rate')
     parser.add_argument("--patience", type=int, default=7, 
                         help="early stopping patience")
+    parser.add_argument("--temperature", type=float, default=1.0, 
+                        help="temperature")
+    parser.add_argument("--top_k", type=int, default=2,
+                        help="top k")
+    parser.add_argument("--beta", type=float, default=0.1,
+                        help="beta")
     parser.add_argument("--checkpoints", type=str, 
                         default="./saved_results/finetuned_models", 
                         help="checkpoints path")
+    parser.add_argument("--model_path", type=str, 
+                        default="./saved_results/finetuned_models",
+                        help="model path")
     parser.add_argument("--test_results", type=str, default="./saved_results/test_results",
                         help="test results path")
-    parser.add_argument("--eval_data_path", type=str, default="./dataset/finetune/instruction-data-with-response.json",
-                        help="eval data path")
     parser.add_argument("--use_amp", type=int, default=1,
                         help="Use amp")
     # model pretrain device params
@@ -156,9 +165,9 @@ def run(args):
     # 模型任务
     # ------------------------------
     if args.task_name == 'tiny_gpt_dpo_sft':
-        Exp = ModelFinetuningInstructionFlow
+        Exp = ModelFinetuningPreference
     else:
-        Exp = ModelFinetuningInstructionFlow
+        Exp = ModelFinetuningPreference
     
     # setting record of experiments
     setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1][:-6]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
@@ -181,17 +190,12 @@ def run(args):
         # model testing
         if args.is_test:
             logger.info(f">>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-            exp.test(test_entry_num = 3, training_iter=itr, setting = setting)
+            exp.inference(training_iter = itr, setting = setting, data_name = "test", data_index = 3)
 
         # model inference
-        if args.is_inference:
-            logger.info(f">>>>>>>inference : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-            entry = {
-                "instruction": "Evaluate the following phrase by transforming it into the spelling given.",
-                "input": "freind --> friend",
-                "output": "The spelling of the given phrase \"freind\" is incorrect, the correct spelling is \"friend\"."
-            }
-            exp.inference(entry = entry, training_iter=itr, setting = setting)
+        if args.is_valid:
+            logger.info(f">>>>>>>valid: {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+            exp.inference(training_iter = itr, setting = setting, data_name = "valid", data_index = 3)
         
         # empty cache
         torch.cuda.empty_cache()

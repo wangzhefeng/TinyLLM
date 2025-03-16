@@ -160,8 +160,8 @@ class ModelFinetuningClassifier:
         train_loader, valid_loader, test_loader = self._build_data()
         
         # load pretained model's weights
-        model = model_with_gpt2_weights(
-            cfgs = self.args, 
+        model, base_config = model_with_gpt2_weights(
+            cfgs = self.args,
             model_cls = Model, 
             model_source = self.args.pretrained_model_source
         )
@@ -169,7 +169,7 @@ class ModelFinetuningClassifier:
         torch.manual_seed(self.args.seed)
         self.model = finetune_model(
             model, 
-            self.args.emb_dim, 
+            base_config.emb_dim, 
             self.args.num_classes,
             self.args.finetune_method,
         )
@@ -240,15 +240,21 @@ class ModelFinetuningClassifier:
         
         # training loss plot
         plot_values_classifier(
-            self.args.train_epochs, examples_seen, 
-            train_losses, valid_losses, 
-            label = "loss", results_path = results_path,
+            self.args.train_epochs, 
+            examples_seen, 
+            train_losses, 
+            valid_losses, 
+            label = "loss", 
+            results_path = results_path,
         )
         # training accuracy plot
         plot_values_classifier(
-            self.args.train_epochs, examples_seen, 
-            train_accs, valid_accs, 
-            label = "accuracy", results_path = results_path,
+            self.args.train_epochs, 
+            examples_seen, 
+            train_accs, 
+            valid_accs, 
+            label = "accuracy", 
+            results_path = results_path,
         )
         # calculate accuracy over complete dataset
         calc_final_accuracy(train_loader, valid_loader, test_loader, self.model, self.device)

@@ -67,7 +67,11 @@ class ModelFinetuningInstructionFlow:
         create dataset and dataloader
         """
         # data load and split
-        train_data, test_data, valid_data = data_loader.load_split_data(self.args.data_source)
+        train_data, test_data, valid_data = data_loader.load_split_data(
+            self.args.data_source, 
+            self.args.train_ratio, 
+            self.args.test_ratio,
+        )
         # dataset and dataloader
         torch.manual_seed(self.args.seed)
         train_dataset, train_dataloader = data_loader.create_dataloader(
@@ -195,7 +199,7 @@ class ModelFinetuningInstructionFlow:
         ) = self._build_data()
 
         # model
-        self.model = model_with_gpt2_weights(
+        self.model, self.base_config = model_with_gpt2_weights(
             cfgs = self.args, 
             model_cls = Model, 
             model_source = self.args.pretrained_model_source
@@ -261,7 +265,7 @@ class ModelFinetuningInstructionFlow:
                 model = self.model,
                 token_idx = text_to_token_ids(formated_start_context).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = self.args.context_length,
+                context_size = self.base_config.context_length,
                 eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
@@ -281,8 +285,12 @@ class ModelFinetuningInstructionFlow:
         
         # plot losses
         plot_losses(
-            self.args.train_epochs, track_tokens_seen, 
-            train_losses, val_losses, results_path
+            train_epochs=self.args.train_epochs, 
+            tokens_seen=track_tokens_seen, 
+            train_losses=train_losses, 
+            val_losses=val_losses, 
+            label="loss",
+            results_path=results_path
         )
         
         # model save
@@ -305,7 +313,7 @@ class ModelFinetuningInstructionFlow:
         
         # TODO load model
         self._get_model_path(setting, training_iter)
-        model = model_with_gpt2_weights(
+        model, base_config = model_with_gpt2_weights(
             cfgs = self.args, 
             model_cls = Model, 
             model_source = self.args.pretrained_model_source
@@ -321,7 +329,7 @@ class ModelFinetuningInstructionFlow:
                 model = model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = self.args.context_length,
+                context_size = self.base_config.context_length,
                 eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
@@ -341,7 +349,7 @@ class ModelFinetuningInstructionFlow:
         """
         # TODO load model
         # model = self._load_model()
-        model = model_with_gpt2_weights(
+        model, base_config = model_with_gpt2_weights(
             cfgs = self.args, 
             model_cls = Model, 
             model_source = self.args.pretrained_model_source
@@ -356,7 +364,7 @@ class ModelFinetuningInstructionFlow:
                 model = model,
                 token_idx = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = self.args.context_length,
+                context_size = self.base_config.context_length,
                 eos_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
@@ -375,7 +383,7 @@ class ModelFinetuningInstructionFlow:
         # TODO load model
         # model = self._load_model()
         self._get_model_path(setting, training_iter)
-        model = model_with_gpt2_weights(
+        model, base_config = model_with_gpt2_weights(
             cfgs = self.args, 
             model_cls = Model, 
             model_source = self.args.pretrained_model_source
@@ -389,7 +397,7 @@ class ModelFinetuningInstructionFlow:
             model = model,
             token_idx = text_to_token_ids(input_text).to(self.device),
             max_new_tokens = self.args.max_new_tokens,
-            context_size = self.args.context_length,
+            context_size = self.base_config.context_length,
             eos_id = self.pad_token_id
         )
         generated_text = token_ids_to_text(token_ids)

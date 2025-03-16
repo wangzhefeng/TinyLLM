@@ -22,8 +22,14 @@ import torch
 from transformers import GPT2Model
 
 from model_load.openai_gpt2_weights_load_hf import load_weights_hf
-from model_load.openai_gpt2_weights_load_hf_safetensors import download_and_load_gpt2_st, load_weights_hf_safetensors
-from model_load.openai_gpt2_weights_load import download_and_load_gpt2, load_weights_download
+from model_load.openai_gpt2_weights_load_hf_safetensors import (
+    download_and_load_gpt2_st, 
+    load_weights_hf_safetensors,
+)
+from model_load.openai_gpt2_weights_load import (
+    download_and_load_gpt2, 
+    load_weights_download,
+)
 from utils.argsparser_tools import DotDict
 from utils.log_util import logger
 
@@ -108,7 +114,7 @@ def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gp
     # model inference mode
     model.eval()
 
-    return model
+    return model, base_config
 
 
 def load_pretrained_model(cfgs, model_cls):
@@ -135,7 +141,7 @@ def load_pretrained_model(cfgs, model_cls):
     # pretrained model instance
     model = model_cls(base_config)
     model.load_state_dict(torch.load(
-        cfgs.model_path, 
+        cfgs.finetuned_model_path, 
         map_location = torch.device("cpu"), 
         weights_only = True
     ))

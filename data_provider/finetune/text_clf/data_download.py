@@ -64,15 +64,6 @@ def download_and_unzip_spam_data(data_file_path, zip_data_path, extracted_path):
     logger.info(f"File downloaded and saved as {data_file_path}")
 
 
-def load_data(data_file_path):
-    """
-    load spam tsv data for finetuning text classification
-    """
-    df = pd.read_csv(data_file_path, sep="\t", header=None, names=["Label", "Text"])
-
-    return df
-
-
 
 
 # 测试代码 main 函数
@@ -82,12 +73,13 @@ def main():
         data_dir, 
         tsv_file_path
     )
+    from data_provider.load_save_data import load_csv_data
 
     # data download
     download_and_unzip_spam_data(tsv_file_path, zip_data_path, data_dir)
     
     # data load
-    df = load_data(tsv_file_path)
+    df = load_csv_data(tsv_file_path)
     logger.info(f"df: \n{df.head()} \ndf.shape: {df.shape}")
     logger.info(f"df['Label'].value_counts(): \n{df['Label'].value_counts()}")
 

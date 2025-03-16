@@ -17,7 +17,6 @@ import sys
 ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
-import json
 import urllib.request
 
 from utils.log_util import logger
@@ -38,27 +37,18 @@ def download_data(data_url, data_path):
             file.write(text_data) 
 
 
-def load_data(data_path):
-    """
-    数据加载
-    """
-    with open(data_path, "r", encoding = "utf-8") as file:
-        data = json.load(file)
-    
-    return data
-
-
 
 
 # 测试代码 main 函数
 def main(): 
+    from data_provider.load_save_data import load_json_data
     from data_provider.finetune.instruction_follow.data_config import data_url, data_path
 
     # data download 
     download_data(data_url = data_url, data_path = data_path)
     
     # data load
-    data = load_data(data_path = data_path)
+    data = load_json_data(data_path = data_path)
     logger.info(f"Number of entries of instruction data: {len(data)}")
     logger.info(f"Example entry: \n{data[50]}")
     logger.info(f"Example entry: \n{data[999]}")

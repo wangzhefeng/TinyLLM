@@ -126,8 +126,9 @@ def main():
         token_idx=text_to_token_ids("Every effort moves").to(device),
         max_new_tokens=30,
         context_size=base_config.context_length,
+        temperature=1.0,
         top_k=1,
-        temperature=1.0
+        eos_id=50256,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
 

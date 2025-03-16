@@ -22,7 +22,7 @@ from functools import partial
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from data_provider.finetune.instruction_follow import data_load
+from data_provider.load_save_data import load_json_data
 from data_provider.finetune import instruction_format
 from utils.log_util import logger
 
@@ -106,23 +106,21 @@ def custom_collate_fn_mask_out_instruction(batch,
     pass
 
 
-def load_split_data(data_path: str):
+def load_split_data(data_path: str, train_ratio: int = 0.85, test_ratio: int = 0.10):
     """
     data split
     """
-    # data
-    data = data_load.load_data(data_path = data_path)
+    # data load
+    data = load_json_data(data_path = data_path)
     # logger.info(f"data type: {type(data)}")
     # data split ratio
-    train_ratio = 0.85
-    test_ratio = 0.10
     train_portion = int(len(data) * train_ratio)
     test_portion = int(len(data) * test_ratio)
     valid_portion = len(data) - train_portion - test_portion
     # data split
     train_data = data[:train_portion]
-    test_data = data[train_portion:(train_portion+test_portion)]
-    valid_data = data[(train_portion+test_portion):]
+    test_data = data[train_portion:(train_portion + test_portion)]
+    valid_data = data[(train_portion + test_portion):]
     
     return train_data, test_data, valid_data
 

@@ -85,10 +85,10 @@ def data_to_csv(data_dir, train_df, valid_df, test_df):
 # 测试代码 main 函数
 def main():
     from data_provider.finetune.text_clf.data_config import data_dir, tsv_file_path
-    from data_provider.finetune.text_clf.data_load import load_data
+    from data_provider.load_save_data import load_csv_data
 
     # data load
-    df = load_data(data_file_path = tsv_file_path)
+    df = load_csv_data(data_file_path = tsv_file_path)
     logger.info(f"df: \n{df.head()} \ndf.shape: {df.shape}")
     logger.info(f"df['Label'].value_counts(): \n{df['Label'].value_counts()}")
     
