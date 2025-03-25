@@ -21,34 +21,12 @@ import json
 from tqdm import tqdm
 from pathlib import Path
 
-from openai import OpenAI
-
+from data_provider.load_save_data import load_json_data
+from utils.inference_utils.openai_api import create_client, run_chatgpt
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
-
-
-# ------------------------------
-# openai client
-# ------------------------------
-# Load API key from a JSON file.
-with open("config.json", "r") as config_file:
-    config = json.load(config_file)
-    api_key = config["OPENAI_API_KEY"]
-
-client = OpenAI(api_key=api_key)
-
-# ------------------------------
-# load json entries
-# ------------------------------
-json_file = "eval-example-data.json"
-
-with open(json_file, "r") as file:
-    json_data = json.load(file)
-
-print("Number of entries:", len(json_data))
-logger.info(f"json_data[0]:{json_data[0]}")
 
 
 def format_input(entry):
@@ -62,16 +40,6 @@ def format_input(entry):
     instruction_text + input_text
 
     return instruction_text + input_text
-
-
-def run_chatgpt(prompt, client, model="gpt-4-turbo"):
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.0,
-        seed=123,
-    )
-    return response.choices[0].message.content
 
 
 def generate_model_scores(json_data, json_key, client):
@@ -94,8 +62,18 @@ def generate_model_scores(json_data, json_key, client):
 
 
 
+
 # 测试代码 main 函数
 def main():
+    # instruction data path
+    data_path="./dataset/finetune/instruction-example.json"
+
+    # load instruction data
+    json_data = load_json_data(data_path)
+
+    # openai client
+    client = create_client()
+    
     for model in ("model 1 response", "model 2 response"):
         scores = generate_model_scores(json_data, model, client)
         print(f"\n{model}")

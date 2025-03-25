@@ -19,6 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 import torch
+import torch.nn as nn
 from transformers import GPT2Model
 
 from model_load.openai_gpt2_weights_load_hf import load_weights_hf
@@ -117,16 +118,16 @@ def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gp
     return model, base_config
 
 
-def load_pretrained_model(cfgs, model_cls):
+def load_pretrained_model(cfgs, model_cls, device: str = "cpu", task: str = "binary_classification"):
     """
     initializing a model with pretrained weights
     """
     # huggingface gpt2 pretrained model
-    gpt2_hf = GPT2Model.from_pretrained(
-        gpt2_huggingface_models[cfgs.choose_model],
-        cache_dir = cfgs.pretrained_model_path,
-    )
-    gpt2_hf.eval()
+    # gpt2_hf = GPT2Model.from_pretrained(
+    #     gpt2_huggingface_models[cfgs.choose_model],
+    #     cache_dir = cfgs.pretrained_model_path,
+    # )
+    # gpt2_hf.eval()
 
     # update pretrained model's config
     base_config = {
@@ -140,19 +141,24 @@ def load_pretrained_model(cfgs, model_cls):
     
     # pretrained model instance
     model = model_cls(base_config)
+    if task == "binary_classification":
+        model.out_head = nn.Linear(
+            in_features=cfgs.emb_dim, 
+            out_features=cfgs.num_classes
+        )
     model.load_state_dict(torch.load(
         cfgs.finetuned_model_path, 
-        map_location = torch.device("cpu"), 
+        map_location = device, 
         weights_only = True
     ))
-
+    model.to(device)
     # assign pretrained model's weights
-    load_weights_hf(model, gpt2_hf, base_config)
+    # load_weights_hf(model, gpt2_hf, base_config)
 
     # model inference mode
     model.eval()
 
-    return model, base_config
+    return model
 
 
 

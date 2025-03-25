@@ -35,6 +35,7 @@ def load_json_data(data_path: str):
     """
     with open(data_path, "r", encoding="utf-8") as file:
         data = json.load(file)
+    print("Number of entries:", len(data))
 
     return data
 

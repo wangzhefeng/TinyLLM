@@ -22,6 +22,7 @@ import re
 import json
 import time
 import warnings
+from pathlib import Path
 from tqdm import tqdm
 
 import torch
@@ -36,7 +37,10 @@ from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models.gpt import Model
 from utils.train_utils.gpt_generate import generate
 # other model
-from model_load.load_pretrained_weights import model_with_gpt2_weights
+from model_load.load_pretrained_weights import (
+    model_with_gpt2_weights,
+    load_pretrained_model,
+)
 # model training
 from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.train_utils.train_funcs import select_optimizer
@@ -411,12 +415,67 @@ class ModelFinetuningInstructionFlow:
         logger.info(f"\nCorrect response:\n>> {entry['output']}")
         logger.info(f"\nModel response:\n>> {response_text.strip()}")
 
+    def _extract_response(self, response_text, input_text):
+        """
+        提取 response_text 中的 response
+        """
+        response = response_text[len(input_text):] \
+            .replace("### Response:", "") \
+            .strip()
+        
+        return response
+
+    def load_finetuned_model(self, setting, train_iter, prompt):
+        """
+        加载微调好的模型，并使用模型进行推理
+
+        Args:
+            setting (_type_): _description_
+            train_iter (_type_): _description_
+            prompt (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        # model path
+        model_path = self._get_model_path(setting, train_iter)
+        model_path = Path(self.model_path)
+        if not model_path.exists():
+            logger.info(f"Could not find '{model_path}'.\n"
+                         "Run finetune and save the finetuned model.")
+        # load model
+        model = load_pretrained_model(
+            self.args, 
+            model_cls = Model, 
+            device = torch.device("cpu"), 
+            task = "instruction_follow"
+        )
+        # inference
+        token_ids = generate(
+            model = model,
+            token_idx = text_to_token_ids(prompt),
+            max_new_tokens = self.args.max_new_tokens,  # 35
+            context_size = self.base_config.context_length,
+            eos_id = self.pad_token_id
+        )
+        response = self._extract_response(
+            response_text = token_ids_to_text(token_ids), 
+            input_text = prompt,
+        )
+        
+        return response
+
 
 
 
 # 测试代码 main 函数
 def main():
-    pass
+    prompt = """Below is an instruction that describes a task. Write a response 
+    that appropriately completes the request.
+
+    ### Instruction:
+    Convert the active sentence to passive: 'The chef cooks the meal every day.'
+    """
 
 if __name__ == "__main__":
     main()

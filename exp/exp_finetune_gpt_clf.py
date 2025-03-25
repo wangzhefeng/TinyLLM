@@ -19,6 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 import time
 import warnings
+from pathlib import Path
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import torch
@@ -30,7 +31,10 @@ from models.gpt import Model
 from model_finetuning.model_finetune_clf import finetune_model
 # other model
 from tokenizer.tokenization import choose_tokenizer
-from model_load.load_pretrained_weights import model_with_gpt2_weights
+from model_load.load_pretrained_weights import (
+    model_with_gpt2_weights,
+    load_pretrained_model,
+)
 # training
 from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.train_utils.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
@@ -292,12 +296,38 @@ class ModelFinetuningClassifier:
 
         return classified_result
 
+    def load_finetuned_model(self, setting, input_text: str):
+        # model path
+        model_path = self._get_model_path(setting)
+        model_path = Path(model_path)
+        if not model_path.exists():
+            logger.info(f"Could not find '{model_path}'.\n"
+                        "Run finetune and save the finetuned model.")
+        # loade model
+        model = load_pretrained_model(
+            self.args, 
+            model_cls = Model, 
+            device = self.device, 
+            task = "instruction_follow"
+        )
+        # model inference
+        classified_result = self.inference(input_text)
+
+        return classified_result
+
 
 
 
 # 测试代码 main 函数
 def main():
-    pass 
+    text_1 = (
+        "You are a winner you have been specially"
+        " selected to receive $1000 cash or a $2000 award."
+    )
+    text_2 = (
+        "Hey, just wanted to check if we're still on"
+        " for dinner tonight? Let me know!"
+    )
 
 if __name__ == "__main__":
     main()
