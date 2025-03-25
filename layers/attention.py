@@ -38,7 +38,7 @@ class CasualAttention(nn.Module):
     """
     def __init__(self, d_in: int, d_out: int, context_length: int, 
                  dropout: float, qkv_bias=False):
-        super().__init__()
+        super(CasualAttention, self).__init__()
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -71,7 +71,7 @@ class MultiHeadAttentionWrapper(nn.Module):
     
     def __init__(self, d_in: int, d_out: int, context_length: int, 
                  dropout: float, num_heads: int, qkv_bias=False):
-        super().__init__()
+        super(MultiHeadAttentionWrapper, self).__init__()
         
         self.heads = nn.ModuleList([
             CasualAttention(d_in, d_out, context_length, dropout, qkv_bias) 
@@ -92,7 +92,7 @@ class MultiHeadAttentionWrapper(nn.Module):
 class MultiHeadAttention(nn.Module):
     
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias=False):
-        super().__init__()
+        super(MultiHeadAttention, self).__init__()
 
         assert (d_out % num_heads == 0), "d_out must be divisible by num_heads"
         self.d_out = d_out
@@ -160,7 +160,7 @@ class MultiHeadAttention(nn.Module):
 class MultiHeadAttentionCombinedQKV(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MultiHeadAttentionCombinedQKV, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 
@@ -217,7 +217,7 @@ class MultiHeadAttentionCombinedQKV(nn.Module):
 class MHAEinsum(nn.Module):
 
     def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
-        super().__init__()
+        super(MHAEinsum, self).__init__()
         assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
 
         self.d_out = d_out
@@ -300,7 +300,7 @@ class MHAEinsum(nn.Module):
 class MHAPyTorchScaledDotProduct(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MHAPyTorchScaledDotProduct, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 
@@ -344,7 +344,7 @@ class MHAPyTorchScaledDotProduct(nn.Module):
 class MHAPyTorchSDPAWithoutFlash(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MHAPyTorchSDPAWithoutFlash, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 
@@ -396,7 +396,7 @@ class MHAPyTorchSDPAWithoutFlash(nn.Module):
 class MHAPyTorchClass(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False, need_weights=True):
-        super().__init__()
+        super(MHAPyTorchClass, self).__init__()
 
         self.context_length = context_length
         self.multihead_attn = nn.MultiheadAttention(
@@ -450,7 +450,7 @@ def causal(b, h, q_idx, kv_idx):
 class MHAPyTorchFlexAttention(nn.Module):
 
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MHAPyTorchFlexAttention, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 

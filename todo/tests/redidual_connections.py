@@ -33,7 +33,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class DeepNeuralNetwork(nn.Module):
     
     def __init__(self, layer_sizes, use_shortcut):
-        super().__init__()
+        super(DeepNeuralNetwork, self).__init__()
 
         self.use_shortcut = use_shortcut
         self.layers = nn.ModuleList([

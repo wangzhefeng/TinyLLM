@@ -70,7 +70,7 @@ class ModelConfig(PretrainedConfig):
         self.aux_loss_alpha = aux_loss_alpha  # 辅助损失的alpha参数
         self.seq_aux = seq_aux  # 是否在序列级别上计算辅助损失
         self.norm_topk_prob = norm_topk_prob  # 是否标准化top-k概率
-        super().__init__(**kwargs)
+        super(ModelConfig, self).__init__(**kwargs)
 
 
 

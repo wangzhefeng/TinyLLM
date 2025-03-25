@@ -35,7 +35,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class Model(nn.Module):
 
     def __init__(self, cfg):
-        super().__init__()
+        super(Model, self).__init__()
 
         # Embedding
         self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.emb_dim)

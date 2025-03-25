@@ -80,7 +80,7 @@ class ToyDataset(Dataset):
 class NeuralNetwork(torch.nn.Module):
 
     def __init__(self, num_inputs, num_outputs):
-        super().__init__()
+        super(NeuralNetwork, self).__init__()
 
         self.layers = torch.nn.Sequential(
             # 1st hidden layer

@@ -189,7 +189,7 @@ logger.info(f"context_vec_2: \n{context_vec_2}")
 class SelfAttention_V1(nn.Module):
     
     def __init__(self, d_in, d_out):
-        super().__init__()
+        super(SelfAttention_V1, self).__init__()
 
         self.W_query = nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
         self.W_key = nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
@@ -221,7 +221,7 @@ logger.info(f"sa_v1_output: \n{sa_v1_output}")
 class SelfAttention_V2(nn.Module):
     
     def __init__(self, d_in, d_out, qkv_bias=False):
-        super().__init__()
+        super(SelfAttention_V2, self).__init__()
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)

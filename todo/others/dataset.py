@@ -36,7 +36,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class PretrainDataset(Dataset):
     
     def __init__(self, df, tokenizer, max_length: int = 512):
-        super().__init__()
+        super(PretrainDataset, self).__init__()
 
         self.df = df
         self.tokenizer = tokenizer
@@ -71,7 +71,7 @@ class PretrainDataset(Dataset):
 class SFTDataset(Dataset):
     
     def __init__(self, df, tokenizer, max_length = 1024, prompt_max_len = 512, answer_max_len = 256):
-        super().__init__()
+        super(SFTDataset, self).__init__()
 
         self.df = df
         self.max_length = max_length

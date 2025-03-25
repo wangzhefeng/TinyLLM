@@ -35,7 +35,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class TransformerBlock(nn.Module):
     
     def __init__(self, cfg):
-        super().__init__()
+        super(TransformerBlock, self).__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,
@@ -74,7 +74,7 @@ class MixureOfExperts_TransformerBlock(nn.Module):
     """
 
     def __init__(self, cfg):
-        super().__init__()
+        super(MixureOfExperts_TransformerBlock, self).__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,

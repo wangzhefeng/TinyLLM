@@ -32,7 +32,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class _Expert(nn.Module):
     
     def __init__(self, cfgs):
-        super().__init__()
+        super(_Expert, self).__init__()
 
         self.layers = nn.Sequential(
             nn.Linear(cfgs.emb_dim, 4 * cfgs.emb_dim),
@@ -50,7 +50,7 @@ class _Expert(nn.Module):
 class _NoisyTopkRouter(nn.Module):
     
     def __init__(self, cfgs):
-        super().__init__()
+        super(_NoisyTopkRouter, self).__init__()
 
         self.top_k = cfgs.top_k
         self.topk_route_linear = nn.Linear(cfgs.emb_dim, cfgs.num_experts)

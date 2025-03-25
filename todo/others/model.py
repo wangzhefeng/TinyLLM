@@ -39,7 +39,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class RMSNorm(nn.Module):
     
     def __init__(self, dim: int, eps: float):
-        super().__init__()
+        super(RMSNorm, self).__init__()
         
         self.weight = nn.Parameter(torch.ones(dim))
         self.eps = eps
@@ -124,7 +124,7 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
 class Attention(nn.Module):
     
     def __int__(self, args: ModelConfig):
-        super().__init__()
+        super(Attention, self).__init__()
 
         self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
         assert args.n_heads % self.n_kv_heads == 0
@@ -200,7 +200,7 @@ class Attention(nn.Module):
 class FeedForward(nn.Module):
     
     def __init__(self, dim: int, hidden_dim: int, multiple_of: int, dropout: float):
-        super().__init__()
+        super(FeedForward, self).__init__()
 
         if hidden_dim is None:
             hidden_dim = 4 * dim
@@ -220,7 +220,7 @@ class FeedForward(nn.Module):
 class MoEGate(nn.Module):
     
     def __init__(self, config: ModelConfig):
-        super().__init__()
+        super(MoEGate, self).__init__()
         
         self.config = config
         self.top_k = config.num_experts_per_tok
@@ -283,7 +283,7 @@ class MoEGate(nn.Module):
 class MOEFeedForward(nn.Module):
     
     def __init__(self, config: ModelConfig):
-        super().__init__()
+        super(MOEFeedForward, self).__init__()
         
         self.config = config
         self.experts = nn.ModuleList([
@@ -360,7 +360,7 @@ class MOEFeedForward(nn.Module):
 class TransformerBlock(nn.Module):
     
     def __init__(self, layer_id: int, args: ModelConfig):
-        super().__init__()
+        super(TransformerBlock, self).__init__()
 
         self.dim = args.dim
         self.n_heads = args.n_heads
@@ -396,7 +396,7 @@ class Transformer(PreTrainedModel):
     last_loss: Optional[torch.Tensor]
 
     def __init__(self, params: ModelConfig = None):
-        super().__init__(params)
+        super(Transformer, self).__init__(params)
         
         if not params:
             params = LMConfig()

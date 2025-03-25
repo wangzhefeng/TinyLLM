@@ -14,6 +14,7 @@ python -u ./model_pretraining/run_gpt_pretrain.py \
     --n_layers 12 \
     --dropout 0.1 \
     --qkv_bias 0 \
+    --dtype torch.float32 \  # TODO
     --max_new_tokens 50 \
     --iters 10 \
     --train_epochs 10 \
