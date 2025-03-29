@@ -47,7 +47,8 @@ class RMSNorm(nn.Module):
 
         self.eps = eps
         self.emb_dim = emb_dim
-        self.weight = nn.Parameter(torch.ones(emb_dim, dtype=torch.float32))
+        # self.weight = nn.Parameter(torch.ones(emb_dim, dtype=torch.float32))
+        self.weight = nn.Parameter(torch.ones(emb_dim)).float()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """

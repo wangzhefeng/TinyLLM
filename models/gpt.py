@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
 import torch
 import torch.nn as nn
 
-from layers.transformer_block import TransformerBlock
+from layers.transformer_block import TransformerBlockGPT
 from layers.layer_norm import LayerNorm
 from utils.log_util import logger
 
@@ -41,13 +41,13 @@ class Model(nn.Module):
         self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.emb_dim)
         self.pos_emb = nn.Embedding(cfg.context_length, cfg.emb_dim)
         self.drop_emb = nn.Dropout(cfg.dropout)
-        # TransformerBlock
+        # transformer block
         self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(cfg) for _ in range(cfg.n_layers)]
+            *[TransformerBlockGPT(cfg) for _ in range(cfg.n_layers)]
         )
         # LayerNorm
         self.final_norm = LayerNorm(cfg.emb_dim)
-        # output head Linear
+        # output head linear
         self.out_head = nn.Linear(cfg.emb_dim, cfg.vocab_size, bias = False)
 
     def forward(self, in_idx):

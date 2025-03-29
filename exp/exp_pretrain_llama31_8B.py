@@ -89,13 +89,13 @@ class Model_Pretrain(Exp_Basic):
         build model
         """
         # model instance
-        model = self.model_dict[self.args.model_name].Model(self.args)
+        model = self.model_dict[self.args.model_name].Model(self.args).float()
         # 单机多卡训练
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         # 打印模型参数量
-        total_params = sum([param.numel() for param in model.parameters()])
-        logger.info(f'Number of parameters: {(total_params / 1e6):.2f}M')
+        total = sum([param.numel() for param in model.parameters()])
+        logger.info(f'Number of parameters: {(total / 1e6):.2f}M')
         
         return model
 

@@ -34,8 +34,8 @@ class FeedForward(nn.Module):
         super(FeedForward, self).__init__()
 
         self.fc1 = nn.Linear(cfg.emb_dim, 4 * cfg.emb_dim, dtype=cfg.dtype, bias=True)
-        self.silu = GELU()
         self.fc2 = nn.Linear(4 * cfg.emb_dim, cfg.emb_dim, dtype=cfg.dtype, bias=True)
+        self.silu = GELU()
     
     def forward(self, x):
         x = self.fc1(x)
@@ -47,7 +47,7 @@ class FeedForward(nn.Module):
 
 class FeedForwardSiLU(nn.Module):
     """
-    GLU Variants Improve Transformer (2020): https://arxiv.org/abs/2002.05202
+    SwiGLU: GLU Variants Improve Transformer (2020): https://arxiv.org/abs/2002.05202
     """
     
     def __init__(self, cfgs):

@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from models import gpt#, llama3, model
+from models import gpt, llama2
 from utils.log_util import logger
 
 # global variable
@@ -33,9 +33,10 @@ class Exp_Basic(object):
         self.args = args
         self.model_dict = {
             "gpt": gpt,
+            "llama2": llama2,
         }
         self.device = self._acquire_device()
-        self.model = self._build_model().to(self.device)
+        self.model = self._build_model().float().to(self.device)
     
     def _build_data(self):
         pass

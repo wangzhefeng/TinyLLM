@@ -25,70 +25,12 @@ import math
 import torch
 import torch.nn as nn
 
+from layers.embedding import precompute_rope_params, compute_rope
+
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-# ------------------------------
-# method 1
-# ------------------------------
-class CasualAttention(nn.Module):
-    """
-    Casual Self Attention
-    """
-    def __init__(self, d_in: int, d_out: int, context_length: int, 
-                 dropout: float, qkv_bias=False):
-        super(CasualAttention, self).__init__()
-
-        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.dropout = nn.Dropout(dropout)
-        mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
-        self.register_buffer("mask", mask)
-    
-    def forward(self, x):
-        batch_size, num_tokens, d_in = x.shape
-        # q, k, v
-        queries = self.W_query(x)
-        keys = self.W_key(x)
-        values = self.W_value(x)
-        # attention scores
-        attn_scores = queries @ keys.transpose(1, 2)
-        # casual mask
-        attn_scores.masked_fill_(self.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
-        # attention weights
-        attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
-        # dropout
-        attn_weights = self.dropout(attn_weights)
-        # context scores
-        context_vec = attn_weights @ values
-    
-        return context_vec
-
-
-class MultiHeadAttentionWrapper(nn.Module):
-    
-    def __init__(self, d_in: int, d_out: int, context_length: int, 
-                 dropout: float, num_heads: int, qkv_bias=False):
-        super(MultiHeadAttentionWrapper, self).__init__()
-        
-        self.heads = nn.ModuleList([
-            CasualAttention(d_in, d_out, context_length, dropout, qkv_bias) 
-            for _ in range(num_heads)
-        ])
-        self.out_proj = nn.Linear(d_out * num_heads, d_out * num_heads)
-
-    def forward(self, x):
-        context_vector = torch.cat([head(x) for head in self.heads], dim=-1)
-        projection = self.out_proj(context_vector)
-
-        return projection
-
-
-# ------------------------------
-# method 2
-# ------------------------------
 class MultiHeadAttention(nn.Module):
     
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias=False):
@@ -148,6 +90,87 @@ class MultiHeadAttention(nn.Module):
         context_vec = (attn_weights @ values).transpose(1, 2)
         # combine heads, where self.d_out = self.num_heads * self.head_dim
         context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)
+        # optional projection
+        context_vec = self.out_proj(context_vec)
+
+        return context_vec
+
+
+class MultiHeadAttentionRoPE(nn.Module):
+    
+    def __init__(self, 
+                 d_in: int, 
+                 d_out: int, 
+                 context_length: int, 
+                 num_heads: int, 
+                 dtype=None):
+        super(MultiHeadAttentionRoPE, self).__init__()
+        assert (d_out % num_heads == 0), "d_out must be divisible by num_heads"
+        
+        self.d_out = d_out
+        self.num_heads = num_heads
+        # reduce the projection dim to match desired output dim
+        self.head_dim = d_out // num_heads
+        # query, key, value weights
+        self.W_query = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.W_key = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        # Linear layer to combine head outputs
+        self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
+        # mask
+        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
+        # RoPE
+        cos, sin = precompute_rope_params(head_dim=self.head_dim, context_length=context_length)
+        self.register_buffer("cos", cos)
+        self.register_buffer("sin", sin)
+    
+    def forward(self, x):
+        # shape: [batch_size, num_tokens, d_in]
+        batch_size, num_tokens, d_in = x.shape
+        # ------------------------------
+        # Query, Key, Value
+        # ------------------------------
+        # shape: [batch_size, num_tokens, d_out]
+        queries = self.W_query(x)
+        keys = self.W_key(x)
+        values = self.W_value(x)
+        # split the matrix by adding a "num_heads" dimension, unroll last dim
+        # shape: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, num_heads, head_dim)
+        queries = queries.view(batch_size, num_tokens, self.num_heads, self.head_dim)
+        keys = keys.view(batch_size, num_tokens, self.num_heads, self.head_dim)
+        values = values.view(batch_size, num_tokens, self.num_heads, self.head_dim)
+        # transpose
+        # shape: (batch_size, num_tokens, num_heads, head_dim) -> (batch_size, num_heads, num_tokens, head_dim)
+        queries = queries.transpose(1, 2)
+        keys = keys.transpose(1, 2)
+        values = values.transpose(1, 2)
+        # RoPE
+        queries = compute_rope(queries, self.cos, self.sin)
+        keys = compute_rope(keys, self.cos, self.sin)
+        # ------------------------------
+        # scaled dot-product attention(aka self-attention) with a causal mask
+        # ------------------------------
+        # dot product for each head
+        attn_scores = queries @ keys.transpose(2, 3)
+        # mask to fill attention scores
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        # use the mask to fill attention scores
+        attn_scores.masked_fill_(mask_bool, -torch.inf)
+        # ------------------------------
+        # attention weights
+        # ------------------------------
+        attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
+        # ------------------------------
+        # context vector
+        # ------------------------------
+        # shape: (batch_size, num_tokens, num_heads, head_dim)
+        context_vec = (attn_weights @ values).transpose(1, 2)
+
+        # combine heads, where self.d_out = self.num_heads * self.head_dim
+        context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)
+        # or
+        # context_vec = context_vec.reshape(batch_size, num_tokens, self.d_out)
+
         # optional projection
         context_vec = self.out_proj(context_vec)
 

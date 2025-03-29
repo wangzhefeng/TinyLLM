@@ -23,19 +23,20 @@ if ROOT not in sys.path:
 
 import torch.nn as nn
 
-from layers.attention import MultiHeadAttention
-from layers.feed_forward import FeedForward
+from layers.attention import MultiHeadAttention, MultiHeadAttentionRoPE
+from layers.feed_forward import FeedForward, FeedForwardSiLU
 from layers.layer_norm import LayerNorm
+from layers.rms_norm import RMSNorm
 from layers.moe import SparseMoE
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-class TransformerBlock(nn.Module):
+class TransformerBlockGPT(nn.Module):
     
     def __init__(self, cfg):
-        super(TransformerBlock, self).__init__()
+        super(TransformerBlockGPT, self).__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,
@@ -67,14 +68,14 @@ class TransformerBlock(nn.Module):
         return x
 
 
-class MixureOfExperts_TransformerBlock(nn.Module):
+class TransformerBlockMoE(nn.Module):
     """
     Mixture of Experts Transformer block
     communication followed by computation (multi-head self attention + SparseMoE) 
     """
 
     def __init__(self, cfg):
-        super(MixureOfExperts_TransformerBlock, self).__init__()
+        super(TransformerBlockMoE, self).__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,
@@ -104,7 +105,39 @@ class MixureOfExperts_TransformerBlock(nn.Module):
         x = shortcut + x
         
         return x
-        
+
+
+class TransformerBlockLlama(nn.Module):
+    
+    def __init__(self, cfg):
+        super(TransformerBlockLlama, self).__init__()
+
+        self.attn = MultiHeadAttentionRoPE(
+            d_in = cfg.emb_dim,
+            d_out = cfg.emb_dim,
+            context_length=cfg.context_length,
+            num_heads = cfg.n_heads,
+            dtype = cfg.dtype,
+        )
+        self.ff = FeedForwardSiLU(cfg)
+        self.norm1 = RMSNorm(cfg.emb_dim)
+        self.norm2 = RMSNorm(cfg.emb_dim)
+    
+    def forward(self, x):
+        # shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x = self.attn(x)  # shape: [batch_size, num_tokens, emb_size]
+        x = x + shortcut
+        # shortcut connection for feed forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = x + shortcut
+
+        return x
+
+
 
 
 # 测试代码 main 函数
@@ -126,7 +159,7 @@ def main():
     }
     torch.manual_seed(123)
     x = torch.rand(2, 4, 768)
-    block = TransformerBlock(GPT_CONFIG_124M)
+    block = TransformerBlockGPT(GPT_CONFIG_124M)
     output = block(x)
     logger.info(f"Input shape: {x.shape}")
     logger.info(f"Output shape: {output.shape}")

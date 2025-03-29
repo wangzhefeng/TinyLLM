@@ -75,13 +75,17 @@ def llama3_8b_tokenizer():
     # ------------------------------
     # 其中 pat_str 大致分为三个模型：1:带缩写的单词和单词, 2:中文片段, 3:1-3位的数字和其它特殊字符
     tokenizer = tiktoken.Encoding(
-        name = Path(tokenizer_path).name,  # 编码器名称，便于调试和日志记录使用的不同编码器
-        pat_str = r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+",  # 用于初步的粗分割文本为token序列的正则表达式
-        mergeable_ranks = mergealbe_ranks,  # 传入加载的 BPE 模型
+        # 编码器名称，便于调试和日志记录使用的不同编码器
+        name = Path(tokenizer_path).name,
+        # 用于初步的粗分割文本为token序列的正则表达式
+        pat_str = r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+",
+        # 传入加载的 BPE 模型
+        mergeable_ranks = mergealbe_ranks,
+        # 添加特殊 token-id 对的字典
         special_tokens = {
             token: len(mergealbe_ranks) + i 
             for i, token in enumerate(special_tokens)
-        }  # 添加特殊 token-id 对的字典
+        }
     )
     # logger.info(f"{tokenizer.decode(tokenizer.encode('create tokenizer successed!'))}")
 

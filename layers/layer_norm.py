@@ -30,7 +30,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 class LayerNorm(nn.Module):
 
-    def __init__(self, emb_dim, eps = 1e-5):
+    def __init__(self, emb_dim: int, eps: float = 1e-5):
         super(LayerNorm, self).__init__()
 
         self.eps = eps

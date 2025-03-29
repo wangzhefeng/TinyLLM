@@ -81,7 +81,7 @@ def main():
         print(f"Average score: {sum(scores)/len(scores):.2f}\n")
 
         # Optionally save the scores
-        save_path = Path("scores") / f"gpt4-{model.replace(' ', '-')}.json"
+        save_path = Path("scores") / f"gpt4-{model.replace(" ", "-")}.json"
         with open(save_path, "w") as file:
             json.dump(scores, file)
 

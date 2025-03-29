@@ -7,7 +7,7 @@
 # * Date        : 2025-01-25
 # * Version     : 1.0.012520
 # * Description : description
-# * Link        : SiLU: https://arxiv.org/abs/1702.03118
+# * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # * TODO        : 1.
 # ***************************************************
@@ -53,7 +53,10 @@ class ReLU(nn.Module):
 
 
 class SiLU(nn.Module):
-    
+    """
+    SiLU: https://arxiv.org/abs/1702.03118
+    """
+
     def __init__(self):
         super(SiLU, self).__init__()
 
@@ -74,6 +77,7 @@ def main():
     # relu = nn.ReLU() 
     silu = SiLU()
     # silu = nn.SiLU()
+    # silu = nn.functional.silu()
 
     # data
     x = torch.linspace(-3, 3, 100)
