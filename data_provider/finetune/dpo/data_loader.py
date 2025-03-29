@@ -193,7 +193,10 @@ def create_dataloader(
 # 测试代码 main 函数
 def main():
     from data_provider.finetune.dpo import data_config
-    from utils.device import device
+    from utils.device import device_setting
+
+    # device
+    device = device_setting()
 
     # params
     batch_size = 2

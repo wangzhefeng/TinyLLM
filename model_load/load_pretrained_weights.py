@@ -31,7 +31,7 @@ from model_load.openai_gpt2_weights_load import (
     download_and_load_gpt2, 
     load_weights_download,
 )
-from utils.argsparser_tools import DotDict
+from utils.args_tools import DotDict
 from utils.log_util import logger
 
 # global variable

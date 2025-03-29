@@ -72,7 +72,7 @@ class FeedForwardSiLU(nn.Module):
 # 测试代码 main 函数
 def main():
     import torch
-    from utils.argsparser_tools import DotDict
+    from utils.args_tools import DotDict
     from utils.log_util import logger
     # ------------------------------
     # Feed Forward test

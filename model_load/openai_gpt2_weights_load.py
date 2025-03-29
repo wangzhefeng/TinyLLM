@@ -269,9 +269,11 @@ def main():
     from models.gpt import Model
     from tokenizer.tokenization import token_ids_to_text, text_to_token_ids
     from utils.train_utils.gpt_generate import generate
-    from utils.device import device
-    from utils.argsparser_tools import DotDict
+    from utils.device import device_setting
+    from utils.args_tools import DotDict
     from utils.log_util import logger
+    # device
+    device = device_setting()
 
     # pretrained model
     choose_model = "gpt2-small (124M)"

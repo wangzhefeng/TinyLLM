@@ -46,7 +46,7 @@ from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.train_utils.train_funcs import select_optimizer
 from utils.train_utils.plot_losses import plot_losses
 # tools
-from utils.device import device
+from utils.device import device_setting
 from utils.log_util import logger
 
 warnings.filterwarnings("ignore")
@@ -60,7 +60,7 @@ class ModelFinetuningInstructionFlow:
     def __init__(self, args):
         self.args = args
         # device
-        self.device = device
+        self.device = device_setting()
         # tokenizer
         self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
         # pad token
@@ -159,7 +159,7 @@ class ModelFinetuningInstructionFlow:
         """
         Load model
         """
-        model.load_state_dict(torch.load(self.model_path, map_location=device, weights_only=True))
+        model.load_state_dict(torch.load(self.model_path, map_location=self.device, weights_only=True))
         logger.info(f"Model loaded from {self.model_path}")
         
         return model

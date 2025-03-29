@@ -75,7 +75,7 @@ class Model(nn.Module):
 def main():
     import tiktoken
     from utils.train_utils.gpt_generate import generate
-    from utils.argsparser_tools import DotDict
+    from utils.args_tools import DotDict
 
     # model params
     GPT_CONFIG_124M = {

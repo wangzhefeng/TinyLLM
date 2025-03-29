@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.argsparser_tools import DotDict
+from utils.args_tools import DotDict
 from utils.log_util import logger
 
 # global variable

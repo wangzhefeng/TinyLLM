@@ -34,13 +34,17 @@ from layers.attention import (
     current_version, 
     required_version
 )
-from utils.device import device
+from utils.device import device_setting
 from utils.log_util import logger
 
 logger.info(f"torch version: {version('torch')}")
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
+
+
+# device
+device = device_setting()
 
 
 def random_data_attention():

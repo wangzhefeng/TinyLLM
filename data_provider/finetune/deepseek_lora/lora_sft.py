@@ -38,11 +38,15 @@ from transformers import (
 from peft import LoraConfig, get_peft_model
 from datasets import load_dataset
 
-from utils.device import device
+from utils.device import device_setting
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
+
+
+# device
+device = device_setting()
 
 
 class LossCallback(TrainerCallback):

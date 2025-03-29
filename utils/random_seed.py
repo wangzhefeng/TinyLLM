@@ -30,17 +30,24 @@ import torch
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def set_seed(seed):
+def set_seed_ml(seed: int = 2025):
     """
     设置可重复随机数
     """
-    fix_seed = seed
-    random.seed(fix_seed)
-    np.random.seed(fix_seed)
-    torch.manual_seed(fix_seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
+
+def set_seed(seed: int = 2025):
+    """
+    设置可重复随机数
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(fix_seed)
-        torch.cuda.manual_seed(fix_seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
 
 

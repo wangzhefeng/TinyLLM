@@ -41,7 +41,7 @@ from utils.train_utils.calc_accuracy import calc_accuracy_loader, calc_final_acc
 from utils.train_utils.train_funcs import select_optimizer
 from utils.train_utils.plot_losses import plot_values_classifier
 # utils
-from utils.device import device
+from utils.device import device_setting
 from utils.log_util import logger
 
 warnings.filterwarnings("ignore")
@@ -55,7 +55,7 @@ class ModelFinetuningClassifier:
     def __init__(self, args):
         self.args = args
         # device
-        self.device = device
+        self.device = device_setting()
         # tokenizer
         self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
         # pad token

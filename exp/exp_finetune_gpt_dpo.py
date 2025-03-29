@@ -41,8 +41,8 @@ from model_load.openai_gpt2_weights_load_hf import load_weights_hf
 from utils.train_utils.train_funcs import select_optimizer
 from utils.train_utils.plot_losses import plot_losses
 # utils
-from utils.device import device
-from utils.argsparser_tools import DotDict
+from utils.device import device_setting
+from utils.args_tools import DotDict
 from utils.log_util import logger
 
 # global variable
@@ -54,7 +54,7 @@ class ModelFinetuningPreference:
     def __init__(self, args):
         self.args = args
         # device
-        self.device = device
+        self.device = device_setting()
         # tokenizer
         self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
         # pad token id
@@ -233,7 +233,7 @@ class ModelFinetuningPreference:
         """
         Load model
         """
-        model.load_state_dict(torch.load(self.model_path, map_location=device, weights_only=True))
+        model.load_state_dict(torch.load(self.model_path, map_location=self.device, weights_only=True))
         logger.info(f"Model loaded from {self.model_path}")
         
         return model
