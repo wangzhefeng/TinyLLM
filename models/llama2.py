@@ -58,7 +58,45 @@ class Model(nn.Module):
 
 # 测试代码 main 函数
 def main():
-    pass
+    import torch
+    from models.llama2 import Model
+    from utils.args_tools import DotDict
+    from utils.train_utils.gpt_generate import generate
+    from tokenizer.tokenization import (
+        text_to_token_ids,
+        token_ids_to_text,
+    )
+    from utils.device import device_setting
+    from utils.log_util import logger
+
+    # model params
+    LLAMA2_CONFIG_7B = {
+        "vocab_size": 32000,     # Vocabulary size
+        "context_length": 4096,  # Context length
+        "emb_dim": 4096,         # Embedding dimension
+        "n_heads": 32,           # Number of attention heads
+        "n_layers": 32,          # Number of layers
+        "hidden_dim": 11008,     # NEW: Size of the intermediate dimension in FeedForward
+        "dtype": torch.bfloat16  # NEW: Lower-precision dtype to reduce memory usage
+    }
+    LLAMA2_CONFIG_7B = DotDict(LLAMA2_CONFIG_7B)
+    # model
+    model = Model(LLAMA2_CONFIG_7B)
+    # device
+    device = device_setting()
+    # input text
+    input_text = "Every effort moves"
+
+    # model generate
+    token_ids = generate(
+        model = model.to(device),
+        token_idx = text_to_token_ids(input_text).to(device),
+        max_new_tokens = 30,
+        context_size = LLAMA2_CONFIG_7B.context_length,
+        eos_id = 50256,
+    )
+    generated_text = token_ids_to_text(token_ids)
+    logger.info(f"generated_text:\n{generated_text}")
 
 if __name__ == "__main__":
     main()

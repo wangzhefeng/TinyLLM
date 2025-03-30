@@ -1,0 +1,31 @@
+生成一张搞笑的「梗图」风格图片，上下两格对比：
+
+上半部分：
+- 一位戴着墨镜、表情极度轻松自信的卡通人物，坐姿慵懒随意，面对着打开的 VS Code 编辑器，屏幕上是一段格式凌乱却神奇运行成功的 JavaScript 代码，如下：
+  ```python
+  def magic():
+    if random.random() > 0.5:
+        return "✨成功啦✨";
+    else:
+        raise ValueError("Oops")
+
+  print(magic())
+  ```
+- 人物正在兴奋地从旁边的 ChatGPT 窗口复制粘贴代码，脸上带着巨大的满足笑容。
+- 背景充满闪烁的星光✨、彩虹🌈，并漂浮着明显的文字：“✨运行成功✨”。
+- 底部文字说明：“Vibe 编程”（Vibe Coding）
+
+下半部分：
+- 同样的卡通人物形象，但表情非常焦虑，双手抱头崩溃地盯着屏幕上的 VS Code。
+- 屏幕上满是红色错误提示，显示的代码错误清晰：
+  ```python
+  Traceback (most recent call last):
+  File "path/file.py", line 36, in <module>
+    print(magic())
+          ^^^^^^^
+  File "path/file.py", line 34, in magic
+    raise ValueError("Oops")
+  ValueError: Oops
+  ```
+- 桌子上堆满用过的一摞咖啡杯，周围散乱贴着写满“WTF？”、“怎么回事？！”的便利贴。
+- 底部文字说明：“调试 Vibe 编程的代码”（Debugging Vibe Code）

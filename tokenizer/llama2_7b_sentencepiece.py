@@ -21,26 +21,23 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-import json
-import getpass
 
 from dotenv import find_dotenv, load_dotenv
 from huggingface_hub import login, hf_hub_download
 import sentencepiece as spm
 
-from utils.log_util import logger
-
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def login_huggingface_hub():
+def _login_huggingface_hub():
     """
     login HuggingFace Hub
     """
     # load env variables
     _ = load_dotenv(find_dotenv())
     # notebok
+    # import getpass
     # os.environ["HF_HUB_ACCESS_TOKEN"] = getpass.get_pass()
     # script
     HF_HUB_ACCESS_TOKEN = os.getenv("HUGGINGFACE_HUB_API_KEY")
@@ -49,7 +46,7 @@ def login_huggingface_hub():
     login(token = HF_HUB_ACCESS_TOKEN)
 
 
-def download_tokenzier(model_path):
+def _download_tokenzier(model_path):
     """
     download llama2 tokenizer
     """
@@ -64,9 +61,13 @@ def download_tokenzier(model_path):
 
 class LlamaTokenizer:
     
-    def __init__(self, tokenizer_file):
+    def __init__(self):
+        # model path
+        model_path = "downloaded_models/llama_model/Llama-2-7b"
+        tokenizer_file_path = os.path.join(model_path, "tokenizer.model")
+        # sp tokenizer
         sp = spm.SentencePieceProcessor()
-        sp.load(tokenizer_file)
+        sp.load(tokenizer_file_path)
         self.tokenizer = sp
     
     def encode(self, text):
@@ -81,16 +82,16 @@ class LlamaTokenizer:
 # 测试代码 main 函数
 def main():
     # model path
-    model_path = "downloaded_models/llama_model/Meta-Llama-2-7B"
-    tokenizer_file_path = os.path.join(model_path, "tokenizer.model")
+    # model_path = "downloaded_models/llama_model/Meta-Llama-2-7B"
+    # tokenizer_file_path = os.path.join(model_path, "tokenizer.model")
 
     # login huggingface hub
-    # login_huggingface_hub()
+    # _login_huggingface_hub()
 
     # download tokenizer model
-    # download_tokenzier(tokenzier_model_path)
+    # _download_tokenzier(tokenzier_model_path)
 
-    tokenizer = LlamaTokenizer(tokenizer_file=tokenizer_file_path)
+    tokenizer = LlamaTokenizer()
 
 if __name__ == "__main__":
     main()

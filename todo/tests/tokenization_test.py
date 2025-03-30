@@ -18,7 +18,8 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from tokenizer.tokenization import SimpleTokenizer, BPETokenizerSimple
+from tokenizer.simple_custom import SimpleTokenizer
+from tokenizer.simple_bpe import BPETokenizerSimple
 from data_provider.pretrain.data_load import data_load
 from utils.log_util import logger
 

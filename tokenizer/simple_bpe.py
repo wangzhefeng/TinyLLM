@@ -330,8 +330,6 @@ class BPETokenizerSimple:
 
 
 
-
-
 # 测试代码 main 函数
 def main():
     pass

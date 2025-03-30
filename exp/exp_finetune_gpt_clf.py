@@ -31,10 +31,8 @@ from models.gpt import Model
 from model_finetuning.model_finetune_clf import finetune_model
 # other model
 from tokenizer.tokenization import choose_tokenizer
-from model_load.load_pretrained_weights import (
-    model_with_gpt2_weights,
-    load_pretrained_model,
-)
+from model_load.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
+from model_load.load_pretrained_weights import load_pretrained_model
 # training
 from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.train_utils.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
@@ -306,6 +304,7 @@ class ModelFinetuningClassifier:
         # loade model
         model = load_pretrained_model(
             self.args, 
+            model_configs=gpt2_model_configs,
             model_cls = Model, 
             device = self.device, 
             task = "instruction_follow"

@@ -1,6 +1,7 @@
 
+# docs
 
-
+* [如何实现一个分词器](https://juejin.cn/post/7397701403378155530)
 
 # BPE(BytePair tokenizer): 
 

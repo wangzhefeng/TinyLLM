@@ -27,16 +27,19 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
 def load_weights_hf(gpt, gpt_hf, CONFIG):
+    # assign function
     def assign_check(left, right):
         if left.shape != right.shape:
             raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
         return torch.nn.Parameter(right.clone().detach())
-
+    
+    # gpt weights
     d = gpt_hf.state_dict()
 
+    # embedding
     gpt.pos_emb.weight = assign_check(gpt.pos_emb.weight, d["wpe.weight"])
     gpt.tok_emb.weight = assign_check(gpt.tok_emb.weight, d["wte.weight"])
-    
+    # other layers
     for b in range(CONFIG["n_layers"]):
         q_w, k_w, v_w = np.split(d[f"h.{b}.attn.c_attn.weight"], 3, axis=-1)
         gpt.trf_blocks[b].attn.W_query.weight = assign_check(gpt.trf_blocks[b].attn.W_query.weight, q_w.T)
@@ -65,6 +68,8 @@ def load_weights_hf(gpt, gpt_hf, CONFIG):
         gpt.final_norm.shift = assign_check(gpt.final_norm.shift, d[f"ln_f.bias"])
         gpt.out_head.weight = assign_check(gpt.out_head.weight, d["wte.weight"])
 
+    return gpt
+
 
 
 
@@ -77,49 +82,35 @@ def main():
     from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.args_tools import DotDict
-    from utils.log_util import logger
-    # device
-    device = device_setting()
+    from utils.log_util import logger 
 
     # huggingface gpt2 model
     choose_model = "gpt2-small (124M)"
-    
-    # huggingface allowed model names
-    model_names = {
-        "gpt2-small (124M)": "openai-community/gpt2",
-        "gpt2-medium (355M)": "openai-community/gpt2-medium",
-        "gpt2-large (774M)": "openai-community/gpt2-large",
-        "gpt2-xl (1558M)": "openai-community/gpt2-xl"
-    }
+    # huggingface allowed model names 
     gpt_hf = GPT2Model.from_pretrained(
-        model_names[choose_model], 
+        gpt2_model_names[choose_model], 
         cache_dir="./downloaded_models/gpt2_model"
     )
     gpt_hf.eval();
 
-    # custom model config
-    model_configs = {
-        "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
-        "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
-        "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
-        "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
-    }
+    # custom model config 
     base_config = {
         "vocab_size": 50257,     # Vocabulary size
         "context_length": 1024,  # Context length
         "dropout": 0.0,          # Dropout rate
         "qkv_bias": True         # Query-key-value bias
     }
-    base_config.update(model_configs[choose_model])
+    base_config.update(gpt2_model_configs[choose_model])
     base_config = DotDict(base_config)
-    
+
+    # device
+    device = device_setting()
+
     # custom model
     gpt = Model(base_config)
 
     # update weights
-    load_weights_hf(gpt, gpt_hf, base_config)
-    
-    # model inference mode
+    gpt = load_weights_hf(gpt, gpt_hf, base_config) 
     gpt.to(device)
 
     # model inference

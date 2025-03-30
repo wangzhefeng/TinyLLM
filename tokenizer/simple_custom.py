@@ -23,6 +23,7 @@ if ROOT not in sys.path:
 import re
 from typing import List
 
+from data_provider.pretrain.data_load import data_load
 from utils.log_util import logger
 
 # global variable
@@ -31,7 +32,10 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 class SimpleTokenizer:
 
-    def __init__(self, raw_text: str):
+    def __init__(self, raw_text: str = None):
+        raw_text = data_load(
+            url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
+        )
         self.vocab = self._build_vocab(raw_text)
         self.str_to_int = self.vocab
         self.int_to_str = {i: s for s, i in self.vocab.items()}
@@ -41,25 +45,27 @@ class SimpleTokenizer:
         Build vocab
         Converting tokens into token IDs
         """
-        logger.info("Build Vocab: Converting tokens into token IDs...")
+        # logger.info("Build Vocab: Converting tokens into token IDs...")
         # 训练数据分词
         token_list = re.split(r'([,.:;?_!"()\']|--|\s)', text)
         token_list = [item.strip() for item in token_list if item.strip()]
-        self.n_token = len(token_list)
+        # self.n_token = len(token_list)
         # logger.info(f"Token size: {self.n_token}")
         # 训练数据所有 token(不重复)
-        all_tokens = sorted(set(token_list))
+        self.all_tokens = sorted(set(token_list))
         # special tokens: [BOS], [EOS], [PAD], [UNK], [endoftext], <UNK>
-        all_tokens.extend(["<|endoftext|>", "<|unk|>"])
-        self.n_vocab = len(all_tokens)
-        # logger.info(f"Vocab size: {self.n_vocab}")
+        self.all_tokens.extend(["<|endoftext|>", "<|unk|>"]) 
         # 构建词典
         vocab = {
             token: integer
-            for integer, token in enumerate(all_tokens)
+            for integer, token in enumerate(self.all_tokens)
         }
         
         return vocab
+    
+    @property
+    def n_vocab(self):
+        return len(self.all_tokens)
 
     def encode(self, text: str):
         """
@@ -91,7 +97,25 @@ class SimpleTokenizer:
 
 # 测试代码 main 函数
 def main():
-    pass
+    # input text
+    input_text_1 = (
+        "Hello, do you like tea? <|endoftext|> In the sunlit terraces"
+        "of someunknownPlace."
+    )
+    input_text_2 = "Hello, do you like tea? <|endoftext|> In the sunlit terraces of someunknownPlace."
+    input_text_3 = """It's the last he painted, you know," 
+                    Mrs. Gisburn said with pardonable pride."""
+    input_text_4 = "Hello, do you like tea. Is this-- a test?"
+
+    # simple tokenizer
+    tokenizer = SimpleTokenizer()
+    logger.info(f"tokenizer.n_vocab: {tokenizer.n_vocab}")
+    
+    token_ids = tokenizer.encode(text=input_text_2)
+    logger.info(f"token_ids: {token_ids}")
+    
+    decoded_text = tokenizer.decode(tokens=token_ids)
+    logger.info(f"decoded_text: {decoded_text}")
 
 if __name__ == "__main__":
     main()

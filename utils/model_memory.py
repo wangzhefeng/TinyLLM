@@ -23,7 +23,6 @@ if ROOT not in sys.path:
 
 import torch
 
-from utils.args_tools import DotDict
 from utils.log_util import logger
 
 # global variable
@@ -74,6 +73,7 @@ def model_memory_size(model, input_dtype=torch.float32):
 
 # 测试代码 main 函数
 def main():
+    from utils.args_tools import DotDict
     from models.llama2 import Model
 
     # model params

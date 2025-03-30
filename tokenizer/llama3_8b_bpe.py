@@ -36,7 +36,7 @@ def llama3_8b_tokenizer():
     # ------------------------------
     # 分词器模型的路径
     # ------------------------------
-    tokenizer_path = os.path.join(ROOT, r"tokenizer\Meta-Llama-3-8B\original\tokenizer.model")
+    tokenizer_path = "downloaded_models/llama_model/Meta-Llama-3-8B/original/tokenizer.model"
     # logger.info(f"tokenizer_path: {tokenizer_path}")
     # ------------------------------
     # 常规词典外的特殊 token

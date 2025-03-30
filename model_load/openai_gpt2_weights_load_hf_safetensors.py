@@ -28,69 +28,94 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
 def load_weights_hf_safetensors(gpt, params):
+    # assign function
     def assign(left, right):
         if left.shape != right.shape:
             raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
         return torch.nn.Parameter(right.detach())
-
+    
+    # embedding
     gpt.pos_emb.weight = assign(gpt.pos_emb.weight, params["wpe.weight"])
     gpt.tok_emb.weight = assign(gpt.tok_emb.weight, params["wte.weight"])
-
+    # other layers
     for b in range(len(gpt.trf_blocks)):
-        q_w, k_w, v_w = torch.chunk(
-            params[f"h.{b}.attn.c_attn.weight"], 3, axis=-1)
+        q_w, k_w, v_w = torch.chunk(params[f"h.{b}.attn.c_attn.weight"], 3, axis=-1)
         gpt.trf_blocks[b].attn.W_query.weight = assign(
-            gpt.trf_blocks[b].attn.W_query.weight, q_w.T)
+            gpt.trf_blocks[b].attn.W_query.weight, 
+            q_w.T
+        )
         gpt.trf_blocks[b].attn.W_key.weight = assign(
-            gpt.trf_blocks[b].attn.W_key.weight, k_w.T)
+            gpt.trf_blocks[b].attn.W_key.weight, 
+            k_w.T
+        )
         gpt.trf_blocks[b].attn.W_value.weight = assign(
-            gpt.trf_blocks[b].attn.W_value.weight, v_w.T)
+            gpt.trf_blocks[b].attn.W_value.weight, 
+            v_w.T
+        )
 
-        q_b, k_b, v_b = torch.chunk(
-            params[f"h.{b}.attn.c_attn.bias"], 3, axis=-1)
+        q_b, k_b, v_b = torch.chunk(params[f"h.{b}.attn.c_attn.bias"], 3, axis=-1)
         gpt.trf_blocks[b].attn.W_query.bias = assign(
-            gpt.trf_blocks[b].attn.W_query.bias, q_b)
+            gpt.trf_blocks[b].attn.W_query.bias, 
+            q_b
+        )
         gpt.trf_blocks[b].attn.W_key.bias = assign(
-            gpt.trf_blocks[b].attn.W_key.bias, k_b)
+            gpt.trf_blocks[b].attn.W_key.bias, 
+            k_b
+        )
         gpt.trf_blocks[b].attn.W_value.bias = assign(
-            gpt.trf_blocks[b].attn.W_value.bias, v_b)
+            gpt.trf_blocks[b].attn.W_value.bias, 
+            v_b
+        )
 
         gpt.trf_blocks[b].attn.out_proj.weight = assign(
             gpt.trf_blocks[b].attn.out_proj.weight,
-            params[f"h.{b}.attn.c_proj.weight"].T)
+            params[f"h.{b}.attn.c_proj.weight"].T
+        )
         gpt.trf_blocks[b].attn.out_proj.bias = assign(
             gpt.trf_blocks[b].attn.out_proj.bias,
-            params[f"h.{b}.attn.c_proj.bias"])
+            params[f"h.{b}.attn.c_proj.bias"]
+        )
 
         gpt.trf_blocks[b].ff.layers[0].weight = assign(
             gpt.trf_blocks[b].ff.layers[0].weight,
-            params[f"h.{b}.mlp.c_fc.weight"].T)
+            params[f"h.{b}.mlp.c_fc.weight"].T
+        )
         gpt.trf_blocks[b].ff.layers[0].bias = assign(
             gpt.trf_blocks[b].ff.layers[0].bias,
-            params[f"h.{b}.mlp.c_fc.bias"])
+            params[f"h.{b}.mlp.c_fc.bias"]
+        )
         gpt.trf_blocks[b].ff.layers[2].weight = assign(
             gpt.trf_blocks[b].ff.layers[2].weight,
-            params[f"h.{b}.mlp.c_proj.weight"].T)
+            params[f"h.{b}.mlp.c_proj.weight"].T
+        )
         gpt.trf_blocks[b].ff.layers[2].bias = assign(
             gpt.trf_blocks[b].ff.layers[2].bias,
-            params[f"h.{b}.mlp.c_proj.bias"])
+            params[f"h.{b}.mlp.c_proj.bias"]
+        )
 
         gpt.trf_blocks[b].norm1.scale = assign(
             gpt.trf_blocks[b].norm1.scale,
-            params[f"h.{b}.ln_1.weight"])
+            params[f"h.{b}.ln_1.weight"]
+        )
         gpt.trf_blocks[b].norm1.shift = assign(
             gpt.trf_blocks[b].norm1.shift,
-            params[f"h.{b}.ln_1.bias"])
+            params[f"h.{b}.ln_1.bias"]
+        )
         gpt.trf_blocks[b].norm2.scale = assign(
             gpt.trf_blocks[b].norm2.scale,
-            params[f"h.{b}.ln_2.weight"])
+            params[f"h.{b}.ln_2.weight"]
+        )
         gpt.trf_blocks[b].norm2.shift = assign(
             gpt.trf_blocks[b].norm2.shift,
-            params[f"h.{b}.ln_2.bias"])
+            params[f"h.{b}.ln_2.bias"]
+        )
 
+    # Load output layer weights
     gpt.final_norm.scale = assign(gpt.final_norm.scale, params["ln_f.weight"])
     gpt.final_norm.shift = assign(gpt.final_norm.shift, params["ln_f.bias"])
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte.weight"])
+
+    return gpt
 
 
 def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
@@ -110,8 +135,6 @@ def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
 
 # 测试代码 main 函数
 def main():
-    import torch
-
     from models.gpt import Model
     from utils.train_utils.gpt_generate import generate
     from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
@@ -149,7 +172,6 @@ def main():
     }
     base_config.update(model_configs[choose_model])
     base_config = DotDict(base_config)
-
     # custom model
     gpt = Model(base_config)
 

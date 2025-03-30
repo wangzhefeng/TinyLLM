@@ -37,10 +37,8 @@ from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
 from models.gpt import Model
 from utils.train_utils.gpt_generate import generate
 # other model
-from model_load.load_pretrained_weights import (
-    model_with_gpt2_weights,
-    load_pretrained_model,
-)
+from model_load.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
+from model_load.load_pretrained_weights import load_pretrained_model
 # model training
 from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.train_utils.train_funcs import select_optimizer
@@ -446,6 +444,7 @@ class ModelFinetuningInstructionFlow:
         # load model
         model = load_pretrained_model(
             self.args, 
+            model_configs=gpt2_model_configs,
             model_cls = Model, 
             device = torch.device("cpu"), 
             task = "instruction_follow"

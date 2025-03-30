@@ -7,6 +7,8 @@
 # * Date        : 2025-02-17
 # * Version     : 0.1.021721
 # * Description : https://zhuanlan.zhihu.com/p/701777558
+# *               https://oilbeater.com/en/2025/03/29/deepseek-moe/
+# *               https://oilbeater.com/2025/03/29/deepseek-moe/?continueFlag=f8a3608be78ba94b8ef26443ea262ec6
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************

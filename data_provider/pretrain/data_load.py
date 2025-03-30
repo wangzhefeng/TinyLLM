@@ -67,10 +67,10 @@ def data_load(url: str = None, data_dir: str = "dataset/pretrain"):
             raw_text = file.read()
         logger.info(f"Total number of character: {len(raw_text)}")
     else:
-        logger.info(f"Load data...")
+        # logger.info(f"Load data...")
         with open(file_path, "r", encoding="utf-8") as f:
             raw_text = f.read()
-        logger.info(f"Total number of character: {len(raw_text)}")
+        # logger.info(f"Total number of character: {len(raw_text)}")
 
     return raw_text
 
