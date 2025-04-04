@@ -22,7 +22,6 @@ import torch
 import torch.nn as nn
 
 from utils.args_tools import DotDict
-from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]

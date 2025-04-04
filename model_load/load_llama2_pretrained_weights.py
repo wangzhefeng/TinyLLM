@@ -23,31 +23,21 @@ if ROOT not in sys.path:
 
 import torch
 
-from models.llama2 import Model
-from utils.train_utils.gpt_generate import generate
-from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
-from utils.device import device_setting
 from utils.args_tools import DotDict
-from utils.log_util import logger
+from utils.device import device_setting
+from models.llama2 import Model
+from model_load.model_cfgs import LLAMA2_CONFIG_7B
 from model_load.meta_llama2_weights_load_hf import load_weights_into_llama
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def model_with_llama2_weights(weights):
-    # model params
-    LLAMA2_CONFIG_7B = {
-        "vocab_size": 32000,     # Vocabulary size
-        "context_length": 4096,  # Context length
-        "emb_dim": 4096,         # Embedding dimension
-        "n_heads": 32,           # Number of attention heads
-        "n_layers": 32,          # Number of layers
-        "hidden_dim": 11008,     # NEW: Size of the intermediate dimension in FeedForward
-        "dtype": torch.bfloat16  # NEW: Lower-precision dtype to reduce memory usage
-    }
-    LLAMA2_CONFIG_7B = DotDict(LLAMA2_CONFIG_7B)
+# model params 
+LLAMA2_CONFIG_7B = DotDict(LLAMA2_CONFIG_7B)
 
+
+def model_with_llama2_weights(weights):
     # device
     device = device_setting()
 
@@ -67,16 +57,18 @@ def main():
         download_llama2_model, 
         download_llama2_chat_model
     )
+    from utils.train_utils.gpt_generate import generate
+    from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
+    from utils.log_util import logger
 
     # device
     device = device_setting()
+
     # ------------------------------
     # Llama-2-7b model
     # ------------------------------
-    weights = download_llama2_model(
-        model_path = "downloaded_models/llama_model/Llama-2-7b/consolidated.00.pth"
-    )
+    weights = download_llama2_model(model_path = "downloaded_models/llama_model/Llama-2-7b")
     model, LLAMA2_CONFIG_7B = model_with_llama2_weights(weights = weights)
     # model inference
     token_ids = generate(
@@ -86,15 +78,13 @@ def main():
         context_size=LLAMA2_CONFIG_7B.context_length,
         temperature=1.0,
         top_k=1,
-        eos_id=50256,
+        eos_id=50256,  # TODO
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids, tokenizer_model='llama2')}")
     # ------------------------------
-    # Llama-2-7b model
+    # Llama-2-7b chat model
     # ------------------------------
-    weights_chat = download_llama2_chat_model(
-        model_path = "downloaded_models/llama_model/Llama-2-7b-chat/consolidated.00.pth"
-    )
+    weights_chat = download_llama2_chat_model(model_path = "downloaded_models/llama_model/Llama-2-7b-chat")
     model, LLAMA2_CONFIG_7B = model_with_llama2_weights(weights = weights_chat)
     # model inference
     token_ids = generate(
@@ -104,7 +94,7 @@ def main():
         context_size=LLAMA2_CONFIG_7B.context_length,
         temperature=1.0,
         top_k=1,
-        eos_id=50256,
+        eos_id=50256,  # TODO
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids, tokenizer_model='llama2')}")
 

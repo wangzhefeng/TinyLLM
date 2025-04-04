@@ -59,15 +59,15 @@ def _download_tokenzier(model_path):
     return tokenizer_file
 
 
-class LlamaTokenizer:
+class Llama27bTokenizer:
     
     def __init__(self):
         # model path
-        model_path = "downloaded_models/llama_model/Llama-2-7b"
-        tokenizer_file_path = os.path.join(model_path, "tokenizer.model")
+        model_path = "downloaded_models/llama_model/Llama-2-7b/tokenizer.model"
+        assert os.path.isfile(model_path), f"Model file {model_path} not found"
         # sp tokenizer
         sp = spm.SentencePieceProcessor()
-        sp.load(tokenizer_file_path)
+        sp.load(model_path)
         self.tokenizer = sp
     
     def encode(self, text):
@@ -82,16 +82,17 @@ class LlamaTokenizer:
 # 测试代码 main 函数
 def main():
     # model path
-    # model_path = "downloaded_models/llama_model/Meta-Llama-2-7B"
+    # model_path = "downloaded_models/llama_model/Llama-2-7b"
     # tokenizer_file_path = os.path.join(model_path, "tokenizer.model")
 
     # login huggingface hub
     # _login_huggingface_hub()
 
     # download tokenizer model
-    # _download_tokenzier(tokenzier_model_path)
+    # _download_tokenzier(model_path)
 
-    tokenizer = LlamaTokenizer()
+    # tokenizer
+    tokenizer = Llama27bTokenizer()
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : llama.py
+# * File        : llama2.py
 # * Author      : Zhefeng Wang
 # * Email       : wangzhefengr@163.com
 # * Date        : 2025-03-04
@@ -18,9 +18,10 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
+import torch
 import torch.nn as nn
 
-from layers.transformer_block import TransformerBlockLlama
+from layers.transformer_block import TransformerBlockLlama2
 from layers.rms_norm import RMSNorm
 
 # global variable
@@ -36,7 +37,7 @@ class Model(nn.Module):
         self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.emb_dim, dtype=cfg.dtype)
         # transformer block
         self.trf_blocks = nn.Sequential(
-            *[TransformerBlockLlama(cfg) for _ in range(cfg.n_layers)]
+            *[TransformerBlockLlama2(cfg) for _ in range(cfg.n_layers)]
         )
         # RMSNorm
         self.final_norm = RMSNorm(cfg.emb_dim)
@@ -59,43 +60,45 @@ class Model(nn.Module):
 # 测试代码 main 函数
 def main():
     import torch
-    from models.llama2 import Model
     from utils.args_tools import DotDict
     from utils.train_utils.gpt_generate import generate
     from tokenizer.tokenization import (
         text_to_token_ids,
         token_ids_to_text,
     )
+    from model_load.model_cfgs import LLAMA2_CONFIG_7B
+    from utils.model_memory import model_memory_size
     from utils.device import device_setting
-    from utils.log_util import logger
+    from utils.log_util import logger 
 
-    # model params
-    LLAMA2_CONFIG_7B = {
-        "vocab_size": 32000,     # Vocabulary size
-        "context_length": 4096,  # Context length
-        "emb_dim": 4096,         # Embedding dimension
-        "n_heads": 32,           # Number of attention heads
-        "n_layers": 32,          # Number of layers
-        "hidden_dim": 11008,     # NEW: Size of the intermediate dimension in FeedForward
-        "dtype": torch.bfloat16  # NEW: Lower-precision dtype to reduce memory usage
-    }
+    # model params 
     LLAMA2_CONFIG_7B = DotDict(LLAMA2_CONFIG_7B)
+
     # model
     model = Model(LLAMA2_CONFIG_7B)
+
     # device
     device = device_setting()
+    # ------------------------------
+    # model memory size
+    # ------------------------------
+    total_memory_gb = model_memory_size(model, input_dtype=torch.float32)
+    total_memory_gb = model_memory_size(model, input_dtype=torch.bfloat16)
+    # ------------------------------
+    # inference
+    # ------------------------------
     # input text
     input_text = "Every effort moves"
 
     # model generate
     token_ids = generate(
         model = model.to(device),
-        token_idx = text_to_token_ids(input_text).to(device),
+        token_idx = text_to_token_ids(input_text, tokenizer_model="llama2").to(device),
         max_new_tokens = 30,
         context_size = LLAMA2_CONFIG_7B.context_length,
-        eos_id = 50256,
+        eos_id = 50256,  # TODO
     )
-    generated_text = token_ids_to_text(token_ids)
+    generated_text = token_ids_to_text(token_ids, tokenizer_model="llama2")
     logger.info(f"generated_text:\n{generated_text}")
 
 if __name__ == "__main__":

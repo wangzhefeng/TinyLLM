@@ -27,8 +27,8 @@ import torch
 from tokenizer.simple_custom import SimpleTokenizer
 from tokenizer.simple_bpe import BPETokenizerSimple
 from tokenizer.gpt2_tiktoken import GPT2Tokenizer
-from tokenizer.llama2_7b_sentencepiece import LlamaTokenizer
-from tokenizer.llama3_8b_bpe import llama3_8b_tokenizer
+from tokenizer.llama2_7b_sentencepiece import Llama27bTokenizer
+from tokenizer.llama3_8b_bpe import Llama38bTokenizer
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -42,8 +42,8 @@ def choose_tokenizer(tokenizer_model: str = "gpt2"):
         "simple_custom": SimpleTokenizer,
         # "simple_bpe": BPETokenizerSimple,
         "gpt2": GPT2Tokenizer,
-        "llama2": LlamaTokenizer,
-        "llama3_8b_bpe": llama3_8b_tokenizer,
+        "llama2": Llama27bTokenizer,
+        "llama3-8B": Llama38bTokenizer,
     }
     tokenizer = tokenizer_models_map[tokenizer_model]()
 
@@ -52,16 +52,13 @@ def choose_tokenizer(tokenizer_model: str = "gpt2"):
 
 def text_to_token_ids(text: str, tokenizer_model: str = "gpt2"):
     """
-    tokenizer text to token_ids
-
-    Args:
-        text (str): _description_
-
-    Returns:
-        _type_: _description_
+    tokenizer text to token_ids 
     """
     # tokenizer
-    tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
+    if isinstance(tokenizer_model, str):
+        tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
+    else:
+        tokenizer = tokenizer_model
     # text encode to token ids
     encoded = tokenizer.encode(text)
     # add batch dimension
@@ -72,16 +69,13 @@ def text_to_token_ids(text: str, tokenizer_model: str = "gpt2"):
 
 def token_ids_to_text(token_ids: List, tokenizer_model: str = "gpt2"):
     """
-    tokenizer decoded token_ids to text
-
-    Args:
-        token_ids (_type_): _description_
-
-    Returns:
-        _type_: _description_
+    tokenizer decoded token_ids to text 
     """
     # tokenizer
-    tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
+    if isinstance(tokenizer_model, str):
+        tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
+    else:
+        tokenizer = tokenizer_model
     # remove batch dimension
     token_ids_flat_list = token_ids.squeeze(0).tolist()
     # token ids decode to text

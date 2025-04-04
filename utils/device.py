@@ -22,6 +22,7 @@ import sys
 ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
+import gc
 
 import torch
 
@@ -67,12 +68,15 @@ def torch_gc(gpu_type: str = "cuda", cuda_device: int = 0):
     if device.type == "cpu":
         pass
     else:
+        # python garbage collector
+        gc.collect()
+        # cuda cache empty
         if gpu_type == "cuda":
             with torch.cuda.device(cuda_device):  # 指定 CUDA 设备
                 torch.cuda.empty_cache()  # 清空 CUDA 缓存
                 torch.cuda.ipc_collect()  # 收集 CUDA 内存碎片
         elif gpu_type == "mps":
-            torch.backends.mps.empty_cache()
+            torch.backends.mps.empty_cache() 
 
 
 def torch_gc_v1():

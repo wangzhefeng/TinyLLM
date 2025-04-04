@@ -29,15 +29,16 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
 def download_llama2_model(model_path: str):
+    model_file_path = os.path.join(model_path, "consolidated.00.pth")
     # download
-    if not os.path.exists(model_path):
+    if not os.path.exists(model_file_path):
         weights_file = hf_hub_download(
             repo_id = "meta-llama/Llama-2-7b",
             filename = "consolidated.00.pth",
             local_dir = "Llama-2-7b",
         )
     else:
-        weights_file = model_path
+        weights_file = model_file_path
     # load
     weights = torch.load(weights_file, weights_only = True)
     # logger.info(f"weights keys: {list(weights.keys())}")
@@ -46,6 +47,7 @@ def download_llama2_model(model_path: str):
 
 
 def download_llama2_chat_model(model_path: str):
+    model_file_path = os.path.join(model_path, "consolidated.00.pth")
     # download
     if not os.path.exists(model_path):
         weights_file = hf_hub_download(
@@ -130,11 +132,11 @@ def load_weights_into_llama(model, params, param_config):
 # 测试代码 main 函数
 def main():
     # Meta/Llama-2-7b model weights load
-    model_path = "downloaded_models/llama_model/Llama-2-7b/consolidated.00.pth"
+    model_path = "downloaded_models/llama_model/Llama-2-7b"
     weights = download_llama2_model(model_path) 
  
-    chat_model_path = "downloaded_models/llama_model/Llama-2-7b-chat/consolidated.00.pth"
-    weights = download_llama2_chat_model(model_path)
+    chat_model_path = "downloaded_models/llama_model/Llama-2-7b-chat"
+    weights_chat = download_llama2_chat_model(model_path)
 
 if __name__ == "__main__":
     main()
