@@ -59,7 +59,7 @@ class ModelFinetuningClassifier:
         # pad token
         self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
-    def _build_data(self):
+    def _get_data(self):
         """
         create dataset and dataloader
         """
@@ -159,7 +159,7 @@ class ModelFinetuningClassifier:
         """
         # data loader
         torch.manual_seed(self.args.seed)
-        train_loader, valid_loader, test_loader = self._build_data()
+        train_loader, valid_loader, test_loader = self._get_data()
         
         # load pretained model's weights
         model, base_config = model_with_gpt2_weights(

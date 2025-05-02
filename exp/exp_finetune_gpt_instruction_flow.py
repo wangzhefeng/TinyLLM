@@ -64,7 +64,7 @@ class ModelFinetuningInstructionFlow:
         # pad token
         self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
-    def _build_data(self):
+    def _get_data(self):
         """
         create dataset and dataloader
         """
@@ -198,7 +198,7 @@ class ModelFinetuningInstructionFlow:
             train_data, train_dataset, train_loader, 
             test_data, test_dataset, test_loader,
             valid_data, valid_dataset, valid_loader,
-        ) = self._build_data()
+        ) = self._get_data()
 
         # model
         self.model, self.base_config = model_with_gpt2_weights(
@@ -311,7 +311,7 @@ class ModelFinetuningInstructionFlow:
             train_data, train_dataset, train_loader, 
             test_data, test_dataset, test_loader,
             valid_data, valid_dataset, valid_loader,
-        ) = self._build_data()
+        ) = self._get_data()
         
         # TODO load model
         self._get_model_path(setting, training_iter)

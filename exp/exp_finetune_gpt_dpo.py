@@ -60,7 +60,7 @@ class ModelFinetuningPreference:
         # pad token id
         self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
 
-    def _build_data(self):
+    def _get_data(self):
         # data load and split
         train_data, test_data, valid_data = data_loader.load_split_data(
             self.args.data_source,
@@ -414,7 +414,7 @@ class ModelFinetuningPreference:
             train_data, train_dataset, train_loader, 
             test_data, test_dataset, test_loader,
             valid_data, valid_dataset, valid_loader,
-        ) = self._build_data()
+        ) = self._get_data()
         
         # load model
         self.policy_model, self.reference_model = self._build_policy_reference_model(
@@ -555,7 +555,7 @@ class ModelFinetuningPreference:
             train_data, train_dataset, train_loader, 
             test_data, test_dataset, test_loader,
             valid_data, valid_dataset, valid_loader,
-        ) = self._build_data()
+        ) = self._get_data()
         # load model
         self._get_model_path(setting, training_iter)
         policy_model, reference_model = self._build_policy_reference_model(model_path=self.model_path)

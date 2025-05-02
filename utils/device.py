@@ -22,7 +22,6 @@ import sys
 ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
-import gc
 
 import torch
 
@@ -42,6 +41,7 @@ def device_setting(verbose: bool = False):
         logger.info(f"{50 * '='}")
         logger.info(f"GPU available: {torch.cuda.is_available()}")
         logger.info(f"GPU count: {torch.cuda.device_count()}")
+    
     if torch.cuda.is_available():
         if verbose:
             logger.info(f"current GPU name: {torch.cuda.get_device_name()}")
@@ -52,31 +52,24 @@ def device_setting(verbose: bool = False):
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
+    
     if verbose:
         logger.info(f"Using device: {device.type.upper()}.")
 
     return device
 
 
-def torch_gc(gpu_type: str = "cuda", cuda_device: int = 0):
+def torch_gc(gpu_type: str = "cuda", device: str = "cuda:0"):
     """
     empty cuda cache and memory pecices
     """
-    # device
-    device = device_setting(verbose=False)
-    # clear cuda cache
-    if device.type == "cpu":
-        pass
-    else:
-        # python garbage collector
-        gc.collect()
-        # cuda cache empty
+    if device != torch.device("cpu"):
         if gpu_type == "cuda":
-            with torch.cuda.device(cuda_device):  # 指定 CUDA 设备
+            with torch.cuda.device(device):  # 指定 CUDA 设备
                 torch.cuda.empty_cache()  # 清空 CUDA 缓存
                 torch.cuda.ipc_collect()  # 收集 CUDA 内存碎片
         elif gpu_type == "mps":
-            torch.backends.mps.empty_cache() 
+            torch.backends.mps.empty_cache()
 
 
 def torch_gc_v1():

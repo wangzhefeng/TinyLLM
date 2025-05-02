@@ -52,7 +52,7 @@ class Model_Pretrain(Exp_Basic):
     def __init__(self, args):
         super(Model_Pretrain, self).__init__(args)
     
-    def _build_data(self):
+    def _get_data(self):
         """
         build dataset and dataloader
         """
@@ -201,7 +201,7 @@ class Model_Pretrain(Exp_Basic):
               eval_iter: int = 1, 
               start_context: str = "Every effort moves you"):
         # build dataloader
-        train_loader, valid_loader = self._build_data()
+        train_loader, valid_loader = self._get_data()
         # train steps
         train_steps = len(train_loader)
         # checkpoint path
