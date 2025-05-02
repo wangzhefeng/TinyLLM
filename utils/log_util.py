@@ -1,14 +1,11 @@
-"""日志工具模块
+"""
+日志工具模块
 
 该模块提供了日志记录功能，包括：
 - 控制台日志输出
 - 按天轮转的文件日志
 - 日志级别通过环境变量SERVICE_LOG_LEVEL配置
 """
-
-__all__ = [
-    "logger",
-]
 
 import os
 import sys
@@ -20,12 +17,14 @@ from logging import handlers
 
 # 项目根路径
 ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 日志路径
+LOG_NAME = os.environ.get("LOG_NAME")
 if sys.platform == "win32":
-    LOG_DIR = f"{ROOT_PATH}\\logs\\"
+    LOG_DIR = f"{ROOT_PATH}\\logs\\{LOG_NAME}"
     os.makedirs(LOG_DIR, exist_ok=True)
     log_path = os.path.join(LOG_DIR, "service")
 else:
-    LOG_DIR = f"{ROOT_PATH}/logs/"
+    LOG_DIR = f"{ROOT_PATH}/logs/{LOG_NAME}"
     os.makedirs(LOG_DIR, exist_ok=True)
     log_path = os.path.join(LOG_DIR, "service")
 
@@ -67,7 +66,7 @@ time_rotating_file_handler.setFormatter(default_formatter)
 # 主日志记录器
 # ------------------------------
 logger = logging.getLogger(__name__)
-logger.addHandler(stream_handler)
+# logger.addHandler(stream_handler)
 logger.addHandler(time_rotating_file_handler)
 logger.setLevel(LOG_LEVEL)
 logger.propagate = False
