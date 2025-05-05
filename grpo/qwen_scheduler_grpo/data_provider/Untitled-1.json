@@ -1,0 +1,73 @@
+{
+    {
+        "events": [
+            ["Calculus lecture with Prof. Adams", "02:04", "02:19"],
+            ["Office hours with Prof. Chen", "02:12", "02:27"], 
+            ["Researching in library", "03:12", "04:27"], 
+            ["Group study for physics test", "14:41", "15:56"], 
+            ["Structural Dynamics lecture", "15:32", "16:32"], 
+            ["Meeting with Emma and Jake", "21:36", "22:06"]], 
+        "priority_list": ["Researching in library"], 
+        "optimal_score": 270, 
+        "prompt": "Events:\n- Calculus lecture with Prof. Adams (02:04 - 02:19)\n- Office hours with Prof. Chen (02:12 - 02:27)\n- Researching in library (03:12 - 04:27)\n- Group study for physics test (14:41 - 15:56)\n- Structural Dynamics lecture (15:32 - 16:32)\n- Meeting with Emma and Jake (21:36 - 22:06)\n\nPriorities:\n- Researching in library"
+    },
+    {
+        "events": [
+            ["Calculus lecture with Prof. Adams", "02:04", "02:19"],
+            ["Office hours with Prof. Chen", "02:12", "02:27"],
+            ["Researching in library", "03:12", "04:27"],
+            ["Group study for physics test", "14:41", "15:56"],
+            ["Structural Dynamics lecture", "15:32", "16:32"],
+            ["Meeting with Emma and Jake", "21:36", "22:06"]
+        ],
+        "priority_list": ["Researching in library"],
+        "optimal_score": 270,
+        "prompt": [
+            {
+                "content": "You are a precise event scheduler.\n1. First, reason through the problem inside <think> and </think> tags. Here you can create drafts, compare alternatives, and check for mistakes.\n2. When confident, output the final schedule inside <schedule> and </schedule> tags. Your schedule must strictly follow the rules provided by the user.",
+                "role": "system"
+            },
+            {
+                "content": "Task: create an optimized schedule based on the given events.\n\nRules:\n- The schedule MUST be in strict chronological order. Do NOT place priority events earlier unless their actual start time is earlier.\n- Event start and end times are ABSOLUTE. NEVER change, shorten, adjust, or split them.\n- Priority events (weight = 2) carry more weight than normal events (weight = 1), but they MUST still respect chronological order.\n- Maximize the sum of weighted event durations.\n- No overlaps allowed. In conflicts, include the event with the higher weighted time.\n- Some events may be excluded if needed to meet these rules.\n\n\nYou must use this format:  \n\n<think>...</think>\n<schedule>\n<event>\n<name>...</name>\n<start>...</start>\n<end>...</end>\n</event>\n...\n</schedule>\n\n---\n\nEvents:\n- Calculus lecture with Prof. Adams (02:04 - 02:19)\n- Office hours with Prof. Chen (02:12 - 02:27)\n- Researching in library (03:12 - 04:27)\n- Group study for physics test (14:41 - 15:56)\n- Structural Dynamics lecture (15:32 - 16:32)\n- Meeting with Emma and Jake (21:36 - 22:06)\n\nPriorities:\n- Researching in library",
+                "role": "user"
+            }
+        ]
+    }
+}
+
+Task: create an optimized schedule based on the given events.\n\n
+
+Rules:\n
+    - The schedule MUST be in strict chronological order. Do NOT place priority events earlier unless their actual start time is earlier.\n
+    - Event start and end times are ABSOLUTE. NEVER change, shorten, adjust, or split them.\n
+    - Priority events (weight = 2) carry more weight than normal events (weight = 1), but they MUST still respect chronological order.\n
+    - Maximize the sum of weighted event durations.\n
+    - No overlaps allowed. In conflicts, include the event with the higher weighted time.\n
+    - Some events may be excluded if needed to meet these rules.\n\n\n
+
+
+
+You must use this format:  \n\n
+
+<think>...</think>\n
+<schedule>\n
+<event>\n
+<name>...</name>\n
+<start>...</start>\n
+<end>...</end>\n
+</event>\n
+...\n
+</schedule>\n\n
+
+---\n\n
+
+Events:\n
+    - Calculus lecture with Prof. Adams (02:04 - 02:19)\n
+    - Office hours with Prof. Chen (02:12 - 02:27)\n
+    - Researching in library (03:12 - 04:27)\n
+    - Group study for physics test (14:41 - 15:56)\n
+    - Structural Dynamics lecture (15:32 - 16:32)\n
+    - Meeting with Emma and Jake (21:36 - 22:06)\n\n
+
+Priorities:\n
+    - Researching in library

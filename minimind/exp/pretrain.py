@@ -30,12 +30,10 @@ from torch.nn.parallel import DistributedDataParallel
 import torch.distributed as dist
 from contextlib import nullcontext
 from transformers import AutoTokenizer
-import wandb
 
 from exp.exp_basic import Exp_Basic
 from minimind.data_provider.data_factory import data_provider
-from minimind.model.Config import ModelConfig
-from minimind.model.model import ModelForCausalLM
+from minimind.model.model_config import ModelConfig
 from utils.log_util import logger
 
 warnings.filterwarnings("ignore")
@@ -51,6 +49,9 @@ class Model(Exp_Basic):
         logger.info("Initializing Experiment...")
         logger.info(f"{40 * '-'}")
         super(Model, self).__init__(args)
+        
+        # tokenizer
+        self.tokenizer = self._build_tokenizer()
 
     def _build_tokenizer(self):
         # tokenizer
@@ -58,42 +59,82 @@ class Model(Exp_Basic):
 
         return tokenizer
 
-    def _ddp(self):
-        # is this a ddp run?
+    def _init_distributed_mode(self, base_seed = 1337):
+        # is this a ddp run
         ddp = int(os.environ.get("RANK", -1)) != -1
-        ddp_local_rank, device = 0, "cuda:0"
+        # default ddp_local_rank and device
+        ddp_local_rank, DEVICE = 0, "cuda:0"
+        # 设置随机种子
+        torch.manual_seed(base_seed)
+        torch.cuda.manual_seed(base_seed)
+        # ddp 训练设置
+        if ddp:
+            # init process group
+            dist.init_process_group(backend = "nccl")
+            # ddp params
+            ddp_rank = int(os.environ["RANK"])
+            ddp_local_rank = int(os.environ["LOCAL_RANK"])
+            ddp_world_size = int(os.environ["WORLD_SIZE"])
+            # ddp mode device
+            DEVICE = f"cuda:{ddp_local_rank}"
+            torch.cuda.set_device(DEVICE)
+            # update device setup
+            self.device = torch.device(DEVICE)
+            # torch.distributed rank
+            rank = dist.get_rank()
+            # 设置 torch 随机种子
+            torch.manual_seed(base_seed + rank)
+            # 同时设置 CUDA 的随机种子
+            torch.cuda.manual_seed(base_seed + rank)
 
-        return ddp
+        return ddp, ddp_local_rank
 
-    def _build_model(self):
+    def _wandb_setup(self, ddp, ddp_local_rank, wandb_run_name):
+        """
+        wandb 设置
+        """
+        if self.args.use_wandb and (not ddp or ddp_local_rank == 0):
+            import wandb
+            wandb.init(project = self.args.wandb_project, name = wandb_run_name)
+        else:
+            wandb = None
+        
+        return wandb
+    
+    def _build_model(self, model_config, ddp, ddp_local_rank):
         """
         模型构建
         """
         # 模型初始化
         logger.info(f"Initializing model {self.args.model}...")
-        model = self.model_dict[self.args.model].Model(self.args)
+        model = self.model_dict[self.args.model_name].Model(model_config)
         
+        # TODO 多 GPU 训练
+        # if self.args.use_gpu and self.args.use_multi_gpu:
+        #     model = nn.DataParallel(model, device_ids = self.args.devices)
         
-        # 多 GPU 训练
-        if self.args.use_gpu and self.args.use_multi_gpu:
-            model = nn.DataParallel(model, device_ids = self.args.devices)
-        
-        # TODO
-        if self.ddp:
+        # TODO ddp 训练
+        if ddp:
             model._ddp_params_and_buffers_to_ignore = {"pos_cis"}
             model = DistributedDataParallel(model, device_ids = [ddp_local_rank])
         
+        # torch compile model
+        if platform.system() != "Windows" and float(torch.__version__.split(".")[0]) >= 2.0:
+            logger.info("Compiling the model(takes a minute)...")
+            unoptimized_model = model
+            model = torch.compile(model)
+
         # 打印模型参数量
         total = sum([param.nelement() for param in model.parameters()])
-        logger.info(f'Number of model parameters: {(total / 1e6):.2f}M')
+        logger.info(f'Number of model parameters: {(total / 1e6):.3f}M')
         
         return model
     
-    def _get_data(self, tokenizer, ddp):
+    def _get_data(self, ddp):
         """
         数据集构建
         """
-        data_set, data_loader = data_provider(self.args, tokenizer, ddp)
+        data_set, data_loader = data_provider(self.args, self.tokenizer, ddp)
         
         return data_set, data_loader
     
@@ -101,7 +142,9 @@ class Model(Exp_Basic):
         """
         评价指标
         """
-        pass
+        criterion = nn.CrossEntropyLoss(reduction="none")
+
+        return criterion
 
     def _select_optimizer(self):
         """
@@ -111,10 +154,21 @@ class Model(Exp_Basic):
         
         return optimizer
     
-    def _build_scaler(self):
-        scaler = torch.GradScaler("cuda", enabled=(self.args.dtype in ["float16", "bfloat16"]))
+    def _build_grad_scaler(self):
+        """
+        Gradient Scaler
+        """
+        scaler = torch.amp.GradScaler("cuda", enabled=(self.args.dtype in ["float16", "bfloat16"]))
 
         return scaler
+    
+    def _build_amp(self):
+        """
+        混合精度
+        """
+        ctx = nullcontext() if self.args.device_type == "cpu" else torch.amp.autocast("cuda")
+
+        return ctx
     
     def _get_model_path(self, setting):
         """
@@ -137,162 +191,137 @@ class Model(Exp_Basic):
         
         return results_path
     
-    def _model_forward(self):
-        return None
-    
     def Logger(self, ddp, content):
         if not ddp or dist.get_rank() == 0:
             logger.info(content)
 
     # TODO
-    def get_lr(self, it, all):
-        warmup_iters = self.args.warmup_iters
-        lr_decay_iters = all
-        min_lr = self.args.learning_rate / 10
+    # def get_lr(self, it, all):
+    #     warmup_iters = self.args.warmup_iters
+    #     lr_decay_iters = all
+    #     min_lr = self.args.learning_rate / 10
 
-        if it < warmup_iters:
-            return self.args.learning_rate * it / warmup_iters
+    #     if it < warmup_iters:
+    #         return self.args.learning_rate * it / warmup_iters
         
-        if it > lr_decay_iters:
-            return min_lr
+    #     if it > lr_decay_iters:
+    #         return min_lr
         
-        decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
-        assert 0 <= decay_ratio <= 1
-        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
+    #     decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
+    #     assert 0 <= decay_ratio <= 1
+    #     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
 
-        return min_lr + coeff * (self.args.learning_rate - min_lr)
+    #     return min_lr + coeff * (self.args.learning_rate - min_lr)
 
     def get_lr(self, current_step, total_steps, lr):
-        return lr / 10 + 0.5 * lr * (1 + math.cos(math.pi * current_step / total_steps))
+        return lr / 10 + 0.5 * lr * (1 + math.cos(math.pi * current_step / total_steps)) 
 
-    def train_epoch(self, epoch, wandb):
-        start_time = time.time()
+    def train(self, wandb_run_name):
+        # 混合精度
+        ctx = self._build_amp()
         
-        ctx = nullcontext() if self.args.device_type == "cpu" else torch.amp.autocast("cuda")
-        for step, (X, Y, loss_mask) in enumerate(train_loader):
-            # data move to device
-            X = X.to(self.device)
-            Y = Y.to(self.device)
-            loss_mask = loss_mask.to(args.device)
-            # learnint rate
-            lr = get_lr(args = args, it = epoch * iter_per_epoch + step, all = args.epochs * iter_per_epoch)
-            for param_group in optimizer.param_groups:
-                param_group["lr"] = lr
-            # ------------------------------
-            # 
-            # ------------------------------
-            with ctx:
-                out = model(X, Y)
-                loss = out.last_loss / args.accumulation_steps
-                loss_mask = loss_mask.view(-1)
-                loss = torch.sum(loss * loss_mask) / loss_mask.sum()
-            
-            scaler.scale(loss).backward()
-            # ------------------------------
-            # 
-            # ------------------------------
-            if (step + 1) % args.accumulation_steps == 0:
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad(set_to_none = True)
+        # ddp setup
+        ddp, ddp_local_rank = self._init_distributed_mode(base_seed = 1337)
+        
+        # wandb setup
+        wandb = self._wandb_setup(ddp, ddp_local_rank, wandb_run_name)
 
-            if step % args.log_interval == 0:
-                spend_time = time.time() - start_time
-                Logger(
-                    f"""
-                    Epoch: [{epoch}/{args.epochs}]({step}/{iter_per_epoch}) 
-                    loss: {loss.item() * args.accumulation_steps:.3f} 
-                    lr: {optimizer.param_groups[-1]["lr"]:.7f} 
-                    epoch_Time: {spend_time / (step + 1) * iter_per_epoch // 60 - spend_time // 60}min"""
-                )
-                # wandb setting
-                if (wandb is not None) and (not ddp or dist.get_rank() == 0):
-                    wandb.log({
-                        "loss": loss.item() * args.accumulation_steps,
-                        "lr": optimizer.param_groups[-1]["lr"],
-                        "epoch_Time": spend_time / (step + 1) * iter_per_epoch // 60 - spend_time // 60
-                    })
-            
-            if (step + 1) % args.save_interval == 0 and (not ddp or dist.get_rank() == 0):
-                model.eval()
-                moe_path = "_moe" if lm_config.use_moe else ""
-                ckp = f"{args.save_dir}/pretrain_{lm_config.dim}{moe_path}.pth"
+        # dataset and dataloader
+        train_data, train_loader = self._get_data(self.tokenizer, ddp)
 
-                if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-                    state_dict = model.module.state_dict()
-                else:
-                    state_dict = model.state_dict()
-                torch.save(state_dict, ckp)
-                model.train()
-
-    def train(self):
-        # ------------------------------
         # TODO model config
-        # ------------------------------
-        lm_config = ModelConfig()
+        model_config = ModelConfig()
+
+        # model
+        model = self._build_model(ddp, model_config, ddp_local_rank)
         
-        tokens_per_iter = self.args.batch_size * self.args.max_seq_len
-        # ------------------------------
-        # random seed
-        # ------------------------------
-        # ------------------------------
-        # 
-        # ------------------------------
-        ddp = int(os.environ.get("RANK", -1)) != -1
-        ddp_local_rank, DEVICE = 0, "cuda:0"
-        if ddp:
-            self.init_distributed_mode()
-            self.device = torch.device(DEVICE)
-        # ------------------------------
-        # 
-        # ------------------------------
-        if self.args.use_wandb and (not ddp or ddp_local_rank == 0):
-            wandb.init(project = self.args.wandb_project, name = self.args.wandb_run_name)
-        else:
-            wandb = None 
-        # ------------------------------
-        # amp
-        # ------------------------------
-        scaler = torch.amp.GradScaler("cuda", enabled = (args.dtype in ["float16", "bfloat16"]))
-        # ------------------------------
-        # torch compile model
-        # ------------------------------
-        if platform.system() != "Windows" and float(torch.__version__.split(".")[0]) >= 2.0:
-            Logger("compiling the model... (takes a ~minute)")
-            unoptimized_model = model
-            model = torch.compile(model)
-        # ------------------------------
-        # DDP
-        # ------------------------------
-        if ddp:
-            model._ddp_params_and_buffers_to_ignore = {"pos_cis"}
-            model = DistributedDataParallel(model, device_ids = [ddp_local_rank])
+        # scaler
+        scaler = self._build_grad_scaler()
+        
+        # loss
+        criterion = self._select_criterion()
+        
+        # optimizer
+        optimizer = self._select_optimizer()
+
+        # TODO
+        tokens_per_iter = self.args.batch_size * self.args.max_seq_len 
+ 
         # model training 
         iter_per_epoch = len(train_loader)
         for epoch in range(self.args.train_epochs):
-            self.train_epoch(epoch, wandb)
+            train_start_time = time.time()
+            for step, (X, Y, loss_mask) in enumerate(train_loader):
+                # data move to device
+                X = X.to(self.device)
+                Y = Y.to(self.device)
+                loss_mask = loss_mask.to(self.device)
+                
+                # learnint rate
+                lr = self.get_lr(
+                    current_step = epoch * iter_per_epoch + step, 
+                    total_steps = self.args.train_epoch * iter_per_epoch,
+                    lr = self.args.learning_rate,
+                )
+                for param_group in optimizer.param_groups:
+                    param_group["lr"] = lr
+                
+                # TODO
+                with ctx:
+                    res = model(X)
+                    loss = criterion(res.logits.view(-1, res.logits.size(-1)), Y.view(-1))
+                    loss = torch.sum(loss * loss_mask) / loss_mask.sum()
+                    loss += res.aux_loss
+                    loss = loss / self.args.accumulation_steps
+                
+                # TODO
+                scaler.scale(loss).backward()
+                if (step + 1) % self.args.accumulation_steps == 0:
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.grad_clip)
 
-    def init_model(self, lm_config): 
-        # model
-        model = ModelForCausalLM(lm_config).to(self.device)
-        # model params counts
-        self.Logger(f"模型可训练总参数量: {sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6:.3f} 百万")
-        
-        return model
+                    scaler.step(optimizer)
+                    scaler.update()
 
-    def init_distributed_mode(self, ddp):
-        if not ddp:
-            return
-        global ddp_local_rank, DEVICE
+                    optimizer.zero_grad(set_to_none = True)
 
-        dist.init_process_group(backend = "nccl")
-        ddp_rank = int(os.environ["RANK"])
-        ddp_local_rank = int(os.environ["LOCAL_RANK"])
-        ddp_world_size = int(os.environ["WORLD_SIZE"])
-        DEVICE = f"cuda:{ddp_local_rank}"
-        torch.cuda.set_device(DEVICE)
+                # 打印模型日志
+                if step % self.args.log_interval == 0:
+                    train_spend_time = time.time() - train_start_time
+                    self.Logger(
+                        'Epoch:[{}/{}]({}/{}) loss:{:.3f} lr:{:.12f} epoch_Time:{}min:'.format(
+                            epoch + 1,
+                            self.args.train_epochs,
+                            step,
+                            iter_per_epoch,
+                            loss.item() * self.args.accumulation_steps,
+                            optimizer.param_groups[-1]['lr'],
+                            train_spend_time / (step + 1) * iter_per_epoch // 60 - train_spend_time // 60
+                        )
+                    )
+                    
+                    # wandb setting
+                    if (wandb is not None) and (not ddp or dist.get_rank() == 0):
+                        wandb.log({
+                            "loss": loss.item() * self.args.accumulation_steps,
+                            "lr": optimizer.param_groups[-1]["lr"],
+                            "epoch_Time": train_spend_time / (step + 1) * iter_per_epoch // 60 - train_spend_time // 60
+                        })
+                
+                # 模型保存
+                if (step + 1) % self.args.save_interval == 0 and (not ddp or dist.get_rank() == 0):
+                    model.eval()
+                    moe_path = "_moe" if model_config.use_moe else ""
+                    ckp = f"{self.args.checkpoints}/pretrain_{model_config.hidden_size}{moe_path}.pth"
+
+                    if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+                        state_dict = model.module.state_dict()
+                    else:
+                        state_dict = model.state_dict()
+                    # 半精度保存
+                    state_dict = {k: v.half() for k, v in state_dict.items()}
+                    torch.save(state_dict, ckp)
+                    model.train()
 
 
 

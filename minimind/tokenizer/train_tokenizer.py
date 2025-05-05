@@ -24,13 +24,11 @@ from tqdm import tqdm
 from datasets import load_dataset
 from transformers import AutoTokenizer
 from tokenizers import (
-    decoders,
-    models,
-    normalizers,
-    pre_tokenizers,
-    processors,
-    trainers,
     Tokenizer,
+    models,
+    pre_tokenizers,
+    trainers,
+    decoders,
 )
 
 from utils.log_util import logger
@@ -51,8 +49,9 @@ def _read_texts_from_jsonl(file_path):
             yield data["text"]
 
 
-def train_tokenizer(data_path = "./dataset/tokenizer/tokenizer_train.jsonl", 
-                    tokenizer_dir: str = "./dataset/tokenizer/"):
+def train_tokenizer(data_path: str = "./minimind/dataset/pretrain_hq.jsonl", 
+                    tokenizer_dir: str = "./minimind/tokenizer/model/",
+                    tokenizer_config_dir: str = "./minimind/tokenizer/config/"):
     """
     train tokenizer
     """
@@ -67,7 +66,7 @@ def train_tokenizer(data_path = "./dataset/tokenizer/tokenizer_train.jsonl",
     tokenizer = Tokenizer(models.BPE())
     tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space = False)
     # 定义特殊 token
-    special_tokens = ["<unk>", "<s>", "</s>"]
+    special_tokens = ["<|endoftext|>", "<|im_start|>", "<|im_end|>"]
     # 设置训练器并添加特殊 token
     trainer = trainers.BpeTrainer(
         vocab_size = 6400,
@@ -80,9 +79,9 @@ def train_tokenizer(data_path = "./dataset/tokenizer/tokenizer_train.jsonl",
     # 设置解码器
     tokenizer.decoder = decoders.ByteLevel()
     # 检查特殊 token 的索引
-    assert tokenizer.token_to_id("<unk>") == 0
-    assert tokenizer.token_to_id("<s>") == 1
-    assert tokenizer.token_to_id("</s>") == 2
+    assert tokenizer.token_to_id("<|endoftext|>") == 0
+    assert tokenizer.token_to_id("<|im_start|>") == 1
+    assert tokenizer.token_to_id("<|im_end|>") == 2
     # ------------------------------
     # save tokenizer
     # ------------------------------
@@ -94,10 +93,10 @@ def train_tokenizer(data_path = "./dataset/tokenizer/tokenizer_train.jsonl",
     config = {
         "add_bos_token": False,
         "add_eos_token": False,
-        "add_prefix_space": True,
+        "add_prefix_space": False,
         "added_tokens_decoder": {
             "0": {
-                "content": "<unk>",
+                "content": "<|endoftext|>",
                 "lstrip": False,
                 "normalized": False,
                 "rstrip": False,
@@ -105,7 +104,7 @@ def train_tokenizer(data_path = "./dataset/tokenizer/tokenizer_train.jsonl",
                 "special": True
             },
             "1": {
-                "content": "<s>",
+                "content": "<|im_start|>",
                 "lstrip": False,
                 "normalized": False,
                 "rstrip": False,
@@ -113,7 +112,7 @@ def train_tokenizer(data_path = "./dataset/tokenizer/tokenizer_train.jsonl",
                 "special": True
             },
             "2": {
-                "content": "</s>",
+                "content": "<|im_end|>",
                 "lstrip": False,
                 "normalized": False,
                 "rstrip": False,
@@ -122,28 +121,27 @@ def train_tokenizer(data_path = "./dataset/tokenizer/tokenizer_train.jsonl",
             }
         },
         "additional_special_tokens": [],
-        "bos_token": "<s>",
+        "bos_token": "<|im_start|>",
         "clean_up_tokenization_spaces": False,
-        "eos_token": "</s>",
+        "eos_token": "<|im_end|>",
         "legacy": True,
-        "model_max_length": 1000000000000000019884624838656,
-        "pad_token": None,
+        "model_max_length": 32768,
+        "pad_token": "<|endoftext|>",
         "sp_model_kwargs": {},
         "spaces_between_special_tokens": False,
         "tokenizer_class": "PreTrainedTokenizerFast",
-        "unk_token": "<unk>",
-        "use_default_system_prompt": False,
-        "chat_template": "{% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{% endif %}{% if system_message is defined %}{{ system_message }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<s>user\\n' + content + '</s>\\n<s>assistant\\n' }}{% elif message['role'] == 'assistant' %}{{ content + '</s>' + '\\n' }}{% endif %}{% endfor %}"
+        "unk_token": "<|endoftext|>",
+        "chat_template": "{% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{{ '<|im_start|>system\\n' + system_message + '<|im_end|>\\n' }}{% else %}{{ '<|im_start|>system\\nYou are a helpful assistant<|im_end|>\\n' }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<|im_start|>user\\n' + content + '<|im_end|>\\n<|im_start|>assistant\\n' }}{% elif message['role'] == 'assistant' %}{{ content + '<|im_end|>' + '\\n' }}{% endif %}{% endfor %}"
     }
     # 保存配置文件
-    with open(os.path.join(tokenizer_dir, "tokenizer_config.json"), "w", encoding = "utf-8") as config_file:
-        json.dump(config, config_file, ensure_ascii = False, indent = 2)
+    with open(os.path.join(tokenizer_config_dir, "tokenizer_config.json"), "w", encoding = "utf-8") as config_file:
+        json.dump(config, config_file, ensure_ascii = False, indent = 4)
     logger.info("Tokenizer training completed and saved.")
 
 
-def eval_tokenizer():
+def eval_tokenizer(tokenizer_dir):
     # 加载与训练的 tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("./model/minimind_tokenizer")
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir)
     # Prompt template
     messages = [
         {"role": "system", "content": "你是一个优秀的聊天机器人，总是给我正确的回应！"},
@@ -161,7 +159,7 @@ def eval_tokenizer():
     logger.info(f"encoder 长度: {len(model_inputs['input_ids'])}")
 
     input_ids = model_inputs["input_ids"]
-    response = tokenizer.decode(input_ids)
+    response = tokenizer.decode(input_ids, skip_special_tokens=False)
     logger.info(f"decoder 和原始文本是否一致: {response == new_prompt}")
 
 
@@ -169,7 +167,10 @@ def eval_tokenizer():
 
 # 测试代码 main 函数
 def main():
-    train_tokenizer()
+    data_path = "./minimind/dataset/pretrain_hq.jsonl"
+    tokenizer_dir = "./minimind/tokenizer/model/"
+    tokenizer_config_dir = "./minimind/tokenizer/config"
+    train_tokenizer(data_path, tokenizer_dir, tokenizer_config_dir)
     # eval_tokenizer()
 
 if __name__ == "__main__":

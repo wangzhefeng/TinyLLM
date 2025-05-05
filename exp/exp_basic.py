@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 import torch
 
 from models import gpt, llama2
+from minimind.model import model as minimind
 from utils.log_util import logger
 
 # global variable
@@ -34,6 +35,7 @@ class Exp_Basic:
         self.model_dict = {
             "gpt": gpt,
             "llama2": llama2,
+            "minimind": minimind,
         }
         self.device = self._acquire_device()
         self.model = self._build_model().to(self.device) 

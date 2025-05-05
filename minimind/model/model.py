@@ -18,19 +18,16 @@ ROOT = os.getcwd()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 import math
-import time
-import struct
-import inspect
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple, List, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import PreTrainedModel
+from transformers import PreTrainedModel, GenerationMixin
+from transformers.activations import ACT2FN
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
-from minimind.model.Config import ModelConfig
+from minimind.model.model_config import ModelConfig
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -38,189 +35,153 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 class RMSNorm(nn.Module):
     
-    def __init__(self, dim: int, eps: float):
+    def __init__(self, dim: int, eps: float = 1e-5):
         super(RMSNorm, self).__init__()
         
-        self.weight = nn.Parameter(torch.ones(dim))
         self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
     
     def _norm(self, x):
         return x * torch.rsqrt(x.pow(2).mean(-1, keepdim = True) + self.eps)
     
     def forward(self, x):
-        output = self._norm(x.float()).type_as(x)
+        output = self.weight * self._norm(x.float()).type_as(x)
 
-        return output * self.weight
+        return output
 
 
-def precompute_pos_cis(dim: int, end: int, theta: float = 10000.0):
-    """
-    TODO
-
-    Args:
-        dim (int): _description_
-        end (int): _description_
-        theta (float, optional): _description_. Defaults to 10000.0.
-
-    Returns:
-        _type_: _description_
-    """
+def precompute_freqs_cis(dim: int, end: int = int(32 * 1024), theta: float = 1e6):
     freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
-    t = torch.arange(end, device = freqs.device)  # type: ignore
-    freqs = torch.outer(t, freqs).float()  # type: ignore
-    pos_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
+    t = torch.arange(end, device=freqs.device)
+    freqs = torch.outer(t, freqs).float()
+    freqs_cos = torch.cat([torch.cos(freqs), torch.cos(freqs)], dim=-1)
+    freqs_sin = torch.cat([torch.sin(freqs), torch.sin(freqs)], dim=-1)
+    return freqs_cos, freqs_sin
 
-    return pos_cis
 
+def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
+    def rotate_half(x):
+        return torch.cat((-x[..., x.shape[-1] // 2:], x[..., : x.shape[-1] // 2]), dim=-1)
 
-def apply_rotary_emb(xq, xk, pos_cis):
-    """
-    TODO
-
-    Args:
-        xq (_type_): _description_
-        xk (_type_): _description_
-        pos_cis (_type_): _description_
-    """
-    def unite_shape(pos_cis, x):
-        ndim = x.ndim
-        assert 0 <= 1 < ndim
-        assert pos_cis.shape == (x.shape[1], x.shape[-1])
-        shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
-
-        return pos_cis.view(*shape)
-    
-    xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-    xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
-    pos_cis = unite_shape(pos_cis, xq_)
-    xq_out = torch.view_as_real(xq_ * pos_cis).flatten(3)
-    xk_out = torch.view_as_real(xk_ * pos_cis).flatten(3)
-
-    return xq_out.type_as(xq), xk_out.type_as(xk)
+    q_embed = (q * cos.unsqueeze(unsqueeze_dim)) + (rotate_half(q) * sin.unsqueeze(unsqueeze_dim))
+    k_embed = (k * cos.unsqueeze(unsqueeze_dim)) + (rotate_half(k) * sin.unsqueeze(unsqueeze_dim))
+    return q_embed, k_embed
 
 
 def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
     """
     torch.repeat_interleave(x, dim = 2, repeats = n_rep)
-
-    Args:
-        x (torch.Tensor): _description_
-        n_rep (int): _description_
-
-    Returns:
-        torch.Tensor: _description_
     """
-    bs, slen, n_kv_heads, head_dim = x.shape
+    bs, slen, num_key_value_heads, head_dim = x.shape
     if n_rep == 1:
         return x
     
     return (
         x[:, :, None, :]
-        .expand(bs, slen, n_kv_heads, n_rep, head_dim)
-        .reshape(bs, slen, n_kv_heads * n_rep, head_dim)
+        .expand(bs, slen, num_key_value_heads, n_rep, head_dim)
+        .reshape(bs, slen, num_key_value_heads * n_rep, head_dim)
     )
 
 
 class Attention(nn.Module):
     
-    def __int__(self, args: ModelConfig):
-        super(Attention, self).__init__()
-
-        self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-        assert args.n_heads % self.n_kv_heads == 0
-        self.n_local_heads = args.n_heads
-        self.n_local_kv_heads = self.n_kv_heads
+    def __init__(self, args: ModelConfig):
+        super().__init__()
+        
+        self.num_key_value_heads = args.num_attention_heads if args.num_key_value_heads is None else args.num_key_value_heads
+        assert args.num_attention_heads % self.num_key_value_heads == 0
+        self.n_local_heads = args.num_attention_heads
+        self.n_local_kv_heads = self.num_key_value_heads
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
-        self.head_dim = args.dim // args.n_heads
-        self.wq = nn.Linear(args.dim, args.n_heads * self.head_dim, bias=False)
-        self.wk = nn.Linear(args.dim, self.n_kv_heads * self.head_dim, bias=False)
-        self.wv = nn.Linear(args.dim, self.n_kv_heads * self.head_dim, bias=False)
-        self.wo = nn.Linear(args.n_heads * self.head_dim, args.dim, bias=False)
-        self.k_cache, self.v_cache = None, None
+        self.head_dim = args.hidden_size // args.num_attention_heads
+        self.q_proj = nn.Linear(args.hidden_size, args.num_attention_heads * self.head_dim, bias=False)
+        self.k_proj = nn.Linear(args.hidden_size, self.num_key_value_heads * self.head_dim, bias=False)
+        self.v_proj = nn.Linear(args.hidden_size, self.num_key_value_heads * self.head_dim, bias=False)
+        self.o_proj = nn.Linear(args.num_attention_heads * self.head_dim, args.hidden_size, bias=False)
         self.attn_dropout = nn.Dropout(args.dropout)
         self.resid_dropout = nn.Dropout(args.dropout)
         self.dropout = args.dropout
         self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention') and args.flash_attn
-
         # print("WARNING: using slow attention. Flash Attention requires PyTorch >= 2.0")
-        mask = torch.full((1, 1, args.max_seq_len, args.max_seq_len), float("-inf"))
-        mask = torch.triu(mask, diagonal=1)
-        self.register_buffer("mask", mask, persistent=False)
-    
-    def forward(self, x: torch.Tensor, pos_cis: torch.Tensor, kv_cache: bool = False):
-        # batch_size, seq_len
-        bsz, seqlen, _ = x.shape
-        
-        xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
 
-        xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
-        xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+    def forward(self,
+                x: torch.Tensor,
+                position_embeddings: Tuple[torch.Tensor, torch.Tensor],  # 修改为接收cos和sin
+                past_key_value: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+                use_cache=False,
+                attention_mask: Optional[torch.Tensor] = None):
+        bsz, seq_len, _ = x.shape
+        xq, xk, xv = self.q_proj(x), self.k_proj(x), self.v_proj(x)
+        xq = xq.view(bsz, seq_len, self.n_local_heads, self.head_dim)
+        xk = xk.view(bsz, seq_len, self.n_local_kv_heads, self.head_dim)
+        xv = xv.view(bsz, seq_len, self.n_local_kv_heads, self.head_dim)
 
-        xq, xk = apply_rotary_emb(xq, xk, pos_cis)
+        cos, sin = position_embeddings
+        xq, xk = apply_rotary_pos_emb(xq, xk, cos[:seq_len], sin[:seq_len])
 
-        # 更高效的kv_cache实现
-        if kv_cache and self.eval():
-            if seqlen == 1 and all(cache is not None for cache in (self.k_cache, self.v_cache)):
-                xk = torch.cat((self.k_cache, xk), dim=1)
-                xv = torch.cat((self.v_cache, xv), dim=1)
-            self.k_cache, self.v_cache = xk, xv
+        # kv_cache实现
+        if past_key_value is not None:
+            xk = torch.cat([past_key_value[0], xk], dim=1)
+            xv = torch.cat([past_key_value[1], xv], dim=1)
+        past_kv = (xk, xv) if use_cache else None
 
-        xk = repeat_kv(xk, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
-        xv = repeat_kv(xv, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
+        xq, xk, xv = (
+            xq.transpose(1, 2),
+            repeat_kv(xk, self.n_rep).transpose(1, 2),
+            repeat_kv(xv, self.n_rep).transpose(1, 2)
+        )
 
-        xq = xq.transpose(1, 2)
-        xk = xk.transpose(1, 2)
-        xv = xv.transpose(1, 2)
+        if self.flash and seq_len != 1:
+            dropout_p = self.dropout if self.training else 0.0
+            attn_mask = None
+            if attention_mask is not None:
+                attn_mask = attention_mask.view(bsz, 1, 1, -1).expand(bsz, self.n_local_heads, seq_len, -1)
+                attn_mask = attn_mask.bool() if attention_mask is not None else None
 
-        if self.flash and seqlen != 1:
-            output = torch.nn.functional.scaled_dot_product_attention(
-                xq, xk, xv, 
-                attn_mask=None,
-                dropout_p=self.dropout if self.training else 0.0,
-                is_causal=True
-            )
+            output = F.scaled_dot_product_attention(xq, xk, xv, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=True)
         else:
-            scores = torch.matmul(xq, xk.transpose(2, 3)) / math.sqrt(self.head_dim)
-            # (bs, n_local_heads, seqlen, cache_len + seqlen)
-            scores = scores + self.mask[:, :, :seqlen, :seqlen]
+            scores = (xq @ xk.transpose(-2, -1)) / math.sqrt(self.head_dim)
+            scores = scores + torch.triu(
+                torch.full((seq_len, seq_len), float("-inf"), device=scores.device),
+                diagonal=1
+            ).unsqueeze(0).unsqueeze(0)  # scores+mask
+
+            if attention_mask is not None:
+                extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+                extended_attention_mask = (1.0 - extended_attention_mask) * -1e9
+                scores = scores + extended_attention_mask
+
             scores = F.softmax(scores.float(), dim=-1).type_as(xq)
             scores = self.attn_dropout(scores)
-            # (bs, n_local_heads, seqlen, head_dim)
-            output = torch.matmul(scores, xv)
+            output = scores @ xv
 
-        output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
-
-        output = self.wo(output)
-        output = self.resid_dropout(output)
-
-        return output
+        output = output.transpose(1, 2).reshape(bsz, seq_len, -1)
+        output = self.resid_dropout(self.o_proj(output))
+        return output, past_kv
 
 
 class FeedForward(nn.Module):
     
-    def __init__(self, dim: int, hidden_dim: int, multiple_of: int, dropout: float):
-        super(FeedForward, self).__init__()
+    def __init__(self, config: ModelConfig):
+        super().__init__()
+        
+        if config.intermediate_size is None:
+            intermediate_size = int(config.hidden_size * 8 / 3)
+            config.intermediate_size = 64 * ((intermediate_size + 64 - 1) // 64)
+        self.gate_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
+        self.down_proj = nn.Linear(config.intermediate_size, config.hidden_size, bias=False)
+        self.up_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
+        self.dropout = nn.Dropout(config.dropout)
+        self.act_fn = ACT2FN[config.hidden_act]
 
-        if hidden_dim is None:
-            hidden_dim = 4 * dim
-            hidden_dim = int(2 * hidden_dim / 3)
-            hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
-        self.w1 = nn.Linear(dim, hidden_dim, bias = False)
-        self.w2 = nn.Linear(hidden_dim, dim, bias = False)
-        self.w3 = nn.Linear(dim, hidden_dim, bias = False)
-        self.dropout = nn.Dropout(dropout)
-    
-    def foward(self, x):
-        x = F.silu(self.w1(x)) * self.w3(x)
-        x = self.w2(x)
-        return self.dropout(x)
+    def forward(self, x):
+        return self.dropout(self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x)))
 
 
 class MoEGate(nn.Module):
     
     def __init__(self, config: ModelConfig):
-        super(MoEGate, self).__init__()
+        super().__init__()
         
         self.config = config
         self.top_k = config.num_experts_per_tok
@@ -231,16 +192,16 @@ class MoEGate(nn.Module):
         self.seq_aux = config.seq_aux
 
         self.norm_topk_prob = config.norm_topk_prob
-        self.gating_dim = config.dim
+        self.gating_dim = config.hidden_size
         self.weight = nn.Parameter(torch.empty((self.n_routed_experts, self.gating_dim)))
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        import torch.nn.init as init
+        init.kaiming_uniform_(self.weight, a=math.sqrt(5))
 
     def forward(self, hidden_states):
         bsz, seq_len, h = hidden_states.shape
-
         hidden_states = hidden_states.view(-1, h)
         logits = F.linear(hidden_states, self.weight, None)
         if self.scoring_func == 'softmax':
@@ -261,12 +222,9 @@ class MoEGate(nn.Module):
             if self.seq_aux:
                 scores_for_seq_aux = scores_for_aux.view(bsz, seq_len, -1)
                 ce = torch.zeros(bsz, self.n_routed_experts, device=hidden_states.device)
-                ce.scatter_add_(
-                    1, 
-                    topk_idx_for_aux_loss,
-                    torch.ones(bsz, seq_len * aux_topk, device=hidden_states.device)).div_(
-                        seq_len * aux_topk / self.n_routed_experts
-                    )
+                ce.scatter_add_(1, topk_idx_for_aux_loss,
+                                torch.ones(bsz, seq_len * aux_topk, device=hidden_states.device)).div_(
+                    seq_len * aux_topk / self.n_routed_experts)
                 aux_loss = (ce * scores_for_seq_aux.mean(dim=1)).sum(dim=1).mean() * self.alpha
             else:
                 mask_ce = F.one_hot(topk_idx_for_aux_loss.view(-1), num_classes=self.n_routed_experts)
@@ -275,62 +233,48 @@ class MoEGate(nn.Module):
                 fi = ce * self.n_routed_experts
                 aux_loss = (Pi * fi).sum() * self.alpha
         else:
-            aux_loss = None
-        
+            aux_loss = 0
         return topk_idx, topk_weight, aux_loss
 
 
 class MOEFeedForward(nn.Module):
     
     def __init__(self, config: ModelConfig):
-        super(MOEFeedForward, self).__init__()
+        super().__init__()
         
         self.config = config
         self.experts = nn.ModuleList([
-            FeedForward(
-                dim=config.dim,
-                hidden_dim=config.hidden_dim,
-                multiple_of=config.multiple_of,
-                dropout=config.dropout,
-            )
+            FeedForward(config)
             for _ in range(config.n_routed_experts)
         ])
-
         self.gate = MoEGate(config)
-        if config.n_shared_experts is not None:
-            self.shared_experts = FeedForward(
-                dim=config.dim,
-                hidden_dim=config.hidden_dim,
-                multiple_of=config.multiple_of,
-                dropout=config.dropout,
-            )
+        if config.n_shared_experts > 0:
+            self.shared_experts = nn.ModuleList([
+                FeedForward(config)
+                for _ in range(config.n_shared_experts)
+            ])
 
     def forward(self, x):
         identity = x
         orig_shape = x.shape
         bsz, seq_len, _ = x.shape
-
         # 使用门控机制选择专家
         topk_idx, topk_weight, aux_loss = self.gate(x)
-
         x = x.view(-1, x.shape[-1])
         flat_topk_idx = topk_idx.view(-1)
-
         if self.training:
-            # 训练模式下，重复输入数据
             x = x.repeat_interleave(self.config.num_experts_per_tok, dim=0)
             y = torch.empty_like(x, dtype=torch.float16)
             for i, expert in enumerate(self.experts):
-                y[flat_topk_idx == i] = expert(x[flat_topk_idx == i])
+                y[flat_topk_idx == i] = expert(x[flat_topk_idx == i]).to(y.dtype)  # 确保类型一致
             y = (y.view(*topk_weight.shape, -1) * topk_weight.unsqueeze(-1)).sum(dim=1)
             y = y.view(*orig_shape)
         else:
-            # 推理模式下，只选择最优专家
             y = self.moe_infer(x, flat_topk_idx, topk_weight.view(-1, 1)).view(*orig_shape)
-
-        if self.config.n_shared_experts is not None:
-            y = y + self.shared_experts(identity)
-
+        if self.config.n_shared_experts > 0:
+            for expert in self.shared_experts:
+                y = y + expert(identity)
+        self.aux_loss = aux_loss
         return y
 
     @torch.no_grad()
@@ -339,9 +283,10 @@ class MOEFeedForward(nn.Module):
         idxs = flat_expert_indices.argsort()
         tokens_per_expert = flat_expert_indices.bincount().cpu().numpy().cumsum(0)
         token_idxs = idxs // self.config.num_experts_per_tok
-        # 例如当tokens_per_expert=[6, 15, 20, 26, 33, 38, 46, 52]
-        # 当token_idxs=[3, 7, 19, 21, 24, 25,  4,  5,  6, 10, 11, 12...]
-        # 意味着当token_idxs[:6] -> [3,  7, 19, 21, 24, 25,  4]位置的token都由专家0处理，token_idxs[6:15]位置的token都由专家1处理......
+        # 当tokens_per_expert = [6, 15, 20, 26]，tokens_per_expert.shape[0]即为专家数量（此时为4）
+        # 且token_idxs = [3, 7, 19, 21, 24, 25,  4,  5,  6, 10, 11, 12...] 时
+        # 意味token_idxs[:6] -> [3, 7, 19, 21, 24, 25]这6个位置属于专家0处理的token（每个token有可能被多个专家处理，这取决于num_experts_per_tok）
+        # 接下来9个位置token_idxs[6:15] -> [4,  5,  6, 10, 11, 12...]属于专家1处理的token...依此类推
         for i, end_idx in enumerate(tokens_per_expert):
             start_idx = 0 if i == 0 else tokens_per_expert[i - 1]
             if start_idx == end_idx:
@@ -349,9 +294,8 @@ class MOEFeedForward(nn.Module):
             expert = self.experts[i]
             exp_token_idx = token_idxs[start_idx:end_idx]
             expert_tokens = x[exp_token_idx]
-            expert_out = expert(expert_tokens)
+            expert_out = expert(expert_tokens).to(expert_cache.dtype)
             expert_out.mul_(flat_expert_weights[idxs[start_idx:end_idx]])
-            # 使用 scatter_add_ 进行 sum 操作
             expert_cache.scatter_add_(0, exp_token_idx.view(-1, 1).repeat(1, x.shape[-1]), expert_out)
 
         return expert_cache
@@ -359,166 +303,121 @@ class MOEFeedForward(nn.Module):
 
 class TransformerBlock(nn.Module):
     
-    def __init__(self, layer_id: int, args: ModelConfig):
-        super(TransformerBlock, self).__init__()
+    def __init__(self, layer_id: int, config: ModelConfig):
+        super().__init__()
+        
+        self.num_attention_heads = config.num_attention_heads
+        self.hidden_size = config.hidden_size
+        self.head_dim = config.hidden_size // config.num_attention_heads
+        self.self_attn = Attention(config)
 
-        self.dim = args.dim
-        self.n_heads = args.n_heads
-        self.head_dim = args.dim // args.n_heads
-        self.attention = Attention(args)
-    
         self.layer_id = layer_id
-        self.attention_norm = RMSNorm(args.dim, eps = args.norm_eps)
-        self.ffn_norm = RMSNorm(args.dim, eps = args.norm_eps)
+        self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.mlp = FeedForward(config) if not config.use_moe else MOEFeedForward(config)
 
-        if args.use_moe:
-            self.feed_forward = MOEFeedForward(args)
-        else:
-            self.feed_forward = FeedForward(
-                dim = args.dim,
-                hidden_dim = args.hidden_dim,
-                multiple_of = args.multiple_of,
-                dropout = args.dropout,
+    def forward(self, hidden_states, position_embeddings, past_key_value=None, use_cache=False, attention_mask=None):
+        residual = hidden_states
+        hidden_states, present_key_value = self.self_attn(
+            self.input_layernorm(hidden_states), position_embeddings,
+            past_key_value, use_cache, attention_mask
+        )
+        hidden_states += residual
+        hidden_states = hidden_states + self.mlp(self.post_attention_layernorm(hidden_states))
+        return hidden_states, present_key_value
+
+
+class Transformer(nn.Module):
+    
+    def __init__(self, config: ModelConfig):
+        super().__init__()
+        
+        self.config = config
+        self.vocab_size, self.num_hidden_layers = config.vocab_size, config.num_hidden_layers
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
+        self.dropout = nn.Dropout(config.dropout)
+        self.layers = nn.ModuleList([TransformerBlock(l, config) for l in range(self.num_hidden_layers)])
+        self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+        freqs_cos, freqs_sin = precompute_freqs_cis(dim=config.hidden_size // config.num_attention_heads,
+                                                    end=config.max_position_embeddings, theta=config.rope_theta)
+        self.register_buffer("freqs_cos", freqs_cos, persistent=False)
+        self.register_buffer("freqs_sin", freqs_sin, persistent=False)
+
+    def forward(self,
+                input_ids: Optional[torch.Tensor] = None,
+                attention_mask: Optional[torch.Tensor] = None,
+                past_key_values: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
+                use_cache: bool = False,
+                **kwargs):
+        batch_size, seq_length = input_ids.shape
+        past_key_values = past_key_values or [None] * len(self.layers)
+        start_pos = past_key_values[0][0].shape[1] if past_key_values[0] is not None else 0
+
+        hidden_states = self.dropout(self.embed_tokens(input_ids))
+
+        position_embeddings = (
+            self.freqs_cos[start_pos:start_pos + seq_length],
+            self.freqs_sin[start_pos:start_pos + seq_length]
+        )
+
+        presents = []
+        for layer_idx, (layer, past_key_value) in enumerate(zip(self.layers, past_key_values)):
+            hidden_states, present = layer(
+                hidden_states,
+                position_embeddings,
+                past_key_value=past_key_value,
+                use_cache=use_cache,
+                attention_mask=attention_mask
             )
+            presents.append(present)
 
-    def forward(self, x, pos_cis, kv_cache: bool = False):
-        x = self.attention_norm(x)
-        h = x + self.attention(x, pos_cis, kv_cache)
-        
-        h = self.ffn_norm(h)
-        out = h + self.feed_forward(h)
+        hidden_states = self.norm(hidden_states)
 
-        return out
+        aux_loss = sum(
+            layer.mlp.aux_loss
+            for layer in self.layers
+            if isinstance(layer.mlp, MOEFeedForward)
+        )
+
+        return hidden_states, presents, aux_loss
 
 
-class ModelForCausalLM(PreTrainedModel):
+class Model(PreTrainedModel, GenerationMixin):
+    
     config_class = ModelConfig
-    last_loss: Optional[torch.Tensor]
 
-    def __init__(self, params: ModelConfig = None):
-        super(ModelForCausalLM, self).__init__(params)
+    def __init__(self, config: ModelConfig = None):
+        self.config = config or ModelConfig()
+        super().__init__(self.config)
         
-        if not params:
-            params = LMConfig()
-        self.params = params
-        self.vocab_size = params.vocab_size
-        self.n_layers = params.n_layers
-
-        self.tok_embeddings = nn.Embedding(params.vocab_size, params.dim)
-        self.dropout = nn.Dropout(params.dropout)
-        self.layers = torch.nn.ModuleList()
-        for layer_id in range(self.n_layers):
-            self.layers.append(TransformerBlock(layer_id, params))
-        self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        self.output = nn.Linear(params.dim, params.vocab_size, bias=False)
-        self.tok_embeddings.weight = self.output.weight
-        pos_cis = precompute_pos_cis(self.params.dim // self.params.n_heads, self.params.max_seq_len)
-        self.register_buffer("pos_cis", pos_cis, persistent=False)
-
-        self.apply(self._init_weights)
-
-        for pn, p in self.named_parameters():
-            if pn.endswith('w3.weight') or pn.endswith('wo.weight'):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * params.n_layers))
-
-        self.last_loss = None
+        self.model = Transformer(self.config)
+        self.lm_head = nn.Linear(self.config.hidden_size, self.config.vocab_size, bias=False)
+        self.model.embed_tokens.weight = self.lm_head.weight
         self.OUT = CausalLMOutputWithPast()
-        self._no_split_modules = [name for name, _ in self.named_modules()]
-    
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-    
-    def forward(self, 
-                tokens: Optional[torch.Tensor] = None, 
-                targets: Optional[torch.Tensor] = None, 
-                kv_cache = False, 
-                **keyargs):
-        current_idx = 0
-        if 'input_ids' in keyargs:
-            tokens = keyargs['input_ids']
-        if 'attention_mask' in keyargs:
-            targets = keyargs['attention_mask']
-        if 'current_idx' in keyargs:
-            current_idx = int(keyargs['current_idx'])
 
-        _bsz, seqlen = tokens.shape
-        h = self.tok_embeddings(tokens)
-        h = self.dropout(h)
-        pos_cis = self.pos_cis[current_idx:current_idx + seqlen]
-        for idx, layer in enumerate(self.layers):
-            h = layer(h, pos_cis, kv_cache)
-
-        h = self.norm(h)
-
-        if targets is not None:
-            logits = self.output(h)
-            self.last_loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1),
-                                             ignore_index=0, reduction='none')
-        else:
-            logits = self.output(h[:, [-1], :])
-            self.last_loss = None
-
+    def forward(self,
+                input_ids: Optional[torch.Tensor] = None,
+                attention_mask: Optional[torch.Tensor] = None,
+                past_key_values: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
+                use_cache: bool = False,
+                logits_to_keep: Union[int, torch.Tensor] = 0,
+                **args):
+        h, past_kvs, aux_loss = self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            past_key_values=past_key_values,
+            use_cache=use_cache,
+            **args
+        )
+        slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
+        logits = self.lm_head(h[:, slice_indices, :])
+        self.OUT.__setitem__('last_hidden_state', h)
         self.OUT.__setitem__('logits', logits)
-        self.OUT.__setitem__('last_loss', self.last_loss)
+        self.OUT.__setitem__('aux_loss', aux_loss)
+        self.OUT.__setitem__('past_key_values', past_kvs)
+
         return self.OUT
-    
-    @torch.inference_mode()
-    def generate(self, 
-                 idx, 
-                 eos, 
-                 max_new_tokens, 
-                 temperature=0.7, top_k = 8, 
-                 stream = True, 
-                 rp = 1.0, 
-                 kv_cache = True):
-        # rp: repetition_penalty
-        index = idx.shape[1]
-        init_inference = True
-        while idx.shape[1] < max_new_tokens - 1:
-            if init_inference or not kv_cache:
-                inference_res, init_inference = self(idx, kv_cache=kv_cache), False
-            else:
-                inference_res = self(idx[:, -1:], kv_cache=kv_cache, current_idx=idx.shape[1] - 1)
-
-            logits = inference_res.logits
-            logits = logits[:, -1, :]
-
-            for token in set(idx.tolist()[0]):
-                logits[:, token] /= rp
-
-            if temperature == 0.0:
-                _, idx_next = torch.topk(logits, k=1, dim=-1)
-            else:
-                logits = logits / temperature
-                if top_k is not None:
-                    v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-                    logits[logits < v[:, [-1]]] = -float('Inf')
-
-                probs = F.softmax(logits, dim=-1)
-                idx_next = torch.multinomial(probs, num_samples=1, generator=None)
-
-            if idx_next == eos:
-                break
-
-            idx = torch.cat((idx, idx_next), dim=1)
-            if stream:
-                yield idx[:, index:]
-
-        if not stream:
-            yield idx[:, index:]
-
-    @torch.inference_mode()
-    def eval_answer(self, idx):
-        idx_cond = idx if idx.size(1) <= self.params.max_seq_len else idx[:, -self.params.max_seq_len:]
-        inference_res = self(idx_cond)
-        logits = inference_res.logits
-        logits = logits[:, -1, :]
-        return logits
 
 
 

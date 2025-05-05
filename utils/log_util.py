@@ -66,7 +66,7 @@ time_rotating_file_handler.setFormatter(default_formatter)
 # 主日志记录器
 # ------------------------------
 logger = logging.getLogger(__name__)
-# logger.addHandler(stream_handler)
+logger.addHandler(stream_handler)
 logger.addHandler(time_rotating_file_handler)
 logger.setLevel(LOG_LEVEL)
 logger.propagate = False
