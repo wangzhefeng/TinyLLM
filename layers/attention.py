@@ -25,74 +25,19 @@ import math
 import torch
 import torch.nn as nn
 
+from layers.rotary_position_embedding import (
+    precompute_rope_params, 
+    compute_rope
+)
+
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-# ------------------------------
-# method 1
-# ------------------------------
-class CasualAttention(nn.Module):
-    """
-    Casual Self Attention
-    """
-    def __init__(self, d_in: int, d_out: int, context_length: int, 
-                 dropout: float, qkv_bias=False):
-        super().__init__()
-
-        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.dropout = nn.Dropout(dropout)
-        mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
-        self.register_buffer("mask", mask)
-    
-    def forward(self, x):
-        batch_size, num_tokens, d_in = x.shape
-        # q, k, v
-        queries = self.W_query(x)
-        keys = self.W_key(x)
-        values = self.W_value(x)
-        # attention scores
-        attn_scores = queries @ keys.transpose(1, 2)
-        # casual mask
-        attn_scores.masked_fill_(self.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
-        # attention weights
-        attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
-        # dropout
-        attn_weights = self.dropout(attn_weights)
-        # context scores
-        context_vec = attn_weights @ values
-    
-        return context_vec
-
-
-class MultiHeadAttentionWrapper(nn.Module):
-    
-    def __init__(self, d_in: int, d_out: int, context_length: int, 
-                 dropout: float, num_heads: int, qkv_bias=False):
-        super().__init__()
-        
-        self.heads = nn.ModuleList([
-            CasualAttention(d_in, d_out, context_length, dropout, qkv_bias) 
-            for _ in range(num_heads)
-        ])
-        self.out_proj = nn.Linear(d_out * num_heads, d_out * num_heads)
-
-    def forward(self, x):
-        context_vector = torch.cat([head(x) for head in self.heads], dim=-1)
-        projection = self.out_proj(context_vector)
-
-        return projection
-
-
-# ------------------------------
-# method 2
-# ------------------------------
 class MultiHeadAttention(nn.Module):
     
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias=False):
-        super().__init__()
+        super(MultiHeadAttention, self).__init__()
 
         assert (d_out % num_heads == 0), "d_out must be divisible by num_heads"
         self.d_out = d_out
@@ -154,13 +99,214 @@ class MultiHeadAttention(nn.Module):
         return context_vec
 
 
+class MultiHeadAttentionRoPE(nn.Module):
+    
+    def __init__(self, 
+                 d_in: int, 
+                 d_out: int, 
+                 context_length: int, 
+                 num_heads: int, 
+                 dtype = None):
+        super(MultiHeadAttentionRoPE, self).__init__()
+        assert (d_out % num_heads == 0), "d_out must be divisible by num_heads"
+        
+        self.d_out = d_out
+        self.num_heads = num_heads
+        # reduce the projection dim to match desired output dim
+        self.head_dim = d_out // num_heads
+        # query, key, value weights
+        self.W_query = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.W_key = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        # Linear layer to combine head outputs
+        self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
+        # mask
+        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
+        # RoPE
+        cos, sin = precompute_rope_params(head_dim=self.head_dim, context_length=context_length)
+        self.register_buffer("cos", cos)
+        self.register_buffer("sin", sin)
+    
+    def forward(self, x):
+        # shape: [batch_size, num_tokens, d_in]
+        batch_size, num_tokens, d_in = x.shape
+        # ------------------------------
+        # Query, Key, Value
+        # ------------------------------
+        # shape: [batch_size, num_tokens, d_out]
+        queries = self.W_query(x)
+        keys = self.W_key(x)
+        values = self.W_value(x)
+        # split the matrix by adding a "num_heads" dimension, unroll last dim
+        # shape: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, num_heads, head_dim)
+        queries = queries.view(batch_size, num_tokens, self.num_heads, self.head_dim)
+        keys = keys.view(batch_size, num_tokens, self.num_heads, self.head_dim)
+        values = values.view(batch_size, num_tokens, self.num_heads, self.head_dim)
+        # transpose
+        # shape: (batch_size, num_tokens, num_heads, head_dim) -> (batch_size, num_heads, num_tokens, head_dim)
+        queries = queries.transpose(1, 2)
+        keys = keys.transpose(1, 2)
+        values = values.transpose(1, 2)
+        # RoPE
+        queries = compute_rope(queries, self.cos, self.sin)
+        keys = compute_rope(keys, self.cos, self.sin)
+        # ------------------------------
+        # scaled dot-product attention(aka self-attention) with a causal mask
+        # ------------------------------
+        # dot product for each head
+        attn_scores = queries @ keys.transpose(2, 3)
+        # mask to fill attention scores
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        # use the mask to fill attention scores
+        attn_scores.masked_fill_(mask_bool, -torch.inf)
+        # ------------------------------
+        # attention weights
+        # ------------------------------
+        attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
+        # ------------------------------
+        # context vector
+        # ------------------------------
+        # shape: (batch_size, num_tokens, num_heads, head_dim)
+        context_vec = (attn_weights @ values).transpose(1, 2)
+
+        # combine heads, where self.d_out = self.num_heads * self.head_dim
+        context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)
+        # or
+        # context_vec = context_vec.reshape(batch_size, num_tokens, self.d_out)
+
+        # optional projection
+        context_vec = self.out_proj(context_vec)
+
+        return context_vec
+
+
+class SharedBuffers:
+    _buffers = {}
+
+    @staticmethod
+    def get_buffers(context_length, head_dim, rope_base, freq_config, dtype=torch.float32):
+        key = (context_length, head_dim, rope_base, tuple(freq_config.values()) if freq_config else freq_config, dtype)
+
+        if key not in SharedBuffers._buffers:
+            # Create or fetch the buffers
+            mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
+            cos, sin = precompute_rope_params(head_dim, rope_base, context_length, freq_config)
+            if dtype is not None:
+                cos = cos.to(dtype)
+                sin = sin.to(dtype)
+            SharedBuffers._buffers[key] = (mask, cos, sin)
+
+        return SharedBuffers._buffers[key]
+
+
+class GroupedQueryAttention(nn.Module):
+    
+    def __init__(
+            self, d_in, d_out, context_length, num_heads,
+            num_kv_groups,       # NEW
+            rope_base=10_000,    # NEW
+            rope_config=None,    # NEW
+            dtype=None
+        ):
+        super().__init__()
+        assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
+        assert num_heads % num_kv_groups == 0, "num_heads must be divisible by num_kv_groups"  # NEW
+
+        self.d_out = d_out
+        self.num_heads = num_heads
+        self.head_dim = d_out // num_heads
+
+        ############################# NEW  #############################
+        # self.W_key = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        # self.W_value = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.W_key = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        self.num_kv_groups = num_kv_groups
+        self.group_size = num_heads // num_kv_groups
+        ################################################################
+
+        self.W_query = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
+
+        ############################# NEW  #############################
+        # Fetch buffers using SharedBuffers
+        mask, cos, sin = SharedBuffers.get_buffers(context_length, self.head_dim, rope_base, rope_config, dtype)
+        ############################# NEW  #############################
+        
+        self.register_buffer("mask", mask)
+        self.register_buffer("cos", cos)
+        self.register_buffer("sin", sin)
+
+    def forward(self, x):
+        b, num_tokens, d_in = x.shape
+
+        queries = self.W_query(x)  # Shape: (b, num_tokens, d_out)
+        keys = self.W_key(x)  # Shape: (b, num_tokens, num_kv_groups * head_dim)
+        values = self.W_value(x)  # Shape: (b, num_tokens, num_kv_groups * head_dim)
+
+        # Reshape queries, keys, and values
+        queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
+
+        ##################### NEW  #####################
+        # keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
+        # values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+        keys = keys.view(b, num_tokens, self.num_kv_groups, self.head_dim)
+        values = values.view(b, num_tokens, self.num_kv_groups, self.head_dim)
+        ################################################
+
+        # Transpose keys, values, and queries
+        keys = keys.transpose(1, 2)  # Shape: (b, num_heads, num_tokens, head_dim)
+        values = values.transpose(1, 2)  # Shape: (b, num_heads, num_tokens, head_dim)
+        queries = queries.transpose(1, 2)  # Shape: (b, num_query_groups, num_tokens, head_dim)
+
+        # Apply RoPE
+        keys = compute_rope(keys, self.cos, self.sin)
+        queries = compute_rope(queries, self.cos, self.sin)
+
+        ##################### NEW  #####################
+        # Expand keys and values to match the number of heads
+        # Shape: (b, num_heads, num_tokens, head_dim)
+
+        keys = keys.repeat_interleave(self.group_size, dim=1)  # Shape: (b, num_heads, num_tokens, head_dim)
+        values = values.repeat_interleave(self.group_size, dim=1)  # Shape: (b, num_heads, num_tokens, head_dim)
+        # For example, before repeat_interleave along dim=1 (query groups):
+        #   [K1, K2]
+        # After repeat_interleave (each query group is repeated group_size times):
+        #   [K1, K1, K2, K2]
+        # If we used regular repeat instead of repeat_interleave, we'd get:
+        #   [K1, K2, K1, K2]
+        ################################################
+
+        # Compute scaled dot-product attention (aka self-attention) with a causal mask
+        # Shape: (b, num_heads, num_tokens, num_tokens)
+        attn_scores = queries @ keys.transpose(2, 3)  # Dot product for each head
+
+        # Original mask truncated to the number of tokens and converted to boolean
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+
+        # Use the mask to fill attention scores
+        attn_scores.masked_fill_(mask_bool, -torch.inf)
+
+        attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
+        assert keys.shape[-1] == self.head_dim
+
+        # Shape: (b, num_tokens, num_heads, head_dim)
+        context_vec = (attn_weights @ values).transpose(1, 2)
+
+        # Combine heads, where self.d_out = self.num_heads * self.head_dim
+        context_vec = context_vec.reshape(b, num_tokens, self.d_out)
+        context_vec = self.out_proj(context_vec)  # optional projection
+
+        return context_vec
+
+
 # ------------------------------
-# method 3
+# TODO
 # ------------------------------
 class MultiHeadAttentionCombinedQKV(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MultiHeadAttentionCombinedQKV, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 
@@ -217,7 +363,7 @@ class MultiHeadAttentionCombinedQKV(nn.Module):
 class MHAEinsum(nn.Module):
 
     def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
-        super().__init__()
+        super(MHAEinsum, self).__init__()
         assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
 
         self.d_out = d_out
@@ -300,7 +446,7 @@ class MHAEinsum(nn.Module):
 class MHAPyTorchScaledDotProduct(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MHAPyTorchScaledDotProduct, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 
@@ -344,7 +490,7 @@ class MHAPyTorchScaledDotProduct(nn.Module):
 class MHAPyTorchSDPAWithoutFlash(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MHAPyTorchSDPAWithoutFlash, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 
@@ -396,7 +542,7 @@ class MHAPyTorchSDPAWithoutFlash(nn.Module):
 class MHAPyTorchClass(nn.Module):
     
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False, need_weights=True):
-        super().__init__()
+        super(MHAPyTorchClass, self).__init__()
 
         self.context_length = context_length
         self.multihead_attn = nn.MultiheadAttention(
@@ -450,7 +596,7 @@ def causal(b, h, q_idx, kv_idx):
 class MHAPyTorchFlexAttention(nn.Module):
 
     def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
-        super().__init__()
+        super(MHAPyTorchFlexAttention, self).__init__()
 
         assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
 
@@ -505,7 +651,61 @@ class MHAPyTorchFlexAttention(nn.Module):
 
 # 测试代码 main 函数
 def main():
-    pass
+    from utils.log_util import logger
+
+    # settings
+    batch_size = 1
+    context_len = 3000
+    max_context_len = 8192
+    embed_dim = 4096
+    num_heads = 32
+    llama3_context_len = 8192
+    llama3_theta_base = 500_000
+
+    # input
+    example_batch = torch.randn((batch_size, context_len, embed_dim))
+
+    # ------------------------------
+    # attention
+    # ------------------------------
+    mha = MultiHeadAttentionRoPE(
+        d_in = embed_dim,
+        d_out = embed_dim,
+        context_length = max_context_len,
+        num_heads = num_heads,
+    )
+    mha(example_batch)
+    logger.info(f"W_key: {mha.W_key.weight.shape}")
+    logger.info(f"W_value: {mha.W_value.weight.shape}")
+    logger.info(f"W_query: {mha.W_query.weight.shape}")
+    # ------------------------------
+    # attention
+    # ------------------------------
+    gqa = GroupedQueryAttention(
+        d_in = embed_dim,
+        d_out = embed_dim,
+        context_length = max_context_len,
+        num_heads = num_heads,
+        num_kv_groups = 8,
+        rope_base = llama3_theta_base,
+    )
+    gqa(example_batch)
+    logger.info(f"W_key: {gqa.W_key.weight.shape}")
+    logger.info(f"W_value: {gqa.W_value.weight.shape}")
+    logger.info(f"W_query: {gqa.W_query.weight.shape}")
+    # ------------------------------
+    # number of params
+    # ------------------------------
+    logger.info(f"Total number of parameters:")
+    mha_total_params = sum(p.numel() for p in mha.parameters())
+    logger.info(f"MHA: {mha_total_params}")
+
+    gqa_total_params = sum(p.numel() for p in gqa.parameters())
+    logger.info(f"GQA: {gqa_total_params}")
     
+    # free up memory
+    del mha
+    del gqa
+
 if __name__ == "__main__":
     main()

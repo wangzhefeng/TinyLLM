@@ -7,6 +7,8 @@
 # * Date        : 2025-02-17
 # * Version     : 0.1.021721
 # * Description : https://zhuanlan.zhihu.com/p/701777558
+# *               https://oilbeater.com/en/2025/03/29/deepseek-moe/
+# *               https://oilbeater.com/2025/03/29/deepseek-moe/?continueFlag=f8a3608be78ba94b8ef26443ea262ec6
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
@@ -22,7 +24,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.argsparser_tools import DotDict
+from utils.args_tools import DotDict
 from utils.log_util import logger
 
 # global variable
@@ -32,7 +34,7 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class _Expert(nn.Module):
     
     def __init__(self, cfgs):
-        super().__init__()
+        super(_Expert, self).__init__()
 
         self.layers = nn.Sequential(
             nn.Linear(cfgs.emb_dim, 4 * cfgs.emb_dim),
@@ -50,7 +52,7 @@ class _Expert(nn.Module):
 class _NoisyTopkRouter(nn.Module):
     
     def __init__(self, cfgs):
-        super().__init__()
+        super(_NoisyTopkRouter, self).__init__()
 
         self.top_k = cfgs.top_k
         self.topk_route_linear = nn.Linear(cfgs.emb_dim, cfgs.num_experts)

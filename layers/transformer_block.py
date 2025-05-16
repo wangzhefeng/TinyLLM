@@ -21,21 +21,27 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
+import torch
 import torch.nn as nn
 
-from layers.attention import MultiHeadAttention
-from layers.feed_forward import FeedForward
+from layers.attention import (
+    MultiHeadAttention, 
+    MultiHeadAttentionRoPE, 
+    GroupedQueryAttention
+)
+from layers.feed_forward import FeedForward, FeedForwardSiLU
 from layers.layer_norm import LayerNorm
+from layers.rms_norm import RMSNorm
 from layers.moe import SparseMoE
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-class TransformerBlock(nn.Module):
+class TransformerBlockGPT(nn.Module):
     
     def __init__(self, cfg):
-        super().__init__()
+        super(TransformerBlockGPT, self).__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,
@@ -67,14 +73,14 @@ class TransformerBlock(nn.Module):
         return x
 
 
-class MixureOfExperts_TransformerBlock(nn.Module):
+class TransformerBlockMoE(nn.Module):
     """
     Mixture of Experts Transformer block
     communication followed by computation (multi-head self attention + SparseMoE) 
     """
 
     def __init__(self, cfg):
-        super().__init__()
+        super(TransformerBlockMoE, self).__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,
@@ -104,13 +110,81 @@ class MixureOfExperts_TransformerBlock(nn.Module):
         x = shortcut + x
         
         return x
-        
+
+
+class TransformerBlockLlama2(nn.Module):
+    
+    def __init__(self, cfg):
+        super(TransformerBlockLlama2, self).__init__()
+
+        self.attn = MultiHeadAttentionRoPE(
+            d_in = cfg.emb_dim,
+            d_out = cfg.emb_dim,
+            context_length=cfg.context_length,
+            num_heads = cfg.n_heads,
+            dtype = cfg.dtype,
+        )
+        self.ff = FeedForwardSiLU(cfg)
+        self.norm1 = RMSNorm(cfg.emb_dim)
+        self.norm2 = RMSNorm(cfg.emb_dim)
+    
+    def forward(self, x):
+        # shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x = self.attn(x)  # shape: [batch_size, num_tokens, emb_size]
+        x = x + shortcut
+        # shortcut connection for feed forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = x + shortcut
+
+        return x
+
+
+class TransformerBlockLlama3(nn.Module):
+    
+    def __init__(self, cfg):
+        super(TransformerBlockLlama3, self).__init__()
+
+        self.attn = GroupedQueryAttention(
+            d_in = cfg.emb_dim,
+            d_out = cfg.emb_dim,
+            context_length = cfg.context_length,
+            num_heads = cfg.n_heads,
+            num_kv_groups = cfg.n_kv_groups,
+            rope_base = cfg.rope_base,
+            rope_config = cfg.rope_freq,
+            dtype = cfg.dtype,
+        )
+        self.ff = FeedForwardSiLU(cfg)
+        self.norm1 = RMSNorm(cfg.emb_dim, eps = 1e-5)
+        self.norm2 = RMSNorm(cfg.emb_dim, eps = 1e-5)
+    
+    def forward(self, x):
+        # Shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x = self.attn(x.to(torch.bfloat16))  # Shape: [batch_size, num_tokens, emb_size]
+        x = x + shortcut  # Add the original input back
+
+        # Shortcut connection for feed-forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x.to(torch.bfloat16))
+        x = x + shortcut  # Add the original input back
+
+        return x
+
+
 
 
 # 测试代码 main 函数
 def main():
     import torch
     from utils.log_util import logger
+
     # ------------------------------
     # Transformer Block test
     # ------------------------------
@@ -124,9 +198,13 @@ def main():
         "dropout": 0.1,
         "qkv_bias": False,
     }
+
+    # input
     torch.manual_seed(123)
     x = torch.rand(2, 4, 768)
-    block = TransformerBlock(GPT_CONFIG_124M)
+
+    # transformer
+    block = TransformerBlockGPT(GPT_CONFIG_124M)
     output = block(x)
     logger.info(f"Input shape: {x.shape}")
     logger.info(f"Output shape: {output.shape}")

@@ -24,9 +24,8 @@ if str(ROOT) not in sys.path:
 import torch
 import torch.nn as nn
 
-from layers.transformer_block import TransformerBlock
+from layers.transformer_block import TransformerBlockGPT
 from layers.layer_norm import LayerNorm
-from models.gpt_generate import generate_text_simple, generate
 from utils.log_util import logger
 
 # global variable
@@ -36,19 +35,19 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 class Model(nn.Module):
 
     def __init__(self, cfg):
-        super().__init__()
+        super(Model, self).__init__()
 
         # Embedding
         self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.emb_dim)
         self.pos_emb = nn.Embedding(cfg.context_length, cfg.emb_dim)
         self.drop_emb = nn.Dropout(cfg.dropout)
-        # TransformerBlock
+        # transformer block
         self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(cfg) for _ in range(cfg.n_layers)]
+            *[TransformerBlockGPT(cfg) for _ in range(cfg.n_layers)]
         )
         # LayerNorm
         self.final_norm = LayerNorm(cfg.emb_dim)
-        # output head Linear
+        # output head linear
         self.out_head = nn.Linear(cfg.emb_dim, cfg.vocab_size, bias = False)
 
     def forward(self, in_idx):
@@ -75,7 +74,8 @@ class Model(nn.Module):
 # 测试代码 main 函数
 def main():
     import tiktoken
-    from utils.argsparser_tools import DotDict
+    from utils.train_utils.gpt_generate import generate
+    from utils.args_tools import DotDict
 
     # model params
     GPT_CONFIG_124M = {
@@ -108,7 +108,7 @@ def main():
     model.eval()  # disable dropout
     
     # generate text
-    out = generate_text_simple(
+    out = generate(
         model = model,
         token_idx = token_ids_tensor,
         max_new_tokens = GPT_CONFIG_124M["max_new_toknes"],

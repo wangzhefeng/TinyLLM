@@ -29,9 +29,9 @@ LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
 class LayerNorm(nn.Module):
-    
-    def __init__(self, emb_dim, eps = 1e-5):
-        super().__init__()
+
+    def __init__(self, emb_dim: int, eps: float = 1e-5):
+        super(LayerNorm, self).__init__()
 
         self.eps = eps
         self.scale = nn.Parameter(torch.ones(emb_dim))
@@ -41,6 +41,7 @@ class LayerNorm(nn.Module):
         mean = x.mean(dim=-1, keepdim=True)
         var = x.var(dim=-1, keepdim=True, unbiased=False)
         norm_x = (x - mean) / torch.sqrt(var + self.eps)
+
         return self.scale * norm_x + self.shift
 
 
@@ -49,6 +50,7 @@ class LayerNorm(nn.Module):
 # 测试代码 main 函数
 def main():
     from utils.log_util import logger
+
     # ------------------------------
     # Layer Norm test
     # ------------------------------
@@ -56,10 +58,12 @@ def main():
     torch.manual_seed(123)
     batch_example = torch.randn(2, 5)
     logger.info(f"batch_example: \n{batch_example}")
+    
     # layer norm
     ln = LayerNorm(emb_dim=5)
     out_ln = ln(batch_example)
     logger.info(f"out_ln: \n{out_ln}")
+    
     mean = out_ln.mean(dim=-1, keepdim=True)
     var = out_ln.var(dim=-1, unbiased=False, keepdim=True)
     logger.info(f"Mean: \n{mean}")
