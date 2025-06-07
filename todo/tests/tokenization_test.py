@@ -14,9 +14,9 @@
 # python libraries
 import os
 import sys
-ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+ROOT = str(os.getcwd())
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 from tokenizer.simple_custom import SimpleTokenizer
 from tokenizer.simple_bpe import BPETokenizerSimple

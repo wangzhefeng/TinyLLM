@@ -14,9 +14,9 @@
 # python libraries
 import os
 import sys
-ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+ROOT = str(os.getcwd())
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 from modelscope.msdatasets import MsDataset
