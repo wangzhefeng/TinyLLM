@@ -22,6 +22,7 @@ from importlib.metadata import version
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
+
 # 1.package version
 print(f"torch version: {version('torch')}")
 
