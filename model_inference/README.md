@@ -23,4 +23,5 @@
 
 * Ollama
 * Open WebUI
+* vLLM
 * llama.cpp
