@@ -17,11 +17,12 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
-from pathlib import Path
+
 
 import torch
 
@@ -53,10 +54,7 @@ def save_model(model, finetuned_model_path: str, choose_model: str):
     """
     Save model
     """
-    file_name = os.path.join(
-        finetuned_model_path, 
-        f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth"
-    )
+    file_name = Path(finetuned_model_path).joinpath(f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
     torch.save(model.state_dict(), file_name)
     logger.info(f"Model saved to {file_name}")
 
@@ -65,10 +63,7 @@ def load_model(model, finetuned_model_path: str, choose_model: str, device):
     """
     Load model
     """
-    file_name = os.path.join(
-        finetuned_model_path, 
-        f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth"
-    )
+    file_name = Path(finetuned_model_path)joinpath(f"{re.sub(r'[ ()]', '', choose_model) }-sft.pth")
     model.load_state_dict(torch.load(file_name, map_location=device, weights_only=True))
     logger.info(f"Model loaded from {file_name}")
 '''

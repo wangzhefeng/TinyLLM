@@ -17,13 +17,14 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import json
 from collections import Counter, deque
 from functools import lru_cache
-from pathlib import Path
+
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -125,7 +126,7 @@ class BPETokenizerSimple:
                 newline_token_id = self.inverse_vocab[fallback_token]
             else:
                 # If no fallback token is available, raise an error
-                raise KeyError("No suitable token found in vocabulary to map '\\n'.")
+                raise KeyError("No suitable token found in vocabulary to map '\\n'")
 
             self.inverse_vocab["\n"] = newline_token_id
             self.vocab[newline_token_id] = "\n"
@@ -150,9 +151,9 @@ class BPETokenizerSimple:
                             self.bpe_merges[(token_id1, token_id2)] = merged_token_id
                         # print(f"Loaded merge: '{token1}' + '{token2}' -> '{merged_token}' (ID: {merged_token_id})")
                     else:
-                        print(f"Merged token '{merged_token}' not found in vocab. Skipping.")
+                        print(f"Merged token '{merged_token}' not found in vocab. Skipping")
                 else:
-                    print(f"Skipping pair {pair} as one of the tokens is not in the vocabulary.")
+                    print(f"Skipping pair {pair} as one of the tokens is not in the vocabulary")
 
     def encode(self, text):
         """
@@ -245,7 +246,7 @@ class BPETokenizerSimple:
         decoded_string = ""
         for i, token_id in enumerate(token_ids):
             if token_id not in self.vocab:
-                raise ValueError(f"Token ID {token_id} not found in vocab.")
+                raise ValueError(f"Token ID {token_id} not found in vocab")
             token = self.vocab[token_id]
             if token == "\n":
                 if decoded_string and not decoded_string.endswith(" "):
@@ -310,7 +311,7 @@ class BPETokenizerSimple:
         elif mode == "least":
             return min(pairs.items(), key=lambda x: x[1])[0]
         else:
-            raise ValueError("Invalid mode. Choose 'most' or 'least'.")
+            raise ValueError("Invalid mode. Choose 'most' or 'least'")
 
     @staticmethod
     def replace_pair(token_ids, pair_id, new_id):

@@ -14,13 +14,14 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import json
 import psutil
 import urllib.request
-from pathlib import Path
+
 
 from utils.log_util import logger
 
@@ -104,7 +105,7 @@ def main():
         result = query_model("What do Llamas eat?", model)
         logger.info(f"result: \n{result}")
     else:
-        raise RuntimeError("Ollama not running. Launch ollama before proceeding.")
+        raise RuntimeError("Ollama not running. Launch ollama before proceeding")
 
 if __name__ == "__main__":
     main()

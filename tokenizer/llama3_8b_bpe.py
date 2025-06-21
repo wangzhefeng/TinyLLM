@@ -18,10 +18,11 @@ __all__ = [
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 from dotenv import find_dotenv, load_dotenv
 from huggingface_hub import login, hf_hub_download
@@ -168,7 +169,7 @@ class Llama38bTokenizer:
 def main():
     # model path
     # model_path = "downloaded_models/llama_model/Llama-3-8b"
-    # tokenizer_file_path = os.path.join(model_path, "tokenizer.model")
+    # tokenizer_file_path = Path(model_path).joinpath("tokenizer.model")
 
     # login huggingface hub
     # _login_huggingface_hub()

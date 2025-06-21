@@ -14,11 +14,12 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import json
-from pathlib import Path
+
 
 import torch
 
@@ -32,14 +33,14 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 # ------------------------------
 # 加载模型(一个网络层名称-tensor类型参数的字典)
 # ------------------------------
-model_path = os.path.join(Path(ROOT), r"downloaded_models\llama_model\Meta-Llama-3-8B\original\consolidated.00.pth")
+model_path = Path(ROOT).joinpath(r"downloaded_models\llama_model\Meta-Llama-3-8B\original\consolidated.00.pth")
 model = torch.load(model_path, map_location=torch.device("cpu"), weights_only=True)
 logger.info(f"model layers names 20 ahead: {json.dumps(list(model.keys())[:20], indent=4)}")
 
 # ------------------------------
 # 加载模型配置文件
 # ------------------------------
-params_path = os.path.join(ROOT, r"downloaded_models\llama_model\Meta-Llama-3-8B\original\params.json")
+params_path = Path(ROOT).joinpath(r"downloaded_models\llama_model\Meta-Llama-3-8B\original\params.json")
 with open(params_path, "r") as file:
     config = json.load(file)
 logger.info(f"model config: {json.dumps(config, indent=4)}")

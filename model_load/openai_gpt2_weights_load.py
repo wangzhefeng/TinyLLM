@@ -17,14 +17,15 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import json
 import urllib.request
 from tqdm import tqdm
-from pathlib import Path
+
 
 import numpy as np
 import torch
@@ -43,7 +44,7 @@ def download_file(url, destination, backup_url=None):
             file_size = int(response.headers.get("Content-Length", 0))
 
             # Check if file exists and has the same size
-            if os.path.exists(destination):
+            if Path(destination).exists():
                 file_size_local = os.path.getsize(destination)
                 if file_size == file_size_local:
                     logger.info(f"File already exists and is up-to-date: {destination}")
@@ -97,7 +98,7 @@ def download_file(url, destination):
     file_size = int(response.headers.get("content-length", 0))
 
     # Check if file exists and has the same size
-    if os.path.exists(destination):
+    if Path(destination).exists():
         file_size_local = os.path.getsize(destination)
         if file_size == file_size_local:
             logger.info(f"File already exists and is up-to-date: {destination}")
@@ -154,7 +155,7 @@ def download_and_load_gpt2(model_size, models_dir):
         raise ValueError(f"Model size not in {allowed_sizes}")
 
     # Define paths
-    model_dir = os.path.join(models_dir, model_size)
+    model_dir = Path(models_dir).joinpath(model_size)
     base_url = "https://openaipublic.blob.core.windows.net/gpt-2/models"
     backup_base_url = "https://f001.backblazeb2.com/file/LLMs-from-scratch/gpt2"
     filenames = [
@@ -166,14 +167,14 @@ def download_and_load_gpt2(model_size, models_dir):
     # Download files
     os.makedirs(model_dir, exist_ok=True)
     for filename in filenames:
-        file_url = os.path.join(base_url, model_size, filename)
-        backup_url = os.path.join(backup_base_url, model_size, filename)
-        file_path = os.path.join(model_dir, filename)
+        file_url = Path(base_url).joinpath(model_size).joinpath(filename)
+        backup_url = Path(backup_base_url).joinpath(model_size).joinpath(filename)
+        file_path = Path(model_dir).joinpath(filename)
         download_file(file_url, file_path, backup_url)
 
     # Load settings and params
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
-    settings = json.load(open(os.path.join(model_dir, "hparams.json")))
+    settings = json.load(open(Path(model_dir).joinpath("hparams.json")))
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
 
     return settings, params

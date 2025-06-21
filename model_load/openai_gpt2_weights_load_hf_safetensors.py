@@ -14,12 +14,13 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import urllib.request
-from pathlib import Path
+
 
 import torch
 from safetensors.torch import load_file
@@ -124,7 +125,7 @@ def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
     url = f"https://huggingface.co/openai-community/{gpt_model_names[pretrained_model]}/resolve/main/model.safetensors"
     output_file = f"downloaded_models/gpt2_model/model-{gpt_model_names[pretrained_model]}.safetensors"
     # download
-    if not os.path.exists(output_file):
+    if not Path(output_file).exists():
         urllib.request.urlretrieve(url, output_file)
     # load
     state_dict = load_file(output_file)

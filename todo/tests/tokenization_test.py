@@ -14,10 +14,11 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 from tokenizer.simple_custom import SimpleTokenizer
 from tokenizer.simple_bpe import BPETokenizerSimple

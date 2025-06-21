@@ -17,10 +17,11 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 from tqdm import tqdm
 
 from data_provider.load_save_data import load_json_data, save_json_data

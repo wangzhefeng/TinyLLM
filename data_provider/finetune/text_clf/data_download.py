@@ -17,12 +17,13 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import urllib.request
 import zipfile
-from pathlib import Path
+
 
 import pandas as pd
 
@@ -38,7 +39,7 @@ def download_and_unzip_spam_data(data_file_path, zip_data_path, extracted_path):
     """
     # data file path check
     if data_file_path.exists():
-        logger.info(f"{data_file_path} already exists. Skipping download and extraction.")
+        logger.info(f"{data_file_path} already exists. Skipping download and extraction")
         return
     
     # data file download
@@ -59,7 +60,7 @@ def download_and_unzip_spam_data(data_file_path, zip_data_path, extracted_path):
         zip_ref.extractall(extracted_path)
     
     # add .tsv file extension
-    original_file_path = Path(extracted_path) / "SMSSpamCollection"
+    original_file_path = Path(extracted_path).joinpath("SMSSpamCollection")
     os.rename(original_file_path, data_file_path)
     logger.info(f"File downloaded and saved as {data_file_path}")
 

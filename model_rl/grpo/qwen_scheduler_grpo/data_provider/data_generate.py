@@ -17,13 +17,14 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import json
 import random
 from typing import Dict, List, Tuple
-from pathlib import Path
+
 
 import datasets
 from bisect import bisect_right
@@ -68,7 +69,7 @@ def _get_events_categories_names(root_dir = None):
     """
     root_dir = "E:\\projects\llm_projects\\TinyLLM\\grpo\\qwen_scheduler_grpo\\dataset\\"
     data_dir = "events_categories_names.json"
-    with open(os.path.join(root_dir, data_dir), "r") as file:
+    with open(Path(root_dir).joinpath(data_dir), "r") as file:
         events_categories_names = json.load(file)
     
     return events_categories_names
@@ -330,7 +331,7 @@ def dataset_push_to_hub(dataset):
     # from huggingface_hub import notebook_login
     # notebook_login()
     dataset.push_to_hub("wangzf/events-scheduling")
-    logger.info(f"Dataset has pushed to huggingface hub.")
+    logger.info(f"Dataset has pushed to huggingface hub")
 
 
 

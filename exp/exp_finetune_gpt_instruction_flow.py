@@ -14,7 +14,8 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -22,7 +23,7 @@ import re
 import json
 import time
 import warnings
-from pathlib import Path
+
 from tqdm import tqdm
 
 import torch
@@ -127,13 +128,10 @@ class ModelFinetuningInstructionFlow:
         模型保存路径
         """
         # 模型保存路径
-        model_dir = os.path.join(self.args.finetuned_model_path, setting, str(training_iter))
+        model_dir = Path(self.args.finetuned_model_path).joinpath(setting).joinpath(str(training_iter))
         os.makedirs(model_dir, exist_ok=True)
         # 最优模型保存路径
-        self.model_path = os.path.join(
-            model_dir, 
-            f"{re.sub(r'[ ()]', '', self.args.pretrained_model) }-sft.pth"
-        )
+        self.model_path = Path(model_dir).joinpath(f"{re.sub(r'[ ()]', '', self.args.pretrained_model) }-sft.pth")
         # best_model_path = f"{self.model_dir}/checkpoint.pth"
         # return best_model_path
     
@@ -141,7 +139,7 @@ class ModelFinetuningInstructionFlow:
         """
         结果保存路径
         """
-        results_path = os.path.join(self.args.test_results, setting, str(training_iter))
+        results_path = Path(self.args.test_results).joinpath(setting).joinpath(str(training_iter))
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
@@ -283,7 +281,7 @@ class ModelFinetuningInstructionFlow:
         training_end_time = time.time()
         # training time
         execution_time_minutes = (training_end_time - training_start_time) / 60
-        logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
+        logger.info(f"Training completed in {execution_time_minutes:.2f} minutes")
         
         # plot losses
         plot_losses(
@@ -440,7 +438,7 @@ class ModelFinetuningInstructionFlow:
         model_path = Path(self.model_path)
         if not model_path.exists():
             logger.info(f"Could not find '{model_path}'.\n"
-                         "Run finetune and save the finetuned model.")
+                         "Run finetune and save the finetuned model")
         # load model
         model = load_pretrained_model(
             self.args, 

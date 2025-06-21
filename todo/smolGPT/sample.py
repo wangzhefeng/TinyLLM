@@ -17,11 +17,12 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
-from pathlib import Path
+
 
 import torch
 
@@ -45,7 +46,7 @@ def parse_args():
     parser.add_argument(
         "--tokenizer_path",
         type=str,
-        default=os.path.join("data", "tok4096.model"),
+        default=Path("data").joinpath("tok4096.model"),
         help="Path to tokenizer model",
     )
     parser.add_argument(

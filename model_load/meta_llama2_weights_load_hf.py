@@ -17,10 +17,11 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 import torch
 from huggingface_hub import hf_hub_download
@@ -30,9 +31,9 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def download_llama2_model(model_path: str):
-    model_file_path = os.path.join(model_path, "consolidated.00.pth")
+    model_file_path = Path(model_path).joinpath("consolidated.00.pth")
     # download
-    if not os.path.exists(model_file_path):
+    if not Path(model_file_path).exists():
         weights_file = hf_hub_download(
             repo_id = "meta-llama/Llama-2-7b",
             filename = "consolidated.00.pth",
@@ -48,9 +49,9 @@ def download_llama2_model(model_path: str):
 
 
 def download_llama2_chat_model(model_path: str):
-    model_file_path = os.path.join(model_path, "consolidated.00.pth")
+    model_file_path = Path(model_path).joinpath("consolidated.00.pth")
     # download
-    if not os.path.exists(model_path):
+    if not Path(model_path).exists():
         weights_file = hf_hub_download(
             repo_id = "meta-llama/Llama-2-7b-chat",
             filename = "consolidated.00.pth",

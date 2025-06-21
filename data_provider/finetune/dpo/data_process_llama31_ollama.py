@@ -14,10 +14,11 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 import json
 import random
 from tqdm import tqdm
@@ -76,7 +77,7 @@ def generate_model_response(json_data):
             # logger.info(f">>, {score}")
             # logger.info(f"\n-------------------------")
         else:
-            raise RuntimeError("Ollama not running. Launch ollama before proceeding.") 
+            raise RuntimeError("Ollama not running. Launch ollama before proceeding") 
 
         if politeness == "polite":
             json_data[i]["chosen"] = response
@@ -97,7 +98,7 @@ def main():
     )
     logger.info(f"Number of entries: {len(instruction_entries_data)}")
 
-    if not os.path.exists(data_config.instruction_data_with_preference_path):
+    if not Path(data_config.instruction_data_with_preference_path).exists():
         # generate model response
         instruction_entries_with_preference_data = generate_model_response(
             json_data = instruction_entries_data

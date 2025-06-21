@@ -15,11 +15,12 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
-from pathlib import Path
+
 
 import numpy as np
 import pandas as pd
@@ -97,10 +98,10 @@ class Model(Exp_Basic):
         模型保存路径
         """
         # 模型保存路径
-        model_path = os.path.join(self.args.checkpoints, setting)
+        model_path = Path(self.args.checkpoints).joinpath(setting)
         os.makedirs(model_path, exist_ok=True)
         # 最优模型保存路径
-        model_checkpoint_path = os.path.join(model_path, "checkpoint.pth")
+        model_checkpoint_path = Path(model_path).joinpath("checkpoint.pth")
         
         return model_checkpoint_path
     
@@ -108,7 +109,7 @@ class Model(Exp_Basic):
         """
         结果保存路径
         """
-        results_path = os.path.join(self.args.test_results, setting)
+        results_path = Path(self.args.test_results).joinpath(setting)
         os.makedirs(results_path, exist_ok=True)
         
         return results_path

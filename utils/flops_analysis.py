@@ -17,7 +17,8 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
@@ -248,7 +249,7 @@ def mfu_with_automatic_batch_size_finding(model, model_config, device):
                 else:
                     raise e
     else:
-        logger.info("Unknown GPU model. Please update the flops_per_second dictionary with your GPU information.")
+        logger.info("Unknown GPU model. Please update the flops_per_second dictionary with your GPU information")
 
 
 

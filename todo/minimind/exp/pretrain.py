@@ -14,14 +14,15 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
 import math
 import warnings
 import platform
-from pathlib import Path
+
 
 import pandas as pd
 import torch
@@ -120,7 +121,7 @@ class Model(Exp_Basic):
             model = DistributedDataParallel(model, device_ids = [ddp_local_rank])
         
         # torch compile model
-        if platform.system() != "Windows" and float(torch.__version__.split(".")[0]) >= 2.0:
+        if platform.system() != "Windows" and float(torch.__version__.split("")[0]) >= 2.0:
             logger.info("Compiling the model(takes a minute)...")
             unoptimized_model = model
             model = torch.compile(model)
@@ -176,10 +177,10 @@ class Model(Exp_Basic):
         模型保存路径
         """
         # 模型保存路径
-        model_path = os.path.join(self.args.checkpoints, setting)
+        model_path = Path(self.args.checkpoints).joinpath(setting)
         os.makedirs(model_path, exist_ok=True)
         # 最优模型保存路径
-        model_checkpoint_path = os.path.join(model_path, "checkpoint.pth")
+        model_checkpoint_path = Path(model_path).joinpath("checkpoint.pth")
         
         return model_checkpoint_path
     
@@ -187,7 +188,7 @@ class Model(Exp_Basic):
         """
         结果保存路径
         """
-        results_path = os.path.join(self.args.test_results, setting)
+        results_path = Path(self.args.test_results).joinpath(setting)
         os.makedirs(results_path, exist_ok=True)
         
         return results_path

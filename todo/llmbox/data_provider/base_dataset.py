@@ -53,10 +53,10 @@ class BaseDataset:
                     self.dataset_start_index.append(self.dataset_start_index[-1] + len(dataset))
         else:
             if not hasattr(self.args, "max_steps"):
-                raise ValueError(f"Max_steps must be set when dataset_ratio is set.") 
+                raise ValueError(f"Max_steps must be set when dataset_ratio is set") 
 
             if len(self.args.dataset_ratio) != len(self.training_dataset):
-                raise ValueError(f"The length of the datasets and the dataset_ratio should be the same.") 
+                raise ValueError(f"The length of the datasets and the dataset_ratio should be the same") 
 
             max_total_samples = self.args.per_device_train_batch_size * self.args.gradient_accumulation_steps * self.args.world_size * self.args.max_steps
             for i, dataset in enumerate(self.training_dataset):

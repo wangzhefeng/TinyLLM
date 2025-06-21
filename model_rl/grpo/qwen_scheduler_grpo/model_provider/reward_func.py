@@ -17,13 +17,14 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
 import random
 from datetime import datetime
-from pathlib import Path
+
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -144,7 +145,7 @@ def score_reward(prompts, completions, events, priority_events, optimal_score, *
     # Log samples
     if any(score > 0 for score in scores) and random.random() < 0.10:
         os.makedirs("completion_samples", exist_ok=True)
-        log_file = os.path.join("completion_samples", "completion_samples.txt")
+        log_file = Path("completion_samples").joinpath("completion_samples.txt")
         with open(log_file, "a") as f:
             f.write("\n\n==============\n")
             f.write(f"\n{datetime.now().time()}\n")

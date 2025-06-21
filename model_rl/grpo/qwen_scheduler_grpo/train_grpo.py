@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+sss# -*- coding: utf-8 -*-
 
 # ***************************************************
 # * File        : train_grpo.py
@@ -17,7 +17,8 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 # global variable

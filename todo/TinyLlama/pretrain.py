@@ -14,7 +14,8 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
@@ -23,7 +24,7 @@ from contextlib import nullcontext
 from datetime import datetime
 from functools import partial
 from dataclasses import dataclass
-from pathlib import Path
+
 
 import torch
 from llama_model import Transformer, ModelArgs, Task
@@ -234,7 +235,7 @@ while True:
                     "config": config,
                 }
                 print(f"saving checkpoint to {out_dir}")
-                torch.save(checkpoint, os.path.join(out_dir, "ckpt.pt"))
+                torch.save(checkpoint, Path(out_dir).joinpath("ckpt.pt"))
     
     if iter_num == 0 and eval_only:
         break

@@ -14,11 +14,12 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from tqdm import tqdm
-from pathlib import Path
+
 
 from data_provider.finetune.instruction_format import format_input_alpaca
 from utils.inference_utils.ollama_api import check_if_running, query_model
@@ -75,7 +76,7 @@ def generate_model_scores(
                 logger.info(f">>, {score}")
                 logger.info(f"\n-------------------------")
             else:
-                raise RuntimeError("Ollama not running. Launch ollama before proceeding.") 
+                raise RuntimeError("Ollama not running. Launch ollama before proceeding") 
 
             # save scores
             try:

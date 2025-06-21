@@ -19,14 +19,15 @@ import os
 import sys
 
 import torch.distributed
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
 import shutil
 import time
 import warnings
-from pathlib import Path
+
 
 import numpy as np
 import torch

@@ -18,10 +18,11 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import warnings
@@ -121,7 +122,7 @@ def plot_losses(loss_callback, output_path):
     plt.xlabel("Steps")
     plt.ylabel("Loss")
     plt.grid(True)
-    plt.savefig(os.path.join(output_path, "loss_curve.png"))
+    plt.savefig(Path(output_path).joinpath("loss_curve.png"))
 
 
 def finetuning(base_model_path, data_path, output_path):

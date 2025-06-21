@@ -14,11 +14,12 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
-from pathlib import Path
+
 
 import numpy as np
 import torch
@@ -100,7 +101,7 @@ def adjust_learning_rate(optimizer, epoch, args):
         lr = lr_adjust[epoch]
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
-        logger.info(f'\tEpoch {epoch} \t\tUpdating learning rate to {lr}')
+        logger.info(f'\tEpoch {epoch}: Updating learning rate to {lr}')
 
 
 # TODO
@@ -182,7 +183,7 @@ class EarlyStopping:
             self.save_checkpoint(epoch, val_loss, model, path)
         elif score < self.best_score + self.delta:
             self.counter += 1
-            logger.info(f"\t\t\tEpoch {epoch} \t\tEarlyStopping counter: {self.counter} out of {self.patience}")
+            logger.info(f"\t\t\tEpoch {epoch}: EarlyStopping counter: {self.counter} out of {self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
@@ -192,7 +193,7 @@ class EarlyStopping:
 
     def save_checkpoint(self, epoch, val_loss, model, path):
         if self.verbose:
-            logger.info(f"\t\tEpoch {epoch} \t\tValidation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...")
+            logger.info(f"\t\tEpoch {epoch}: Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...")
         torch.save(model.state_dict(), path)
         self.val_loss_min = val_loss
 

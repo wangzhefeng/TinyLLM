@@ -33,6 +33,7 @@ from tqdm import tqdm
 from functools import lru_cache
 
 
+
 @lru_cache()
 def bytes_to_unicode():
     """
@@ -144,9 +145,9 @@ class Encoder:
 
 
 def get_encoder(model_name, models_dir):
-    with open(os.path.join(models_dir, model_name, 'encoder.json'), 'r') as f:
+    with open(Path(models_dir).joinpath(model_name).joinpath('encoder.json'), 'r') as f:
         encoder = json.load(f)
-    with open(os.path.join(models_dir, model_name, 'vocab.bpe'), 'r', encoding="utf-8") as f:
+    with open(Path(models_dir).joinpath(model_name).joinpath('vocab.bpe'), 'r', encoding="utf-8") as f:
         bpe_data = f.read()
     bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split('\n')[1:-1]]
 
@@ -156,19 +157,18 @@ def get_encoder(model_name, models_dir):
 def download_vocab(models_dir: str = "download_models"):
     # Modified code from
     subdir = f'{models_dir}/gpt2_model'
-    if not os.path.exists(subdir):
-        os.makedirs(subdir)
+    os.makedirs(subdir, exist_ok=True)
     subdir = subdir.replace('\\', '/')  # needed for Windows
 
     for filename in ['encoder.json', 'vocab.bpe']:
-        if not os.path.exists(os.path.join(subdir, filename)):
+        if not Path(subdir).joinpath(filename).exists():
             # download
             r = requests.get(
                 "https://openaipublic.blob.core.windows.net/gpt-2/models/117M/" + filename, 
                 stream=True
             )
             # save
-            with open(os.path.join(subdir, filename), 'wb') as f:
+            with open(Path(subdir).joinpath(filename), 'wb') as f:
                 file_size = int(r.headers["content-length"])
                 chunk_size = 1000
                 with tqdm(ncols=100, desc="Fetching " + filename, total=file_size, unit_scale=True) as pbar:

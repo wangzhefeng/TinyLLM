@@ -16,12 +16,13 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from warnings import simplefilter
 simplefilter("ignore")
-from pathlib import Path
+
 
 import torch
 
@@ -53,8 +54,8 @@ def model_memory_size(model, input_dtype=torch.float32, verbose:bool=False):
         for buffer in model.buffers()
     ])
     if verbose:
-        logger.info(f"Model number of parameters: {total_params / 1e6:.2f}M.")
-        # logger.info(f"Total number of parameters: {total_params + total_grads + total_buffers}.")
+        logger.info(f"Model number of parameters: {total_params / 1e6:.2f}M")
+        # logger.info(f"Total number of parameters: {total_params + total_grads + total_buffers}")
 
     # Size in bytes = (Number of elements) * (Size of each element in bytes)
     # assume parameters and gradients are stored in the same type as input dtype
@@ -63,7 +64,7 @@ def model_memory_size(model, input_dtype=torch.float32, verbose:bool=False):
     # convert bytes to gigabytes
     total_memory_gb = total_memory_bytes / (1024 ** 3)
     if verbose:
-        logger.info(f"Model memory used size: {total_memory_gb:.2f}GB.")
+        logger.info(f"Model memory used size: {total_memory_gb:.2f}GB")
 
     return total_memory_gb
 

@@ -17,14 +17,15 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
 from typing import List
-from pathlib import Path
 
-from data_provider.pretrain.data_load import data_load
+
+from data_provider.pretrain.data_loader import data_load
 from utils.log_util import logger
 
 # global variable
@@ -35,7 +36,9 @@ class SimpleTokenizer:
 
     def __init__(self, raw_text: str = None):
         raw_text = data_load(
-            url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
+            # url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt",
+            data_path = "./dataset/pretrain/gpt",
+            data_file = "the-verdict.txt",
         )
         self.vocab = self._build_vocab(raw_text)
         self.str_to_int = self.vocab

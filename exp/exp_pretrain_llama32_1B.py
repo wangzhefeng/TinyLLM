@@ -17,13 +17,14 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
 import time
 import warnings
-from pathlib import Path
+
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -92,7 +93,7 @@ class Model_Pretrain(Exp_Basic):
         # model instance
         model = self.model_dict[self.args.model_name].Model(self.args).float()
         # 单机多卡训练
-        if self.args.use_multi_gpu and self.args.use_gpu:
+        if self.args.use_gpu and self.args.use_multi_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         # 打印模型参数量
         total = sum([param.numel() for param in model.parameters()])
@@ -157,7 +158,7 @@ class Model_Pretrain(Exp_Basic):
         模型保存路径
         """
         # 模型保存路径
-        model_path = os.path.join(self.args.checkpoints, setting)
+        model_path = Path(self.args.checkpoints).joinpath(setting)
         os.makedirs(model_path, exist_ok=True)
         # 最优模型保存路径
         best_model_path = f"{model_path}/checkpoint.pth"
@@ -168,7 +169,7 @@ class Model_Pretrain(Exp_Basic):
         """
         结果保存路径
         """
-        results_path = os.path.join(self.args.test_results, setting, str(training_iter))
+        results_path = Path(self.args.test_results).joinpath(setting).joinpath(str(training_iter))
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
@@ -191,7 +192,7 @@ class Model_Pretrain(Exp_Basic):
         # Aesthetic settings
         fig.tight_layout()
         # Fig save
-        plt.savefig(os.path.join(results_path, "loss_plot.pdf"))
+        plt.savefig(Path(results_path).joinpath(loss_plot.pdf))
         # Fig show
         plt.show()
 
@@ -337,10 +338,10 @@ class Model_Pretrain(Exp_Basic):
             self.inference(epoch = epoch + 1, start_context = start_context)
             
             # calculate one epoch training used time
-            logger.info(f"\t\tEpoch {epoch + 1} \t\tcost time: {time.time() - epoch_start_time}s.")
+            logger.info(f"\t\tEpoch {epoch + 1} \t\tcost time: {time.time() - epoch_start_time}s")
         
         # calculate all epoch training used time
-        logger.info(f"\t\tTraining Iter {training_iter + 1} \tcost time: {((time.time() - training_start_time) / 60):.2f}mins.")
+        logger.info(f"\t\tTraining Iter {training_iter + 1} \tcost time: {((time.time() - training_start_time) / 60):.2f}mins")
 
         # loss visual
         self._plot_losses(track_tokens_seen, train_losses, valid_losses, results_path)

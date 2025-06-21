@@ -14,10 +14,11 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 import urllib.request
 
 from utils.log_util import logger
@@ -31,7 +32,7 @@ def download_data(data_url, data_path):
     数据下载
     """
     # data download
-    if not os.path.exists(data_path):
+    if not Path(data_path).exists():
         with urllib.request.urlopen(data_url) as response:
             text_data = response.read().decode("utf-8")
         with open(data_path, "w", encoding = "utf-8") as file:

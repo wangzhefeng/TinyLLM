@@ -20,7 +20,7 @@ class PTDataset:
         
         pth_file = f"{data_path}.pth"
         retokenize = False
-        if os.path.exists(pth_file):
+        if Path(pth_file).exists():
             data_dict = torch.load(pth_file)
             prev_tokenizer_config = data_dict['tokenizer_config']
             current_tokenizer_config = str(tokenizer)

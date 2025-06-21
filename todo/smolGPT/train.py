@@ -17,13 +17,14 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
 import math
 from functools import partial
-from pathlib import Path
+
 
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -40,7 +41,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 # setting & config
 train_config = TrainingConfig()
 out_dir = "out/"
-writer = SummaryWriter(log_dir=os.path.join(out_dir, "logs"))
+writer = SummaryWriter(log_dir=Path(out_dir).joinpath("logs"))
 resume = False
 
 # tokens per iter
@@ -83,7 +84,7 @@ iter_batches = partial(
 # resume mechanism
 best_val_loss = 1e9
 if resume:
-    ckpt_path = os.path.join(out_dir, "ckpt.pt")
+    ckpt_path = Path(out_dir).joinpath("ckpt.pt")
     checkpoint = torch.load(ckpt_path, map_location=train_config.device)
     gptconf = ModelConfig(**checkpoint["model_args"])
     model = GPT(gptconf)
@@ -174,7 +175,7 @@ while True:
                 "best_val_loss": best_val_loss,
             }
             logger.info(f"Saving checkpoint to {out_dir}")
-            torch.save(checkpoint, os.path.join(out_dir, "ckpt.pt"))
+            torch.save(checkpoint, Path(out_dir).joinpath("ckpt.pt"))
 
     for micro_step in range(train_config.gradient_accumulation_steps):
         with ctx:

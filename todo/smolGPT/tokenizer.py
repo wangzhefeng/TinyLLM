@@ -17,11 +17,12 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from typing import List
-from pathlib import Path
+
 
 from sentencepiece import SentencePieceProcessor
 

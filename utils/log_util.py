@@ -10,6 +10,7 @@
 import os
 import sys
 import re
+from pathlib import Path
 
 import logging
 from logging import handlers
@@ -22,11 +23,11 @@ LOG_NAME = os.environ.get("LOG_NAME")
 if sys.platform == "win32":
     LOG_DIR = f"{ROOT_PATH}\\logs\\{LOG_NAME}"
     os.makedirs(LOG_DIR, exist_ok=True)
-    log_path = os.path.join(LOG_DIR, "service")
+    log_path = Path(LOG_DIR).joinpath("service")
 else:
     LOG_DIR = f"{ROOT_PATH}/logs/{LOG_NAME}"
     os.makedirs(LOG_DIR, exist_ok=True)
-    log_path = os.path.join(LOG_DIR, "service")
+    log_path = Path(LOG_DIR).joinpath("service")
 
 # 日志级别，默认为INFO
 LOG_LEVEL = os.environ.get("SERVICE_LOG_LEVEL", "INFO")

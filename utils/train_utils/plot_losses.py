@@ -14,10 +14,11 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -50,7 +51,7 @@ def plot_values_classifier(train_epochs, examples_seen, train_values, val_values
     # adjust layout to make room
     fig.tight_layout()
     # save fig
-    plt.savefig(os.path.join(results_path, f"{label}-plot.pdf"))
+    plt.savefig(Path(results_path).joinpath(f"{label}-plot.pdf"))
     # show fig on notebook
     plt.show()
 
@@ -77,7 +78,7 @@ def plot_losses(train_epochs, tokens_seen, train_losses, val_losses, label: str 
     # adjust layout to make room
     fig.tight_layout()
     # save fig
-    plt.savefig(os.path.join(results_path, f"{label}_plot.pdf"))
+    plt.savefig(Path(results_path).joinpath(f"{label}_plot.pdf"))
     # show fig
     plt.show()
 

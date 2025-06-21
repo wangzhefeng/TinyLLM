@@ -14,10 +14,11 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 import pandas as pd
 import torch
@@ -114,7 +115,7 @@ def main():
 
     # dataset and dataloader
     train_dataset, train_loader = create_dataloader(
-        data_path = os.path.join(data_dir, "train.csv"),
+        data_path = Path(data_dir).joinpath("train.csv"),
         max_length = None,
         batch_size = batch_size,
         shuffle = True,
@@ -123,7 +124,7 @@ def main():
         pad_token_id = pad_token_id,
     )
     valid_dataset, valid_loader = create_dataloader(
-        data_path = os.path.join(data_dir, "valid.csv"),
+        data_path = Path(data_dir).joinpath("valid.csv"),
         max_length = train_dataset.max_length,
         batch_size = batch_size,
         shuffle = False,
@@ -132,7 +133,7 @@ def main():
         pad_token_id = pad_token_id,
     )
     test_dataset, test_loader = create_dataloader(
-        data_path = os.path.join(data_dir, "test.csv"),
+        data_path = Path(data_dir).joinpath("test.csv"),
         max_length = train_dataset.max_length,
         batch_size = batch_size,
         shuffle = False,

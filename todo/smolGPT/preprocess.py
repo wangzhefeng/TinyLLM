@@ -17,14 +17,15 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import glob
 import argparse
 import json
 import requests
-from pathlib import Path
+
 from functools import partial
 
 from tqdm import tqdm

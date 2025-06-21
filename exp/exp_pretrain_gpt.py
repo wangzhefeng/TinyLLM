@@ -14,21 +14,19 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-import math
 import time
 import warnings
-from pathlib import Path
+warnings.filterwarnings("ignore")
 
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
+import numpy as np
 import torch
 import torch.nn as nn
 
 # data
-from data_provider.pretrain.data_load import data_load
 from data_provider.pretrain.data_loader import create_dataloader
 # tokenizer
 from tokenizer.tokenization import (
@@ -38,12 +36,16 @@ from tokenizer.tokenization import (
 )
 # model
 from exp.exp_basic import Exp_Basic
-from utils.train_utils.gpt_generate import generate
+# training
+from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.train_utils.train_funcs import select_optimizer
 from utils.train_utils.train_funcs import adjust_learning_rate, EarlyStopping
+from utils.train_utils.gpt_generate import generate
+from utils.train_utils.plot_losses import plot_losses
 # utils
+from utils.model_memory import model_memory_size
+from utils.timestamp_utils import from_unix_time
 from utils.log_util import logger
-
-warnings.filterwarnings("ignore")
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -52,211 +54,166 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class Model_Pretrain(Exp_Basic):
 
     def __init__(self, args):
-        super(Model_Pretrain, self).__init__(args)
-        # tokenizer
-        self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)         
-
+        logger.info(f"{41 * '-'}")
+        logger.info("Initializing Experiment...")
+        logger.info(f"{41 * '-'}")
+        super(Model_Pretrain, self).__init__(args) 
+    
+    def _get_tokenizer(self):
+        """
+        get tokenizer
+        """
+        tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
+        
+        return tokenizer
+    
     def _get_data(self):
         """
-        build dataset and dataloader
+        get dataset and dataloader
         """
-        # dataloader
-        train_loader = create_dataloader(
+        train_data, train_loader = create_dataloader(
             data_path=self.args.data_path,
-            data_file=self.args.data,
+            data_file=self.args.data_file,
+            flag="train",
+            train_ratio=self.args.train_ratio,
+            tokenizer=self.tokenizer,
             batch_size=self.args.batch_size,
             max_length=self.args.context_length,
             stride=self.args.context_length,
-            drop_last=True,
-            shuffle=True,
-            num_workers=0,
+            num_workers=self.args.num_workers,
         )
-        valid_loader = create_dataloader(
-            valid_data,
+        valid_data, valid_loader = create_dataloader(
+            data_path=self.args.data_path,
+            data_file=self.args.data_file,
+            flag="valid",
+            train_ratio=self.args.train_ratio,
+            tokenizer=self.tokenizer,
             batch_size=self.args.batch_size,
             max_length=self.args.context_length,
             stride=self.args.context_length,
-            drop_last=False,
-            shuffle=False,
-            num_workers=0,
+            num_workers=self.args.num_workers,
         )
         
-        return train_loader, valid_loader
+        return train_loader, valid_loader 
 
     def _build_model(self):
         """
         build model
         """
         # model instance
+        logger.info(f"Initializing model {self.args.model_name}...")
         model = self.model_dict[self.args.model_name].Model(self.args)
         # 单机多卡训练
-        if self.args.use_multi_gpu and self.args.use_gpu:
+        if self.args.use_gpu and self.args.use_multi_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         # 打印模型参数量
-        total_params = sum([param.numel() for param in model.parameters()])
-        logger.info(f'Number of parameters: {(total_params / 1e6):.2f}M')
+        total_memory_gb = model_memory_size(model, verbose=True)
         
         return model
-
-    def _select_optimizer(self):
-        """
-        optimizer
-        """
-        optimizer = torch.optim.AdamW(
-            self.model.parameters(), 
-            lr = self.args.learning_rate, 
-            weight_decay = self.args.weight_decay
-        )
-
-        return optimizer
-
-    def _select_criterion(self):
-        """
-        loss
-        """
-        criterion = nn.CrossEntropyLoss()
-
-        return criterion
-
-    def _calc_loss_batch(self, model, input_batch, target_batch):
-        # criterion
-        criterion = self._select_criterion()
-        # training data batch
-        input_batch = input_batch.to(self.device)
-        target_batch = target_batch.to(self.device)
-        # forward
-        logits = model(input_batch)
-        # loss
-        loss = criterion(logits.flatten(0, 1), target_batch.flatten())
-
-        return loss
-
-    def _calc_loss_loader(self, model, data_loader, num_batches = None):
-        # number of batches
-        if len(data_loader) == 0:
-            return float("nan")
-        elif num_batches is None:
-            num_batches = len(data_loader)
-        else:
-            num_batches = min(num_batches, len(data_loader))
-        # calculate loss
-        total_loss = 0
-        for i, (input_batch, target_batch) in enumerate(data_loader):
-            if i < num_batches:
-                loss = self._calc_loss_batch(model, input_batch, target_batch)
-                total_loss += loss.item()
-            else:
-                break
-        
-        return total_loss / num_batches
 
     def _get_model_path(self, setting):
         """
         模型保存路径
         """
         # 模型保存路径
-        model_path = os.path.join(self.args.checkpoints, setting)
+        model_path = Path(self.args.checkpoints).joinpath(setting)
         os.makedirs(model_path, exist_ok=True)
         # 最优模型保存路径
-        best_model_path = f"{model_path}/checkpoint.pth"
+        model_checkpoint_path = f"{model_path}/checkpoint.pth"
         
-        return best_model_path
+        return model_checkpoint_path
 
-    def _get_results_path(self, setting, training_iter):
+    def _get_results_path(self, setting):
         """
         结果保存路径
         """
-        results_path = os.path.join(self.args.test_results, setting, str(training_iter))
+        results_path = Path(self.args.test_results).joinpath(setting)
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
 
-    def _plot_losses(self, tokens_seen, train_losses, valid_losses, results_path):
-        # epochs seen
-        epochs_seen = torch.linspace(0, self.args.train_epochs, len(train_losses))
-        # Plot training and validation loss against epochs
-        fig, ax1 = plt.subplots(figsize = (5, 3))
-        ax1.plot(epochs_seen, train_losses, label = "Training loss")
-        ax1.plot(epochs_seen, valid_losses, linestyle = "-.", label = "Validation loss")
-        ax1.set_xlabel("Epochs")
-        ax1.set_ylabel("Loss")
-        ax1.legend(loc = "upper right")
-        ax1.xaxis.set_major_locator(MaxNLocator(integer = True))
-        # Create a second x-axis for tokens seen
-        ax2 = ax1.twiny()
-        ax2.plot(tokens_seen, train_losses, alpha = 0)
-        ax2.set_xlabel("Tokens seen")
-        # Aesthetic settings
-        fig.tight_layout()
-        # Fig save
-        plt.savefig(os.path.join(results_path, "loss_plot.pdf"))
-        # Fig show
-        plt.show()
-
-    def train(self, 
-              training_iter, 
-              setting, 
-              eval_freq: int = 5, 
-              eval_iter: int = 1, 
-              start_context: str = "Every effort moves you"):
+    def train(self, training_iter: int, setting: str, eval_freq: int=5, eval_iter: int=1):
+        logger.info(f"{43 * '-'}")
+        logger.info(f"Model start training...")
+        logger.info(f"{43 * '-'}")
+        # training start time
+        train_start_time = time.time()
+        logger.info(f"Train start time: {from_unix_time(train_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
         # build dataloader
         train_loader, valid_loader = self._get_data()
+        logger.info(f"Train and valid dataloader has builded...")
         # train steps
         train_steps = len(train_loader)
+        logger.info(f"Train total steps: {train_steps}")
         # checkpoint path
-        best_model_path = self._get_model_path(setting)
+        model_checkpoint_path = self._get_model_path(setting)
+        logger.info(f"Train checkpoint will be saved in path: {model_checkpoint_path}")
         # test results path
-        results_path = self._get_results_path(setting, training_iter)
-        # early stopping
-        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True) 
+        results_path = self._get_results_path(setting)
+        logger.info(f"Train results will be saved in path: {results_path}") 
         # train optimizer
-        optimizer = self._select_optimizer()
-        # mix precision
-        """
+        optimizer = select_optimizer(
+            self.model, 
+            learning_rate=self.args.learning_rate, 
+            weight_decay=self.args.weight_decay
+        )
+        logger.info(f"Train optimizer has builded...")
+        # early stopping
+        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
+        logger.info(f"Train early stopping instance has builded, patience: {self.args.patience}")
+        # auto mix precision
         if self.args.use_amp:
             scaler = torch.amp.GradScaler(device = self.device)
+            logger.info(f"Train auto mix precision instance has builded...") 
         """
-        # initialize list to track losses 
-        train_losses, valid_losses = [], []
-        # initialize list to track tokens seen
-        track_tokens_seen = []
         # learning rate
         track_lrs = []
-        # initialize tokens seen
-        tokens_seen = 0
-        # TODO initialize global steps
-        global_step = -1
-        # TODO 从优化器中获取最大学习率
-        # peak_lr = optimizer.param_groups[0]["lr"]
-        peak_lr = 0.001
+        # 从优化器中获取最大学习率
+        peak_lr = 0.001  # peak_lr = optimizer.param_groups[0]["lr"]
         # 计算训练过程中总的迭代次数
         total_training_steps = len(train_loader) * self.args.train_epochs
-       # warmup steps
+        # warmup steps
         warmup_steps = int(0.2 * total_training_steps) 
-        # 计算warmup阶段的迭代次数
+        # 计算 warmup 阶段的迭代次数
         lr_increment = (peak_lr - self.args.initial_lr) / warmup_steps
-        # training start time
-        training_start_time = time.time()
+        """
+        # TODO initialize train iter global steps
+        global_step = -1
+        # initialize list to track train iter losses
+        train_losses, valid_losses = [], []
+        # initialize tokens seen
+        tokens_seen = 0
+        # initialize list to track train iter tokens seen
+        track_tokens_seen = []
         # main training loop
         for epoch in range(self.args.train_epochs):
             # epoch 模型训练开始时间
             epoch_start_time = time.time()
-            # batch iter count
+            logger.info(f"\t\tEpoch {epoch + 1}: start time: {from_unix_time(epoch_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # initialize epcoh iter count
             iter_count = 0
+            # TODO initialize epoch train loss collector
+            epoch_train_loss = []
+
             # training mode
             self.model.train()
-            
+            # ------------------------------
             # model training
+            # ------------------------------
             for batch, (input_batch, target_batch) in enumerate(train_loader):
-                # update global step
+                # update train iter global step
                 global_step += 1
-                # update batch iter count
+                # update epoch iter count
                 iter_count += 1
+                # update tokens seen
+                tokens_seen += input_batch.numel()
                 
-                # learning rate warmup
-                # ------------------------
                 # reset loss gradients from previous batch iteration
                 optimizer.zero_grad()
+                """
+                # TODO learning rate warmup
+                # ------------------------
                 # 根据当前阶段（预热或余弦衰减）调整学习率
                 if global_step < warmup_steps:
                     # 线性预热
@@ -270,128 +227,174 @@ class Model_Pretrain(Exp_Basic):
                     param_group["lr"] = lr
                 # 记录当前学习率
                 track_lrs.append(lr)
+                """
                 
                 # forward
                 # ------------------------
                 # calculate train loss
-                loss = self._calc_loss_batch(self.model, input_batch, target_batch)
-                """
                 if self.args.use_amp:
                     with torch.amp.autocast(device_type=self.args.gpu_type):
-                        loss = self._calc_loss_batch(self.model, input_batch, target_batch)
+                        loss = calc_loss_batch(
+                            task_name=self.args.task_name, 
+                            input_batch=input_batch,
+                            target_batch=target_batch,
+                            model=self.model, 
+                            device=self.device,
+                        )
                 else:
-                    loss = self._calc_loss_batch(self.model, input_batch, target_batch)
-                """
+                    loss = calc_loss_batch(
+                        task_name=self.args.task_name, 
+                        input_batch=input_batch,
+                        target_batch=target_batch,
+                        model=self.model, 
+                        device=self.device,
+                    )
+                # collect epoch loss value
+                epoch_train_loss.append(loss.item())
+
                 # backward
                 # ------------------------
-                # calculate loss gradient
-                loss.backward()
-                # 在预热阶段后应用梯度裁剪，防止梯度爆炸
-                if global_step > warmup_steps:
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm = 1.0) 
-                # update model weights using loss gradients
-                optimizer.step() 
-                """
                 if self.args.use_amp:
                     scaler.scale(loss).backward()
+                    # TODO 在预热阶段后应用梯度裁剪，防止梯度爆炸
+                    # if global_step > warmup_steps:
+                    #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm = 1.0)
                     scaler.step(optimizer)
                     scaler.update()
                 else:
                     # calculate loss gradient
                     loss.backward()
+                    # TODO 在预热阶段后应用梯度裁剪，防止梯度爆炸
+                    # if global_step > warmup_steps:
+                    #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm = 1.0)
                     # update model weights using loss gradients
                     optimizer.step()
-                """
-                # collect data
-                # ------------------------
-                # update tokens seen
-                tokens_seen += input_batch.numel() 
+                
                 # optional evaluation step
                 # ------------------------
                 if global_step % eval_freq == 0:
+                # TODO if (batch + 1) % 5 == 0:
+                    # evaluate model
                     train_loss, valid_loss = self.valid(train_loader, valid_loader, eval_iter)
                     # collect losses and tokens seen
                     train_losses.append(train_loss)
                     valid_losses.append(valid_loss)
                     track_tokens_seen.append(tokens_seen)
-                    logger.info(f"\t\tEpoch {epoch + 1} Batch {batch + 1} \t(Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f}")
-
-                    # calculate training left time
-                    speed = (time.time() - training_start_time) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch)
-                    # logger.info(f'\t\tEpoch {epoch + 1} Batch {batch + 1} \tSpeed: {speed:.4f}s/iter; left time: {left_time:.4f}s')
+                    # logger.info(f"\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f}")
                     
+                    # calculate training left time
+                    speed = (time.time() - train_start_time) / iter_count
+                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch)
+                    logger.info(f'\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f} | Speed: {speed:.4f}s/batch; left time: {left_time:.2f}seconds.')
+                    
+                    # init epoch iter count
                     iter_count = 0
-                    training_start_time = time.time()
+                    # init train start time
+                    train_start_time = time.time()
+            """
+            # 模型验证
+            train_loss = np.average(train_loss)
+            vali_loss = self.valid(train_loader, valid_loader, eval_iter)
+            logger.info(f"\t\tEpoch: {epoch + 1}, Steps: {train_steps} | Train Loss: {train_loss:.7f}, Vali Loss: {vali_loss:.7f}")
+            # 训练/验证损失收集
+            train_losses.append(train_loss)
+            valid_losses.append(vali_loss)
+            """
             
             # 早停机制、模型保存
-            early_stopping(epoch = epoch + 1, val_loss = valid_loss, model = self.model, path = best_model_path)
+            early_stopping(epoch = epoch + 1, val_loss = valid_loss, model = self.model, path = model_checkpoint_path)
             if early_stopping.early_stop:
-                logger.info(f"\t\tEpoch {epoch + 1} \t\tEarly stopping...")
+                logger.info(f"\t\tEpoch {epoch + 1}: Early stopping...")
                 break
             # 学习率调整
             adjust_learning_rate(optimizer = optimizer, epoch = epoch + 1, args = self.args)
+            
+            # ------------------------------
+            # model inference
+            # ------------------------------
             # print a sample text after each epoch
-            self.inference(epoch = epoch + 1, start_context = start_context)
+            self.inference(epoch = epoch + 1, setting=setting, load=False)
             
             # calculate one epoch training used time
-            logger.info(f"\t\tEpoch {epoch + 1} \t\tcost time: {time.time() - epoch_start_time}s.")
-        
+            logger.info(f"\t\tEpoch {epoch + 1}: cost time: {(time.time() - epoch_start_time):.2f}seconds")
+        # ------------------------------
+        # 模型训练结果保存、模型加载
+        # ------------------------------
+        logger.info(f"{43 * '-'}")
+        logger.info(f"Training Finished!")
+        logger.info(f"{43 * '-'}")
         # calculate all epoch training used time
-        logger.info(f"\t\tTraining Iter {training_iter + 1} \tcost time: {((time.time() - training_start_time) / 60):.2f}mins.")
-
-        # loss visual
-        self._plot_losses(track_tokens_seen, train_losses, valid_losses, results_path)
-
-        # model load
-        logger.info("\t\tLoading best model...")
-        self.model.load_state_dict(torch.load(best_model_path))
+        logger.info(f"Training Iter {training_iter + 1} cost time: {((time.time() - train_start_time) / 60):.2f}mins")
         
-        return train_losses, valid_losses, track_tokens_seen
+        # plot loss
+        logger.info("Plot and save train/valid losses...")
+        plot_losses(self.args.train_epochs, track_tokens_seen, train_losses, valid_losses, "loss", results_path)
+        
+        # model load
+        logger.info("Loading best model...")
+        self.model.load_state_dict(torch.load(model_checkpoint_path))
+        
+        # return model and train results
+        logger.info("Return training results...")
+        return self.model
 
     def valid(self, train_loader, valid_loader, eval_iter):
         """
         model evaluation
         """
+        # logger.info(f"\t\tModel start validating...")
         # inference mode
         self.model.eval()
         # model evaluation
         with torch.no_grad():
-            train_loss = self._calc_loss_loader(
-                self.model, 
-                train_loader, 
-                num_batches = eval_iter
+            train_loss = calc_loss_loader(
+                task_name=self.args.task_name,
+                data_loader=train_loader,
+                model=self.model, 
+                device=self.device,
+                num_batches=eval_iter
             )
-            valid_loss = self._calc_loss_loader(
-                self.model, 
-                valid_loader, 
-                num_batches = eval_iter
+            valid_loss = calc_loss_loader(
+                task_name=self.args.task_name,
+                data_loader=valid_loader,
+                model=self.model, 
+                device=self.device,
+                num_batches=eval_iter
             )
         # training mode
         self.model.train()
         
         return train_loss, valid_loss
 
-    def inference(self, epoch, start_context):
+    def inference(self, epoch, setting: str, load: bool=False, start_context: str="Every effort moves you"):
+        """
+        model inference
+        """
+        # logger.info(f"\t\tModel start inference...")
+        # 模型加载
+        if load:
+            logger.info(f"Pretrained model has loaded from: {model_checkpoint_path}")
+            model_checkpoint_path = self._get_model_path(setting)
+            self.model.load_state_dict(torch.load(model_checkpoint_path)) 
         # inference mode
         self.model.eval()
         # context size
         context_size = self.model.pos_emb.weight.shape[0]
         # start context tokenization
-        encoded = text_to_token_ids(start_context).to(self.device)
+        start_context_encoded = text_to_token_ids(start_context).to(self.device)
         # generate text
         with torch.no_grad():
-            token_ids = generate(
+            completion_id = generate(
                 model = self.model, 
-                token_idx = encoded,
+                token_idx = start_context_encoded,
                 max_new_tokens = self.args.max_new_tokens,
                 context_size = context_size,
             )
-            decoded_text = token_ids_to_text(token_ids).replace("\n", " ")
-            logger.info(f"\t\tEpoch {epoch} \t\tdeocde_text: {decoded_text}")
+            completion = token_ids_to_text(completion_id).replace("\n", " ")
+            logger.info(f"\t\tEpoch {epoch}: Model inference [start context]: {start_context}, [completion]: {completion}")
         # train mode
         self.model.train()
- 
+
 
 
 

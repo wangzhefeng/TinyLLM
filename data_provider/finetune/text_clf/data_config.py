@@ -14,10 +14,11 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 from utils.log_util import logger
 
@@ -35,7 +36,7 @@ os.makedirs(data_dir, exist_ok=True)
 logger.info(f"data_dir: {data_dir}")
 
 # data file path
-tsv_file_path = Path(data_dir) / "SMSSpamCollection.tsv"
+tsv_file_path = Path(data_dir).joinpath("SMSSpamCollection.tsv")
 logger.info(f"tsv_file_path: {tsv_file_path}")
 
 

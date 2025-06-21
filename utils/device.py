@@ -19,10 +19,11 @@ __all__ = [
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 import torch
 
@@ -55,7 +56,44 @@ def device_setting(verbose: bool = False):
         device = torch.device("cpu")
     
     if verbose:
-        logger.info(f"Using device: {device.type.upper()}.")
+        logger.info(f"Using device: {device.type.upper()}")
+
+    return device
+
+
+# TODO
+def _acquire_device(use_gpu: bool=True, gpu_type: str="cuda", use_multi_gpu: bool=False, devices: str="0,1,2,3,4,5,6,7"):
+    # use gpu or not
+    use_gpu = True \
+        if use_gpu and (torch.cuda.is_available() or torch.backends.mps.is_available()) \
+        else False
+    # gpu type: "cuda", "mps"
+    gpu_type = gpu_type.lower().strip()
+    # gpu device ids strings
+    devices = devices.replace(" ", "")
+    # gpu device ids list
+    device_ids = [int(id_) for id_ in devices.split(",")]
+    # gpu device ids string
+    if use_gpu and not use_multi_gpu:
+        gpu = device_ids[0]  # '0'
+    elif use_gpu and use_multi_gpu:
+        gpu = devices  # '0,1,2,3,4,5,6,7'
+    else:
+        gpu = "0"
+    
+    # device
+    if use_gpu and gpu_type == "cuda":
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu) if not use_multi_gpu else devices
+        device = torch.device(f"cuda:{gpu}")
+        logger.info(f"Use device GPU: cuda:{gpu}")
+    elif use_gpu and gpu_type == "mps":
+        device = torch.device("mps") \
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() \
+            else torch.device("cpu")
+        logger.info(f"Use device GPU: mps")
+    else:
+        device = torch.device("cpu")
+        logger.info("Use device CPU")
 
     return device
 

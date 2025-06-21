@@ -14,13 +14,14 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import json
 import random
 from tqdm import tqdm
-from pathlib import Path
+
 
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -87,7 +88,7 @@ def train_tokenizer(data_path: str = "./minimind/dataset/pretrain_hq.jsonl",
     # save tokenizer
     # ------------------------------
     os.makedirs(tokenizer_dir, exist_ok=True)
-    tokenizer.save(os.path.join(tokenizer_dir, "tokenizer.json"))
+    tokenizer.save(Path(tokenizer_dir).joinpath("tokenizer.json"))
     tokenizer.model.save(tokenizer_dir)
     
     # 手动创建配置文件
@@ -135,9 +136,9 @@ def train_tokenizer(data_path: str = "./minimind/dataset/pretrain_hq.jsonl",
         "chat_template": "{% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{{ '<|im_start|>system\\n' + system_message + '<|im_end|>\\n' }}{% else %}{{ '<|im_start|>system\\nYou are a helpful assistant<|im_end|>\\n' }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<|im_start|>user\\n' + content + '<|im_end|>\\n<|im_start|>assistant\\n' }}{% elif message['role'] == 'assistant' %}{{ content + '<|im_end|>' + '\\n' }}{% endif %}{% endfor %}"
     }
     # 保存配置文件
-    with open(os.path.join(tokenizer_config_dir, "tokenizer_config.json"), "w", encoding = "utf-8") as config_file:
+    with open(Path(tokenizer_config_dir).joinpath("tokenizer_config.json"), "w", encoding = "utf-8") as config_file:
         json.dump(config, config_file, ensure_ascii = False, indent = 4)
-    logger.info("Tokenizer training completed and saved.")
+    logger.info("Tokenizer training completed and saved")
 
 
 def eval_tokenizer(tokenizer_dir):

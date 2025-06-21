@@ -14,12 +14,13 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
 import warnings
-from pathlib import Path
+
 
 import torch
 
@@ -65,7 +66,7 @@ class ModelFinetuningClassifier:
         """
         # dataset and dataloader
         self.train_dataset, train_loader = create_dataloader(
-            data_path = os.path.join(self.args.data_path, "train.csv"),
+            data_path = Path(self.args.data_path).joinpath("train.csv"),
             max_length = None,
             batch_size = self.args.batch_size,
             shuffle = True,
@@ -75,7 +76,7 @@ class ModelFinetuningClassifier:
             pad_token_id = self.pad_token_id,
         )
         valid_dataset, valid_loader = create_dataloader(
-            data_path = os.path.join(self.args.data_path, "valid.csv"),
+            data_path = Path(self.args.data_path).joinpath("valid.csv"),
             max_length = self.train_dataset.max_length,
             batch_size = self.args.batch_size,
             shuffle = False,
@@ -85,7 +86,7 @@ class ModelFinetuningClassifier:
             pad_token_id = self.pad_token_id,
         )
         test_dataset, test_loader = create_dataloader(
-            data_path = os.path.join(self.args.data_path, "test.csv"),
+            data_path = Path(self.args.data_path).joinpath("test.csv"),
             max_length = self.train_dataset.max_length,
             batch_size = self.args.batch_size,
             shuffle = False,
@@ -108,7 +109,7 @@ class ModelFinetuningClassifier:
         模型保存路径
         """
         # 模型保存路径
-        model_path = os.path.join(self.args.checkpoints, setting)
+        model_path = Path(self.args.checkpoints).joinpath(setting)
         os.makedirs(model_path, exist_ok=True)
         # 最优模型保存路径
         best_model_path = f"{model_path}/checkpoint.pth"
@@ -119,7 +120,7 @@ class ModelFinetuningClassifier:
         """
         结果保存路径
         """
-        results_path = os.path.join(self.args.test_results, setting, str(training_iter))
+        results_path = Path(self.args.test_results).joinpath(setting).joinpath(str(training_iter))
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
@@ -238,7 +239,7 @@ class ModelFinetuningClassifier:
         # training end time and training time
         training_end_time = time.time()
         execution_time_minutes = (training_end_time - training_start_time) / 60
-        logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
+        logger.info(f"Training completed in {execution_time_minutes:.2f} minutes")
         
         # training loss plot
         plot_values_classifier(
@@ -300,7 +301,7 @@ class ModelFinetuningClassifier:
         model_path = Path(model_path)
         if not model_path.exists():
             logger.info(f"Could not find '{model_path}'.\n"
-                        "Run finetune and save the finetuned model.")
+                        "Run finetune and save the finetuned model")
         # loade model
         model = load_pretrained_model(
             self.args, 

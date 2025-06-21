@@ -17,10 +17,11 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 import pandas as pd
 
@@ -74,11 +75,11 @@ def data_to_csv(data_dir, train_df, valid_df, test_df):
     }
     # data file path
     for data_name, data_obj in data_map.items():
-        data_path = os.path.join(data_dir, data_name)
-        if not os.path.exists(data_path):
+        data_path = Path(data_dir).joinpath(data_name)
+        if not Path(data_path).exists():
             data_obj.to_csv(data_path, index = None)
             logger.info(f"{data_name} saved to {data_path}")
-        logger.info(f"{data_name} exists. Skipping save.")
+        logger.info(f"{data_name} exists. Skipping save")
 
 
 

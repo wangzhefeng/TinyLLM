@@ -14,7 +14,8 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
@@ -24,7 +25,7 @@ import ujson
 import jsonlines
 import itertools
 import psutil
-from pathlib import Path
+
 
 import numpy as np
 import pandas as pd

@@ -17,10 +17,11 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from pathlib import Path
+
 
 import torch.nn as nn
 from layers.activation import GELU, SiLU
@@ -34,8 +35,8 @@ class FeedForward(nn.Module):
     def __init__(self, cfg):
         super(FeedForward, self).__init__()
 
-        self.fc1 = nn.Linear(cfg.emb_dim, 4 * cfg.emb_dim, dtype=cfg.dtype, bias=True)
-        self.fc2 = nn.Linear(4 * cfg.emb_dim, cfg.emb_dim, dtype=cfg.dtype, bias=True)
+        self.fc1 = nn.Linear(in_features=cfg.emb_dim, out_features=4 * cfg.emb_dim, dtype=cfg.dtype, bias=True)
+        self.fc2 = nn.Linear(in_features=4 * cfg.emb_dim, out_features=cfg.emb_dim, dtype=cfg.dtype, bias=True)
         self.silu = GELU()
     
     def forward(self, x):
@@ -91,6 +92,7 @@ def main():
         "qkv_bias": False,
     }
     GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
+    print(type(GPT_CONFIG_124M.dtype))
 
     # feed forward
     ffn = FeedForward(GPT_CONFIG_124M)

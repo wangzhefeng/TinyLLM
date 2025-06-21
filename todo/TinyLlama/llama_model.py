@@ -14,7 +14,8 @@
 # python libraries
 import os
 import sys
-ROOT = str(os.getcwd())
+from pathlib import Path
+ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
@@ -23,7 +24,7 @@ import inspect
 import glob
 import random
 from dataclasses import dataclass
-from pathlib import Path
+
 from typing import List, Dict, Tuple, Any, Optional
 
 import numpy as np
@@ -403,9 +404,9 @@ class PretokDataset(torch.utils.data.IterableDataset):
         
         self.vocab_source == "custom"
         # the .bin files are in tok{N} directory
-        # bin_dir = os.path.join(DATA_CACHE_DIR, f"tok{self.vocab_size}")
-        bin_dir = os.path.join(DATA_CACHE_DIR, 'demo')
-        shard_filenames = sorted(glob.glob(os.path.join(bin_dir, "*.bin")))
+        # bin_dir = Path(DATA_CACHE_DIR).joinpath(f"tok{self.vocab_size}")
+        bin_dir = Path(DATA_CACHE_DIR).joinpath('demo')
+        shard_filenames = sorted(glob.glob(Path(bin_dir).joinpath("*.bin")))
         # train/test split. let's use only shard 0 for test split, rest train
         shard_filenames = shard_filenames[1:] if self.split == "train" else shard_filenames[:1]
         assert len(shard_filenames)>0, f"No bin files found in {bin_dir}"
