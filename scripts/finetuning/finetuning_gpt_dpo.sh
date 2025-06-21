@@ -8,7 +8,7 @@ python -u ./model_finetuning/run_gpt_dpo_sft.py \
     --is_test 1 \
     --is_valid 1 \
     --is_inference 1 \
-    --data_source ./dataset/finetune/instruction-preference-data.json \
+    --data_path ./dataset/finetune/instruction-preference-data.json \
     --train_ratio 0.85 \
     --test_ratio 0.10 \
     --context_length 1024 \

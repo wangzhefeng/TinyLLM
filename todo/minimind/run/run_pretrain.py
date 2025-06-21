@@ -21,11 +21,12 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
+from pathlib import Path
 
 import torch
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def arg_parser():
@@ -91,7 +92,7 @@ def arg_parser():
     # GPU
     parser.add_argument('--num_workers', type=int, default=1, help='data loader num workers')
     parser.add_argument('--use_gpu', type=int, default=1, help='use gpu')
-    parser.add_argument('--device_type', type=str, default='cuda', help='gpu type')
+    parser.add_argument('--gpu_type', type=str, default='cuda', help='gpu type')
     parser.add_argument('--use_multi_gpu', type=int, default=0, help = 'use multiple gpus')
     parser.add_argument('--devices', type=str, default="0,1,2,3,4,5,6,7,8", help='device ids of multile gpus')
     

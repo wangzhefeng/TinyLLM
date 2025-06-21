@@ -20,6 +20,7 @@ if ROOT not in sys.path:
 import re
 import json
 import random
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -30,7 +31,7 @@ from sklearn.model_selection import train_test_split
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class PretrainDataset(Dataset):

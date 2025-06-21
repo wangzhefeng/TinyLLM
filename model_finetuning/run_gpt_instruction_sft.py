@@ -18,6 +18,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
+from pathlib import Path
 
 import torch
 
@@ -26,7 +27,7 @@ from utils.random_seed import set_seed
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def args_parse():
@@ -51,7 +52,7 @@ def args_parse():
     parser.add_argument("--is_inference", type=int, required=True, default=0,
                         help="inference flag")
     # data params
-    parser.add_argument("--data_source", type=str, required=True, 
+    parser.add_argument("--data_path", type=str, required=True, 
                         default="./dataset/finetune/instruction-data.json", 
                         help="data download url")
     parser.add_argument("--context_length", type=int, required=True, default=1024,
@@ -113,19 +114,13 @@ def args_parse():
                         help="test results path")
     parser.add_argument("--eval_data_path", type=str, default="./dataset/finetune/instruction-data-with-response.json",
                         help="eval data path")
-    parser.add_argument("--use_amp", type=int, default=1,
-                        help="Use amp")
+    parser.add_argument("--use_amp", type=int, default=1, help="Use amp")
     # model pretrain device params
-    parser.add_argument("--num_workers", type=int, required=True, default=0,
-                        help="num_workers")
-    parser.add_argument("--use_gpu", type=int, required=True, default=1, 
-                        help="user gpu")
-    parser.add_argument("--use_multi_gpu", type=int, required=True, default=0, 
-                        help="use multi gpu")
-    parser.add_argument("--gpu_type", type=str, required=True, default="cuda", 
-                        help="gpu type")
-    parser.add_argument("--devices", type=str, required=True, default="0,1,2,3",
-                        help="devices")
+    parser.add_argument("--num_workers", type=int, required=True, default=0, help="num_workers")
+    parser.add_argument("--use_gpu", type=int, required=True, default=1, help="user gpu")
+    parser.add_argument("--use_multi_gpu", type=int, required=True, default=0, help="use multi gpu")
+    parser.add_argument("--gpu_type", type=str, required=True, default="cuda", help="gpu type, options: cuda, mps")
+    parser.add_argument("--devices", type=str, required=True, default="0,1,2,3,4,5,6,7", help="device ids")
     # ------------------------------
     # arguments parse
     # ------------------------------
@@ -161,7 +156,7 @@ def run(args):
         Exp = ModelFinetuningInstructionFlow
     
     # setting record of experiments
-    setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1][:-6]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
+    setting = f"{args.task_name}_{args.model_name}_{args.data.split('/')[-1][:-6]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
     # ------------------------------
     # 模型训练
     # ------------------------------

@@ -18,6 +18,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
+from pathlib import Path
 
 import torch
 
@@ -26,7 +27,7 @@ from utils.random_seed import set_seed
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def args_parse():
@@ -47,7 +48,7 @@ def args_parse():
     parser.add_argument("--is_inference", type=int, required=True, default=0,
                         help="inference flag")
     # data params
-    parser.add_argument("--data_source", type=str, required=True, 
+    parser.add_argument("--data_path", type=str, required=True, 
                         default="./dataset/finetune/sms_spam_collection", 
                         help="data download url")
     parser.add_argument("--context_length", type=int, required=True, default=1024,
@@ -116,7 +117,7 @@ def args_parse():
                         help="use multi gpu")
     parser.add_argument("--gpu_type", type=str, required=True, default="cuda", 
                         help="gpu type")
-    parser.add_argument("--devices", type=str, required=True, default="0,1,2,3",
+    parser.add_argument("--devices", type=str, required=True, default="0,1,2,3,4,5,6,7",
                         help="devices")
     # ------------------------------
     # arguments parse
@@ -160,7 +161,7 @@ def run(args):
             logger.info(f"training iter: {itr}")
             logger.info(f"{50 * '='}")
             # setting record of experiments
-            setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
+            setting = f"{args.task_name}_{args.model_name}_{args.data_path.split('/')[-1]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
             logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
             # set experiments
             exp = Exp(args)
@@ -201,10 +202,10 @@ def run(args):
 
 # 测试代码 main 函数
 def main():
-    # 参数解析
-    args = args_parse()
     # 设置随机数
     set_seed(args.seed)
+    # 参数解析
+    args = args_parse() 
     # 参数使用
     run(args)
 

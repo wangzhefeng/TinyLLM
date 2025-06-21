@@ -23,9 +23,10 @@ if ROOT not in sys.path:
 import json
 from collections import Counter, deque
 from functools import lru_cache
+from pathlib import Path
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class BPETokenizerSimple:

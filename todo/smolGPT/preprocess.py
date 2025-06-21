@@ -35,7 +35,7 @@ import sentencepiece as spm
 from tokenizer import Tokenizer
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 # data path
 DATA_CACHE_DIR = Path("data")

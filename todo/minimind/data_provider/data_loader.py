@@ -24,6 +24,7 @@ import re
 import ast
 import json
 import random
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -36,7 +37,7 @@ from utils.log_util import logger
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class PretrainDataset(Dataset):

@@ -18,6 +18,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from importlib.metadata import version
+from pathlib import Path
 
 import torch
 
@@ -40,7 +41,7 @@ from utils.log_util import logger
 logger.info(f"torch version: {version('torch')}")
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # device

@@ -21,13 +21,14 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 from huggingface_hub import login, hf_hub_download
 import sentencepiece as spm
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def _login_huggingface_hub():

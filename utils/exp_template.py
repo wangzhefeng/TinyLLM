@@ -19,6 +19,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -42,7 +43,7 @@ plt.rcParams['font.sans-serif']=['SimHei']    # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False    # 用来显示负号
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Model(Exp_Basic):

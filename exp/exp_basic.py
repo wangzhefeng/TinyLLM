@@ -17,15 +17,16 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 import torch
 
 from models import gpt, llama2
-from minimind.model import model as minimind
+from todo.minimind.model import model as minimind
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Exp_Basic:
@@ -46,7 +47,7 @@ class Exp_Basic:
             if self.args.use_gpu and (torch.cuda.is_available() or torch.backends.mps.is_available()) \
             else False
         # gpu type: "cuda", "mps"
-        self.args.device_type = self.args.device_type.lower().strip()
+        self.args.gpu_type = self.args.gpu_type.lower().strip()
         # gpu device ids strings
         self.args.devices = self.args.devices.replace(" ", "")
         # gpu device ids list
@@ -60,11 +61,11 @@ class Exp_Basic:
             self.gpu = "0"
         
         # device
-        if self.args.use_gpu and self.args.device_type == "cuda":
+        if self.args.use_gpu and self.args.gpu_type == "cuda":
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self.gpu) if not self.args.use_multi_gpu else self.args.devices
             device = torch.device(f"cuda:{self.gpu}")
             logger.info(f"Use device GPU: cuda:{self.gpu}")
-        elif self.args.use_gpu and self.args.device_type == "mps":
+        elif self.args.use_gpu and self.args.gpu_type == "mps":
             device = torch.device("mps") \
                 if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() \
                 else torch.device("cpu")

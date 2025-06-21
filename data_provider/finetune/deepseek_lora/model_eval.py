@@ -17,6 +17,7 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import json
@@ -30,7 +31,7 @@ from bert_score import score
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def generate_response(model, tokenizer, prompt):

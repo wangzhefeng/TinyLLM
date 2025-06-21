@@ -26,7 +26,7 @@ from tokenizer.llama3_8b_bpe import llama3_8b_tokenizer
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # ------------------------------

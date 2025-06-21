@@ -24,6 +24,7 @@ import ujson
 import jsonlines
 import itertools
 import psutil
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -33,7 +34,7 @@ from transformers import AutoTokenizer
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 bos_token = "<s>"

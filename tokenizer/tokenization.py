@@ -21,6 +21,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from typing import List
+from pathlib import Path
 
 import torch
 
@@ -31,7 +32,7 @@ from tokenizer.llama2_7b_sentencepiece import Llama27bTokenizer
 from tokenizer.llama3_8b_bpe import Llama38bTokenizer
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def choose_tokenizer(tokenizer_model: str = "gpt2"):

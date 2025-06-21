@@ -20,6 +20,7 @@ if ROOT not in sys.path:
 import re
 import time
 from typing import Dict
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -46,7 +47,7 @@ from utils.args_tools import DotDict
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class ModelFinetuningPreference:
@@ -63,7 +64,7 @@ class ModelFinetuningPreference:
     def _get_data(self):
         # data load and split
         train_data, test_data, valid_data = data_loader.load_split_data(
-            self.args.data_source,
+            self.args.data_path,
             self.args.train_ratio,
             self.args.test_ratio,
         )

@@ -20,13 +20,14 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 import torch
 from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def download_llama3_model(model_path: str):

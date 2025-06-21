@@ -8,7 +8,7 @@ python -u ./model_finetuning/run_gpt_instruction_sft.py \
     --is_test 1 \
     --is_eval 0 \
     --is_inference 1 \
-    --data_source ./dataset/finetune/instruction-data.json \
+    --data_path ./dataset/finetune/instruction-data.json \
     --context_length 1024 \
     --train_ratio 0.85 \
     --test_ratio 0.10 \

@@ -21,15 +21,16 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
+from pathlib import Path
 
 from exp.exp_forecasting import Exp_Forecast
-from utils.print_args import print_args
+from utils.args_tools import print_args
 from utils.device import torch_gc
 from utils.random_seed import set_seed
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def args_parse():

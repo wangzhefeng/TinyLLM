@@ -6,7 +6,7 @@ python -u ./model_finetuning/run_gpt_clf_sft.py \
     --model_name gpt_finetune_clf \
     --is_train 1 \
     --is_inference 1 \
-    --data_source ./dataset/finetune/sms_spam_collection \
+    --data_path ./dataset/finetune/sms_spam_collection \
     --context_length 1024 \
     --num_classes 2 \
     --vocab_size 50257 \
@@ -26,11 +26,12 @@ python -u ./model_finetuning/run_gpt_clf_sft.py \
     --train_epochs 5 \
     --batch_size 8 \
     --learning_rate 0.00005 \
+    --lradj type1 \
     --weight_decay 0.1 \
     --checkpoints ./saved_results/finetuned_models \
     --test_results ./saved_results/test_results \
     --num_workers 0 \
     --use_gpu 1 \
-    --use_multi_gpu 0 \
     --gpu_type cuda \
+    --use_multi_gpu 0 \
     --devices 0,1,2,3

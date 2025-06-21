@@ -20,6 +20,7 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 import torch
 
@@ -30,7 +31,7 @@ from model_load.model_cfgs import LLAMA2_CONFIG_7B
 from model_load.meta_llama2_weights_load_hf import load_weights_into_llama
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # model params 

@@ -26,6 +26,7 @@ import argparse
 import shutil
 import time
 import warnings
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -43,7 +44,7 @@ from dataset import Cityscaples
 warnings.filterwarnings("ignore")
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # 参数设置

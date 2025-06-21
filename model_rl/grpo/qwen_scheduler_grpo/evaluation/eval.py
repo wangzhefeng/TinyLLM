@@ -22,11 +22,12 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
 import argparse
+from pathlib import Path
 
 import datasets
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # lenient format check - only checks the schedule in order not to penalize non-reasoning models

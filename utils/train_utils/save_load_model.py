@@ -21,13 +21,15 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
+from pathlib import Path
+
 import torch
 
 from models.gpt import Model
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def save_model_weights(model, model_path: str):

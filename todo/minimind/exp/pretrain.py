@@ -21,6 +21,7 @@ import time
 import math
 import warnings
 import platform
+from pathlib import Path
 
 import pandas as pd
 import torch
@@ -39,7 +40,7 @@ from utils.log_util import logger
 warnings.filterwarnings("ignore")
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Model(Exp_Basic):
@@ -166,7 +167,7 @@ class Model(Exp_Basic):
         """
         混合精度
         """
-        ctx = nullcontext() if self.args.device_type == "cpu" else torch.amp.autocast("cuda")
+        ctx = nullcontext() if self.args.gpu_type == "cpu" else torch.amp.autocast("cuda")
 
         return ctx
     

@@ -20,7 +20,6 @@ if ROOT not in sys.path:
 import time
 import warnings
 from pathlib import Path
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import torch
 
@@ -42,10 +41,11 @@ from utils.train_utils.plot_losses import plot_values_classifier
 from utils.device import device_setting
 from utils.log_util import logger
 
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 warnings.filterwarnings("ignore")
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class ModelFinetuningClassifier:
@@ -65,7 +65,7 @@ class ModelFinetuningClassifier:
         """
         # dataset and dataloader
         self.train_dataset, train_loader = create_dataloader(
-            data_path = os.path.join(self.args.data_source, "train.csv"),
+            data_path = os.path.join(self.args.data_path, "train.csv"),
             max_length = None,
             batch_size = self.args.batch_size,
             shuffle = True,
@@ -75,7 +75,7 @@ class ModelFinetuningClassifier:
             pad_token_id = self.pad_token_id,
         )
         valid_dataset, valid_loader = create_dataloader(
-            data_path = os.path.join(self.args.data_source, "valid.csv"),
+            data_path = os.path.join(self.args.data_path, "valid.csv"),
             max_length = self.train_dataset.max_length,
             batch_size = self.args.batch_size,
             shuffle = False,
@@ -85,7 +85,7 @@ class ModelFinetuningClassifier:
             pad_token_id = self.pad_token_id,
         )
         test_dataset, test_loader = create_dataloader(
-            data_path = os.path.join(self.args.data_source, "test.csv"),
+            data_path = os.path.join(self.args.data_path, "test.csv"),
             max_length = self.train_dataset.max_length,
             batch_size = self.args.batch_size,
             shuffle = False,

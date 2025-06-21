@@ -18,6 +18,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import warnings
+from pathlib import Path
 
 from uniem.data_structures import (
     RecordType, 
@@ -27,7 +28,7 @@ from uniem.data_structures import (
 )
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 # params
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 warnings.filterwarnings('ignore')

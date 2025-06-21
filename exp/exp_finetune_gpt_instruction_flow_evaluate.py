@@ -20,13 +20,14 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 from data_provider.load_save_data import load_json_data
 from model_evaluate.ollama_evaluate import generate_model_scores
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class ModelFinetuningInstructionFlowEvaluate:
@@ -39,7 +40,7 @@ class ModelFinetuningInstructionFlowEvaluate:
         build dataset
         """
         # data
-        data = load_json_data(data_path = self.args.data_source)
+        data = load_json_data(data_path = self.args.data_path)
         # data split
         train_portion = int(len(data) * self.args.train_ratio)
         test_portion = int(len(data) * self.args.test_ratio)

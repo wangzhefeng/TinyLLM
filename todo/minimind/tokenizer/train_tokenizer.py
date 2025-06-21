@@ -20,6 +20,7 @@ if ROOT not in sys.path:
 import json
 import random
 from tqdm import tqdm
+from pathlib import Path
 
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -36,7 +37,7 @@ from utils.log_util import logger
 random.seed(42)
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def _read_texts_from_jsonl(file_path):

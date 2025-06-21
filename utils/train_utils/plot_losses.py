@@ -17,13 +17,14 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import torch
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def plot_values_classifier(train_epochs, examples_seen, train_values, val_values, label: str = "loss", results_path: str = None):

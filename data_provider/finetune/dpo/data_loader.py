@@ -17,6 +17,7 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 from functools import partial
 
 import torch
@@ -27,7 +28,7 @@ from data_provider.finetune import instruction_format
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class PreferenceDataset(Dataset):

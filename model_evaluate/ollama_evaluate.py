@@ -18,13 +18,14 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from tqdm import tqdm
+from pathlib import Path
 
 from data_provider.finetune.instruction_format import format_input_alpaca
 from utils.inference_utils.ollama_api import check_if_running, query_model
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def generate_model_scores(

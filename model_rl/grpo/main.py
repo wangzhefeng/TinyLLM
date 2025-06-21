@@ -21,6 +21,7 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ["SM_FRAMEWORK"] = "tf.keras"
 
@@ -35,7 +36,7 @@ from trl import GRPOConfig, GRPOTrainer
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # Log to weights & biases

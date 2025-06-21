@@ -17,13 +17,14 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import numpy as np
 import torch
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def load_weights_hf(gpt, gpt_hf, CONFIG):

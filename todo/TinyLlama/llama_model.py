@@ -23,6 +23,7 @@ import inspect
 import glob
 import random
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
 
 import numpy as np
@@ -31,7 +32,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 # data path
 DATA_CACHE_DIR = "./dataset"
 
@@ -306,7 +307,7 @@ class Transformer(nn.Module):
 
         return logits
 
-    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+    def configure_optimizers(self, weight_decay, learning_rate, betas, gpu_type):
         # start with all of the candidate parameters
         param_dict = {pn: p for pn, p in self.named_parameters()}
         # filter out those that do not require grad
@@ -325,7 +326,7 @@ class Transformer(nn.Module):
         print(f"num non-decayed parameter tensors: {len(nodecay_params)}, with {num_nodecay_params:,} parameters")
         # Create AdamW optimizer and use the fused version if it is available
         fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters
-        use_fused = fused_available and device_type == 'cuda'
+        use_fused = fused_available and gpu_type == 'cuda'
         extra_args = dict(fused=True) if use_fused else dict()
         optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas, **extra_args)
         print(f"using fused AdamW: {use_fused}")

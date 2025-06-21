@@ -9,10 +9,7 @@
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
-
-__all__ = []
 
 # python libraries
 import os
@@ -23,6 +20,7 @@ if ROOT not in sys.path:
 import math
 import time
 import warnings
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -33,7 +31,11 @@ import torch.nn as nn
 from data_provider.pretrain.data_load import data_load
 from data_provider.pretrain.data_loader import create_dataloader
 # tokenizer
-from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+from tokenizer.tokenization import (
+    choose_tokenizer,
+    text_to_token_ids, 
+    token_ids_to_text
+)
 # model
 from exp.exp_basic import Exp_Basic
 from utils.train_utils.gpt_generate import generate
@@ -44,27 +46,24 @@ from utils.log_util import logger
 warnings.filterwarnings("ignore")
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Model_Pretrain(Exp_Basic):
-    
+
     def __init__(self, args):
         super(Model_Pretrain, self).__init__(args)
-    
+        # tokenizer
+        self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)         
+
     def _get_data(self):
         """
         build dataset and dataloader
         """
-        # data load
-        raw_text = data_load(url=self.args.data_source)
-        # dataset
-        split_idx = int(self.args.train_ratio * len(raw_text))
-        train_data = raw_text[:split_idx]
-        valid_data = raw_text[split_idx:]
         # dataloader
         train_loader = create_dataloader(
-            train_data,
+            data_path=self.args.data_path,
+            data_file=self.args.data,
             batch_size=self.args.batch_size,
             max_length=self.args.context_length,
             stride=self.args.context_length,
@@ -349,7 +348,7 @@ class Model_Pretrain(Exp_Basic):
         self.model.load_state_dict(torch.load(best_model_path))
         
         return train_losses, valid_losses, track_tokens_seen
- 
+
     def valid(self, train_loader, valid_loader, eval_iter):
         """
         model evaluation
@@ -372,7 +371,7 @@ class Model_Pretrain(Exp_Basic):
         self.model.train()
         
         return train_loss, valid_loss
-    
+
     def inference(self, epoch, start_context):
         # inference mode
         self.model.eval()

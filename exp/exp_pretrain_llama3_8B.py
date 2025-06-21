@@ -23,6 +23,7 @@ if ROOT not in sys.path:
 import math
 import time
 import warnings
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -44,7 +45,7 @@ from utils.log_util import logger
 warnings.filterwarnings("ignore")
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Model_Pretrain(Exp_Basic):
@@ -57,7 +58,7 @@ class Model_Pretrain(Exp_Basic):
         build dataset and dataloader
         """
         # data load
-        raw_text = data_load(url=self.args.data_source)
+        raw_text = data_load(url=self.args.data_path)
         # dataset
         split_idx = int(self.args.train_ratio * len(raw_text))
         train_data = raw_text[:split_idx]

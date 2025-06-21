@@ -22,6 +22,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
 import inspect
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -30,7 +31,7 @@ import torch.nn.functional as F
 from config import GPTConfig
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Rotary(torch.nn.Module):
@@ -225,7 +226,7 @@ class GPT(nn.Module):
             loss = None
         return logits, loss
 
-    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+    def configure_optimizers(self, weight_decay, learning_rate, betas, gpu_type):
         param_dict = {pn: p for pn, p in self.named_parameters()}
         param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
 
@@ -245,7 +246,7 @@ class GPT(nn.Module):
         )
 
         fused_available = "fused" in inspect.signature(torch.optim.AdamW).parameters
-        use_fused = fused_available and device_type == "cuda"
+        use_fused = fused_available and gpu_type == "cuda"
         extra_args = dict(fused=True) if use_fused else dict()
         optimizer = torch.optim.AdamW(
             optim_groups, lr=learning_rate, betas=betas, **extra_args

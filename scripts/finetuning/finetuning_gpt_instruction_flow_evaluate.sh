@@ -4,7 +4,7 @@ export CUDA_VISIBLE_DEVICES="0"
 python -u ./model_finetuning/run_gpt_instruction_sft_evaluate.py \
     --task_name tiny_gpt_instruction_sft_evaluate \
     --model_name gpt_instruction_sft \
-    --data_source ./dataset/finetune/instruction-data-with-response.json \
+    --data_path ./dataset/finetune/instruction-data-with-response.json \
     --train_ratio 0.85 \
     --test_ratio 0.10 \
     --inference_server ollama \

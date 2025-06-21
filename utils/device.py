@@ -22,13 +22,14 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 import torch
 
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def device_setting(verbose: bool = False):
@@ -69,7 +70,7 @@ def torch_gc(gpu_type: str = "cuda", device: str = "cuda:0"):
                 torch.cuda.empty_cache()  # 清空 CUDA 缓存
                 torch.cuda.ipc_collect()  # 收集 CUDA 内存碎片
         elif gpu_type == "mps":
-            torch.backends.mps.empty_cache()
+            torch.mps.empty_cache()
 
 
 def torch_gc_v1():

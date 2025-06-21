@@ -5,7 +5,7 @@ python -u ./model_finetuning/run_gpt_preference_sft.py \
     --task_name tiny_gpt_instruction_sft \
     --is_train 1 \
     --is_inference 0 \
-    --data_source ./dataset/finetune/instruction-preference-data.json \
+    --data_path ./dataset/finetune/instruction-preference-data.json \
     --train_ratio 0.85 \
     --test_ratio 0.10 \
     --batch_size 2 \

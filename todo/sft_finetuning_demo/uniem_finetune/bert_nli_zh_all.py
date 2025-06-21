@@ -17,6 +17,7 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -25,7 +26,7 @@ from uniem.finetuner import FineTuner
 from uniem.model import create_uniem_embedder
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # ------------------------------

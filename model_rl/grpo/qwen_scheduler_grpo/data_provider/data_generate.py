@@ -23,6 +23,7 @@ if ROOT not in sys.path:
 import json
 import random
 from typing import Dict, List, Tuple
+from pathlib import Path
 
 import datasets
 from bisect import bisect_right
@@ -30,7 +31,7 @@ from bisect import bisect_right
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 """
 Event Scheduling Dataset Generator

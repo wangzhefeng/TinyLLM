@@ -21,6 +21,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
+from pathlib import Path
 
 import torch
 
@@ -31,7 +32,7 @@ from utils.random_seed import set_seed
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def args_parse():
@@ -50,7 +51,7 @@ def args_parse():
                         default="gpt_instruction_sft",
                         help="model name") 
     # data params
-    parser.add_argument("--data_source", type=str, required=True, 
+    parser.add_argument("--data_path", type=str, required=True, 
                         default="./dataset/finetune/instruction-data-with-response.json", 
                         help="data path")
     parser.add_argument("--train_ratio", type=float, required=True, 
@@ -91,7 +92,7 @@ def args_parse():
                         default="cuda", 
                         help="gpu type")
     parser.add_argument("--devices", type=str, required=True, 
-                        default="0,1,2,3",
+                        default="0,1,2,3,4,5,6,7",
                         help="devices")
     # ------------------------------
     # arguments parse
@@ -128,7 +129,7 @@ def run(args):
         Exp = ModelFinetuningInstructionFlowEvaluate
     
     # setting record of experiments
-    setting = f"{args.task_name}_{args.model_name}_{args.data_source.split('/')[-1][:-6]}"
+    setting = f"{args.task_name}_{args.model_name}_{args.data[:-6]}"
     # ------------------------------
     # 模型训练
     # ------------------------------

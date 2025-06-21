@@ -18,6 +18,7 @@ ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import platform
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -29,7 +30,7 @@ from torch.distributed import init_process_group, destroy_process_group
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def ddp_setup(rank, world_size):

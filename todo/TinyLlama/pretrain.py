@@ -23,12 +23,13 @@ from contextlib import nullcontext
 from datetime import datetime
 from functools import partial
 from dataclasses import dataclass
+from pathlib import Path
 
 import torch
 from llama_model import Transformer, ModelArgs, Task
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # ------------------------------

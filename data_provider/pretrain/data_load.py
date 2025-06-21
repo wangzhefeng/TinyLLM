@@ -20,12 +20,13 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 import urllib.request
 
 from utils.log_util import logger
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 def _data_download(url: str, file_path: str):
@@ -45,7 +46,7 @@ def _data_download(url: str, file_path: str):
     '''
 
 
-def data_load(url: str = None, data_dir: str = "dataset/pretrain"):
+def data_load(url: str = None, data_dir: str = "dataset/pretrain/gpt", data_file: str = "the-verdict.txt"):
     """
     data load
     """
@@ -54,7 +55,10 @@ def data_load(url: str = None, data_dir: str = "dataset/pretrain"):
     if not os.path.exists(data_path):
         os.makedirs(data_path)
     # 数据文件路径
-    file_path = os.path.join(data_path, url.split("/")[-1])
+    if url is not None:
+        file_path = os.path.join(data_path, url.split("/")[-1])
+    else:
+        file_path = os.path.join(data_path, data_file)
     # 数据下载、数据加载
     if not os.path.exists(file_path):
         # download
@@ -83,6 +87,8 @@ def main():
     raw_text = data_load(
         url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
     )
+    raw_text = data_load()
+    logger.info(type(raw_text))
     logger.info(f"raw_text[:99]: {raw_text[:99]}")
     logger.info(f"raw_text[:99]: {raw_text[-99:]}")
 

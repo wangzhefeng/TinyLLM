@@ -20,13 +20,14 @@ import sys
 ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from pathlib import Path
 from tqdm import tqdm
 
 from data_provider.load_save_data import load_json_data, save_json_data
 from utils.inference_utils.openai_api import create_client, run_chatgpt
 
 # global variable
-LOGGING_LABEL = __file__.split('/')[-1][:-3]
+LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 
