@@ -21,13 +21,16 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+from importlib.metadata import version
+
 # global variable
 LOGGING_LABEL = __file__.split('\\')[-1][:-3]
 os.environ['LOG_NAME'] = LOGGING_LABEL
 
 from utils.log_util import logger
 
-from importlib.metadata import version
+
+# 1.package version
 pkgs = [
     "matplotlib",
     "numpy",
@@ -38,6 +41,11 @@ pkgs = [
 ]
 for p in pkgs:
     logger.info(f"{p} version: {version(p)}")
+
+
+# 2.set options
+import torch
+torch.set_printoptions(sci_mode=False)
 
 
 

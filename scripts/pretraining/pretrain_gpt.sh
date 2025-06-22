@@ -3,7 +3,7 @@ export LOG_NAME=gpt
 
 model_name=gpt
 
-python -u ./model_pretrain/run_gpt.py \
+python -u ./model_pre_training/run_gpt.py \
     --task_name tiny_gpt_pretrain \
     --des 'Tiny GPT Pretrain' \
     --is_train 1 \

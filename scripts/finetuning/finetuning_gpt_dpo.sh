@@ -1,7 +1,7 @@
 export CUDA_VISIBLE_DEVICES="0"
 
 
-python -u ./model_finetuning/run_gpt_dpo_sft.py \
+python -u ./model_finetuning/run_gpt_dpo.py \
     --task_name tiny_gpt_dpo_sft \
     --model_name gpt_finetune_instruction_dpo \
     --is_train 0 \
