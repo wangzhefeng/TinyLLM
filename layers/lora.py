@@ -20,7 +20,6 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
 
-
 import torch
 import torch.nn as nn
 
