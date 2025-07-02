@@ -22,7 +22,7 @@ if ROOT not in sys.path:
 import torch
 
 from models import gpt, llama2
-from model_post_training.lora_qlora.model_test import MLP
+from model_post_training.lora_qlora.scratch_exps.lora_dora_from_scratch import MLP
 # from todo.minimind.model import model as minimind
 from utils.log_util import logger
 

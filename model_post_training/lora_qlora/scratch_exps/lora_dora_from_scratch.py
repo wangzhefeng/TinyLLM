@@ -6,9 +6,11 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-07-01
 # * Version     : 1.0.070123
-# * Description : https://github.com/rasbt/LLM-finetuning-scripts/blob/main/adapter/lora-from-scratch/lora-dora-mlp.ipynb
-# *             : https://magazine.sebastianraschka.com/p/lora-and-dora-from-scratch
-# * Link        : link
+# * Description : description
+# * Link        : https://github.com/rasbt/LLM-finetuning-scripts/blob/main/adapter/lora-from-scratch/lora-dora-mlp.ipynb
+# *               https://magazine.sebastianraschka.com/p/lora-and-dora-from-scratch
+# *               https://github.com/rasbt/dora-from-scratch
+# *               https://github.com/rasbt/LLM-finetuning-scripts/blob/main/adapter/lora-from-scratch/lora-dora-mlp.ipynb
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 

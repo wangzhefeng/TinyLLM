@@ -22,7 +22,7 @@ import argparse
 
 import torch
 
-from exp.exp_pretrain_gpt import Model_Pretrain
+from exp.pretraining.exp_pretrain_gpt import Model_Pretrain
 from utils.args_tools import print_args
 from utils.device import torch_gc
 from utils.random_seed import set_seed
