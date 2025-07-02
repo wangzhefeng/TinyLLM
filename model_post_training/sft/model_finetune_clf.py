@@ -19,10 +19,9 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import torch.nn as nn
 
-from layers.lora import replace_linear_with_lora
+from layers.lora_dora import replace_linear_with_lora
 from utils.log_util import logger
 
 # global variable
@@ -51,8 +50,9 @@ def finetune_model(model, emb_dim: int, num_classes: int, finetune_method: str):
         in_features = emb_dim, 
         out_features = num_classes
     )
+    
+    # replace linear with LinearWithLoRA
     if finetune_method == "lora":
-        # replace linear with LinearWithLoRA
         replace_linear_with_lora(model, rank = 16, alpha = 16)
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info(f"Total trainable LoRA parameters: {total_params}")

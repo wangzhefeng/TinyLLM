@@ -24,7 +24,6 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import torch
 
 from utils.log_util import logger
@@ -38,18 +37,19 @@ def device_setting(verbose: bool = False):
     device setting
     """
     if verbose:
-        logger.info(f"{50 * '='}")
+        logger.info(f"{40 * '='}")
         logger.info(f"Device Info:")
-        logger.info(f"{50 * '='}")
-        logger.info(f"GPU available: {torch.cuda.is_available()}")
+        logger.info(f"{40 * '='}")
+        logger.info(f"GPU available: {torch.cuda.is_available() or torch.backends.mps.is_available()}")
         logger.info(f"GPU count: {torch.cuda.device_count()}")
     
     if torch.cuda.is_available():
         if verbose:
             logger.info(f"current GPU name: {torch.cuda.get_device_name()}")
             logger.info(f"current GPU id: {torch.cuda.current_device()}")
+        gpu = torch.cuda.current_device()
         # torch.cuda.set_device(0)
-        device = torch.device("cuda")
+        device = torch.device(f"cuda{gpu}")
     elif torch.backends.mps.is_available():
         device = torch.device("mps")
     else:
@@ -69,18 +69,11 @@ def _acquire_device(use_gpu: bool=True, gpu_type: str="cuda", use_multi_gpu: boo
         else False
     # gpu type: "cuda", "mps"
     gpu_type = gpu_type.lower().strip()
-    # gpu device ids strings
-    devices = devices.replace(" ", "")
     # gpu device ids list
+    devices = devices.replace(" ", "")
     device_ids = [int(id_) for id_ in devices.split(",")]
     # gpu device ids string
-    if use_gpu and not use_multi_gpu:
-        gpu = device_ids[0]  # '0'
-    elif use_gpu and use_multi_gpu:
-        gpu = devices  # '0,1,2,3,4,5,6,7'
-    else:
-        gpu = "0"
-    
+    gpu = "0"
     # device
     if use_gpu and gpu_type == "cuda":
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu) if not use_multi_gpu else devices
@@ -131,7 +124,7 @@ def torch_gc_v1():
 
 # 测试代码 main 函数
 def main():
-    pass
+    device = device_setting(verbose=True)
 
 if __name__ == "__main__":
     main()

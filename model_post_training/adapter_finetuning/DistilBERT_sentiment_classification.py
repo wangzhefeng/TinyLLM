@@ -168,6 +168,7 @@ for block_idx in range(6):
 
 logger.info("Number of adapter parameters added:", total_size)
 
+
 # ------------------------------
 # 3.finetuning all layers
 # ------------------------------
@@ -180,6 +181,7 @@ def count_parameters(model):
 
 num_param = count_parameters(model.pre_classifier) + count_parameters(model.classifier)
 print("Parameters in last 2 layers:", num_param)
+
 
 # ------------------------------
 # 4.Insert adapter layers and finetuning all layers
@@ -222,6 +224,7 @@ for block_idx in range(6):
     total_size += count_parameters(adapter_layers_2)
 
 logger.info("Number of adapter parameters added:", total_size)
+
 
 # ------------------------------
 # model training

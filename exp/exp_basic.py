@@ -19,10 +19,10 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import torch
 
 from models import gpt, llama2
+from model_post_training.lora_qlora.model_test import MLP
 # from todo.minimind.model import model as minimind
 from utils.log_util import logger
 
@@ -38,6 +38,7 @@ class Exp_Basic:
             "gpt": gpt,
             "llama2": llama2,
             # "minimind": minimind,
+            "mlp": MLP,
         }
         self.device = self._acquire_device()
         self.tokenizer = self._get_tokenizer()
@@ -50,33 +51,29 @@ class Exp_Basic:
             else False
         # gpu type: "cuda", "mps"
         self.args.gpu_type = self.args.gpu_type.lower().strip()
-        # gpu device ids strings
-        self.args.devices = self.args.devices.replace(" ", "")
         # gpu device ids list
+        self.args.devices = self.args.devices.replace(" ", "")
         self.args.device_ids = [int(id_) for id_ in self.args.devices.split(",")]
         # gpu device ids string
-        if self.args.use_gpu and not self.args.use_multi_gpu:
-            self.gpu = self.args.device_ids[0]  # '0'
-        elif self.args.use_gpu and self.args.use_multi_gpu:
-            self.gpu = self.args.devices  # '0,1,2,3,4,5,6,7'
-        else:
-            self.gpu = "0"
-        
+        self.gpu = self.args.device_ids[0]  # ro self.gpu = "0" 
         # device
         if self.args.use_gpu and self.args.gpu_type == "cuda":
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self.gpu) if not self.args.use_multi_gpu else self.args.devices
             device = torch.device(f"cuda:{self.gpu}")
-            logger.info(f"\tUse device GPU: cuda:{self.gpu}")
+            logger.info(f"\t\tUse device GPU: cuda:{self.gpu}")
         elif self.args.use_gpu and self.args.gpu_type == "mps":
             device = torch.device("mps") \
                 if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() \
                 else torch.device("cpu")
-            logger.info(f"\tUse device GPU: mps")
+            logger.info(f"\t\tUse device GPU: mps")
         else:
             device = torch.device("cpu")
-            logger.info("\tUse device CPU")
+            logger.info("\t\tUse device CPU")
 
         return device
+    
+    def _get_data(self):
+        pass
     
     def _build_model(self):
         raise NotImplementedError
@@ -85,9 +82,6 @@ class Exp_Basic:
     def _get_tokenizer(self):
         pass
     
-    def _get_data(self):
-        pass
-
     def train(self):
         pass 
 
