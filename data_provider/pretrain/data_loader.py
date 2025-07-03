@@ -27,6 +27,7 @@ import urllib.request
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.distributed import DistributedSampler
 
 from utils.log_util import logger
 
@@ -145,9 +146,11 @@ def create_dataloader(data_path: str,
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
+        pin_memory=True,
         shuffle=shuffle,
         drop_last=drop_last,
-        num_workers=num_workers
+        sampler=DistributedSampler(dataset),
+        num_workers=num_workers,
     )
     
     return dataset, dataloader

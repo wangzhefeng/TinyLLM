@@ -25,6 +25,7 @@ warnings.filterwarnings("ignore")
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 # data
 from data_provider.pretrain.data_loader import create_dataloader
@@ -106,6 +107,8 @@ class Model_Pretrain(Exp_Basic):
         # 单机多卡训练
         if self.args.use_gpu and self.args.use_multi_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
+        elif self.args.use_ddp:
+            model = DDP(model, device_ids=[self.device])
         # 打印模型参数量
         total_memory_gb = model_memory_size(model, verbose=True)
         
@@ -131,6 +134,14 @@ class Model_Pretrain(Exp_Basic):
         os.makedirs(results_path, exist_ok=True)
         
         return results_path
+
+    def _save_checkpoint(self, epoch, model_path):
+        """
+        模型 checkpoint 保存
+        """
+        ckp = self.model.module.state_dict()
+        torch.save(ckp, model_path)
+
 
     def train(self, training_iter: int, setting: str, eval_freq: int=5, eval_iter: int=1):
         logger.info(f"{43 * '-'}")

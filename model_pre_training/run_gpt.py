@@ -21,11 +21,14 @@ if ROOT not in sys.path:
 import argparse
 
 import torch
+import torch.multiprocessing as mp
+from torch.distributed import destroy_process_group
 
 from exp.pretraining.exp_pretrain_gpt import Model_Pretrain
 from utils.args_tools import print_args
 from utils.device import torch_gc
 from utils.random_seed import set_seed
+from utils.distributed_training.ddp_utils import ddp_setup
 from utils.log_util import logger
 
 # global variable
@@ -99,6 +102,7 @@ def args_parse():
     return args
 
 
+
 def run(args):
     # 模型任务
     Exp = Model_Pretrain
@@ -136,20 +140,29 @@ def run(args):
     logger.info(f"{180 * '='}")
     logger.info(f">>>>>>>>>>>> Empty cuda cache and memory pecices...")
     logger.info(f"{180 * '='}")
-    torch_gc(gpu_type=args.gpu_type, device=exp.device)
+    torch_gc(device_id=exp.gpu)
 
 
 
 
 # 测试代码 main 函数
-def main():
+def main(rank: int, world_size: int, args):
+    ddp_setup(rank, world_size)
     # 设置随机数
     set_seed(seed = 2025)
+    # 参数使用
+    run(args)
+    destroy_process_group()
+
+if __name__ == "__main__":
     # 参数解析
     args = args_parse()
     print_args(args)
-    # 参数使用
-    run(args)
-
-if __name__ == "__main__":
-    main()
+    # distributed data parallelim training
+    world_size = torch.cuda.device_count()
+    mp.spawn(
+        main,
+        args=(world_size, args),
+        nprocs=world_size,
+        join=True,
+    )

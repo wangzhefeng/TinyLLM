@@ -20,19 +20,19 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import platform
 
-
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.distributed import DistributedSampler
+
 import torch.multiprocessing as mp
+from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
-from utils.log_util import logger
-
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+os.environ['LOG_NAME'] = LOGGING_LABEL
+from utils.log_util import logger
 
 
 def ddp_setup(rank, world_size):
@@ -41,15 +41,18 @@ def ddp_setup(rank, world_size):
     this allows communication among processes
 
     Args:
-        rank (_type_): a unique process ID
+        rank (_type_): a unique process ID(Unique identifier of each process)
         world_size (_type_): total number of processes in the group
     """
+    # rank of machine running rank:0 process, assume all GPUs are on the same machine
     if "MASTER_ADDR" not in os.environ:
-        # rank of machine running rank:0 process, assume all GPUs are on the same machine
         os.environ["MASTER_ADDR"] = "localhost"
+    # any free port on the machine
     if "MASTER_PORT" not in os.environ:
-        # any free port on the machine
         os.environ["MASTER_PORT"] = "1234567"
+    
+    # set deivce
+    torch.cuda.set_device(rank)
     
     # initialize process group
     if platform.system() == "Windows":
@@ -60,8 +63,6 @@ def ddp_setup(rank, world_size):
     else:
         # nccl: NVIDIA Collective Communication Library
         init_process_group(backend="nccl", rank=rank, world_size=world_size)
-    
-    torch.cuda.set_device(rank)
 
 
 

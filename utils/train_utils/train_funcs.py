@@ -167,14 +167,16 @@ def gradient_clipping(model, global_step, warmup_steps):
 
 class EarlyStopping:
     
-    def __init__(self, patience=7, verbose=False, delta=0):
+    def __init__(self, patience=7, verbose=False, delta=0, use_ddp=False, gpu_id=0):
         self.patience = patience
         self.verbose = verbose
+        self.delta = delta
+        self.use_ddp = use_ddp
+        self.gpu_id = self.gpu_id
         self.counter = 0
         self.best_score = None
         self.early_stop = False
         self.val_loss_min = np.inf
-        self.delta = delta
 
     def __call__(self, epoch, val_loss, model, path):
         score = -val_loss
@@ -194,7 +196,14 @@ class EarlyStopping:
     def save_checkpoint(self, epoch, val_loss, model, path):
         if self.verbose:
             logger.info(f"\t\tEpoch {epoch}: Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...")
-        torch.save(model.state_dict(), path)
+        # checkpoint save
+        if not self.use_ddp:
+            ckp = model.state_dict()
+            torch.save(ckp, path)
+        elif self.use_ddp and self.gpu == 0:
+            ckp = model.module.state_dict()
+            torch.save(ckp, path)
+        # update minimum vali loss
         self.val_loss_min = val_loss
 
 

@@ -55,7 +55,7 @@ class Exp_Basic:
         self.args.devices = self.args.devices.replace(" ", "")
         self.args.device_ids = [int(id_) for id_ in self.args.devices.split(",")]
         # gpu device ids string
-        self.gpu = self.args.device_ids[0]  # ro self.gpu = "0" 
+        self.gpu = self.args.device_ids[0]  # ro self.gpu = "0"
         # device
         if self.args.use_gpu and self.args.gpu_type == "cuda":
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self.gpu) if not self.args.use_multi_gpu else self.args.devices

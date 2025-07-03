@@ -20,7 +20,6 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import platform
 
-
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -28,10 +27,10 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
-from utils.log_util import logger
-
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+os.environ['LOG_NAME'] = LOGGING_LABEL
+from utils.log_util import logger
 
 
 def ddp_setup(rank, world_size):

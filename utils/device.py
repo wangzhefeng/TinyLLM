@@ -73,7 +73,7 @@ def _acquire_device(use_gpu: bool=True, gpu_type: str="cuda", use_multi_gpu: boo
     devices = devices.replace(" ", "")
     device_ids = [int(id_) for id_ in devices.split(",")]
     # gpu device ids string
-    gpu = "0"
+    gpu = device_ids[0]
     # device
     if use_gpu and gpu_type == "cuda":
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu) if not use_multi_gpu else devices
@@ -91,33 +91,29 @@ def _acquire_device(use_gpu: bool=True, gpu_type: str="cuda", use_multi_gpu: boo
     return device
 
 
-def torch_gc(gpu_type: str = "cuda", device: str = "cuda:0"):
-    """
-    empty cuda cache and memory pecices
-    """
-    if device != torch.device("cpu"):
-        if gpu_type == "cuda":
-            with torch.cuda.device(device):  # 指定 CUDA 设备
-                torch.cuda.empty_cache()  # 清空 CUDA 缓存
-                torch.cuda.ipc_collect()  # 收集 CUDA 内存碎片
-        elif gpu_type == "mps":
-            torch.mps.empty_cache()
-
-
-def torch_gc_v1():
+def torch_gc(device_id=""):
     """
     清理 GPU 内存函数
+    
+    device_id: # CUDA 设备 ID，如果未设置则为空
     """
     # 设置设备参数
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 使用 CUDA
-    DEVICE_ID = "0"  # CUDA 设备 ID，如果未设置则为空
-    CUDA_DEVICE = f"{DEVICE}:{DEVICE_ID}" if DEVICE_ID else DEVICE  # 组合 CUDA 设备信息
-    logger.info(f"cuda device: {CUDA_DEVICE}")
+    if torch.cuda.is_available():
+        DEVICE_TYPE = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        DEVICE_TYPE = torch.device("mps")
+    else:
+        DEVICE_TYPE = torch.device("cpu")  # 使用 CUDA
+    DEVICE = f"{DEVICE_TYPE}:{device_id}" \
+        if DEVICE_TYPE == torch.device("cuda") and device_id \
+        else DEVICE_TYPE  # 组合 CUDA 设备信息
 
     if torch.cuda.is_available():  # 检查是否可用 CUDA
-        with torch.cuda.device(CUDA_DEVICE):  # 指定 CUDA 设备
+        with torch.cuda.device(DEVICE):  # 指定 CUDA 设备
             torch.cuda.empty_cache()  # 清空 CUDA 缓存
             torch.cuda.ipc_collect()  # 收集 CUDA 内存碎片
+    elif torch.backends.mps.is_available():
+        torch.mps.empty_cache()
 
 
 

@@ -17,26 +17,16 @@ __all__ = []
 # python libraries
 import os
 import sys
-
-import torch.distributed
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
-import shutil
-import time
 import warnings
 
-
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.parallel
-import torch.distributed as dist
-import torch.optim
-import torch.utils.data
-import torch.utils.data.distributed
+from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
 from models import DeepLab
@@ -103,13 +93,11 @@ train_dataset = Cityscaples()
 train_sampler = DistributedSampler(train_dataset)
 
 # 数据加载器
-train_loader = torch.utils.data.DataLoader(
+train_loader = DataLoader(
     train_dataset,
     batch_size=args.batch_size,
     shuffle=False,
     num_workers=args.workers,
-    pin_memory=True,
-    sampler=train_sampler,
     pin_memory=True,
     sampler=train_sampler,
 )
