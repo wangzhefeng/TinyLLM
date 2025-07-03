@@ -26,7 +26,7 @@ import argparse
 
 import torch
 
-from exp.exp_finetune_gpt_instruction_flow_evaluate import (
+from exp.finetuning.exp_finetune_gpt_instruction_flow_evaluate import (
     ModelFinetuningInstructionFlowEvaluate
 )
 from utils.random_seed import set_seed

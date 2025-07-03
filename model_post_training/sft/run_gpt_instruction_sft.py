@@ -23,7 +23,7 @@ import argparse
 
 import torch
 
-from exp.exp_finetune_gpt_instruction_flow import ModelFinetuningInstructionFlow
+from exp.finetuning.exp_finetune_gpt_instruction_flow import ModelFinetuningInstructionFlow
 from utils.random_seed import set_seed
 from utils.log_util import logger
 
