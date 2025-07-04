@@ -50,9 +50,6 @@ def ddp_setup(rank, world_size):
     if "MASTER_PORT" not in os.environ:
         os.environ["MASTER_PORT"] = "12355"
     
-    # set deivce
-    torch.cuda.set_device(rank)
-    
     # initialize process group
     if platform.system() == "Windows":
         # disable libuv because PyTorch for Windows isn't built with support
@@ -62,6 +59,14 @@ def ddp_setup(rank, world_size):
     else:
         # nccl: NVIDIA Collective Communication Library
         init_process_group(backend="nccl", rank=rank, world_size=world_size)
+
+    # set deivce
+    torch.cuda.set_device(rank)
+
+
+def ddp_setup():
+    init_process_group(backend="nccl")
+    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
 
 
 
