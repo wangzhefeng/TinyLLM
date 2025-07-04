@@ -7,6 +7,7 @@
         - [分布式数据并行(DDP)](#分布式数据并行ddp)
     - [张量并行](#张量并行)
     - [数据并行+张量并行](#数据并行张量并行)
+- [教程](#教程)
 </p></details><p></p>
 
 
@@ -40,4 +41,6 @@
 ## 数据并行+张量并行
 
 
+# 教程
 
+* [PyTorch examples distributed](https://github.com/pytorch/examples/tree/main/distributed)

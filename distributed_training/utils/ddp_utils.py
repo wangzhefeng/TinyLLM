@@ -34,7 +34,7 @@ import torch.multiprocessing as mp                                       # devic
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-def ddp_setup(rank, world_size):
+def ddp_setup_custom(rank, world_size):
     """
     function to initialize a distributed process group(1 process/GPU)
     this allows communication among processes

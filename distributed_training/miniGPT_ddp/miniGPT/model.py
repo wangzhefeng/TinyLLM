@@ -103,7 +103,8 @@ class CausalSelfAttention(nn.Module):
         y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
 
         # output projection
-        y = self.resid_dropout(self.c_proj(y))
+        y = self.c_proj(y)
+        y = self.resid_dropout()
         return y
 
 
@@ -120,8 +121,8 @@ class TransformerBlock(nn.Module):
         self.ln_2 = nn.LayerNorm(config.n_embd)
         self.mlp = nn.ModuleDict(dict(
             c_fc = nn.Linear(config.n_embd, 4 * config.n_embd),
-            c_proj = nn.Linear(4 * config.n_embd, config.n_embd),
             act = NewGELU(),
+            c_proj = nn.Linear(4 * config.n_embd, config.n_embd),
             dropout = nn.Dropout(config.resid_pdrop),
         ))
         m = self.mlp
@@ -191,6 +192,7 @@ class GPT(nn.Module):
                 'gpt-nano':     dict(n_layer=3, n_head=3, n_embd=48),
             }[config.model_type])
 
+        # input embedding stem and transformer
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(config.vocab_size, config.n_embd),
             wpe = nn.Embedding(config.block_size, config.n_embd),
@@ -198,6 +200,7 @@ class GPT(nn.Module):
             h = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layer)]),
             ln_f = nn.LayerNorm(config.n_embd),
         ))
+        # decoder head
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper

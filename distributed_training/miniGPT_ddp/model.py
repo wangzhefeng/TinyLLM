@@ -3,12 +3,14 @@ Full definition of a GPT Language Model, all of it in this single file.
 Adapted from https://github.com/karpathy/minGPT/blob/master/mingpt/model.py
 """
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+
+from utils.log_util import logger
 
 
 @dataclass
@@ -26,10 +28,12 @@ class GPTConfig:
     resid_pdrop: float = 0.1
     attn_pdrop: float = 0.1
 
+
 @dataclass
 class OptimizerConfig:
     learning_rate: float = 3e-4
     weight_decay: float = 0.1
+
 
 class MultiheadAttentionLayer(nn.Module):
     """
@@ -38,11 +42,16 @@ class MultiheadAttentionLayer(nn.Module):
 
     def __init__(self, config, device="cpu", dtype=torch.float32):
         super().__init__()
+        
         assert config.n_embd % config.n_head == 0
-        self.resid_drop = nn.Dropout(config.resid_pdrop)
+        # output projection
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, device=device, dtype=dtype)
+        # regularization
+        self.resid_drop = nn.Dropout(config.resid_pdrop)
+        # causal mask to ensure that attention is only applied to the left in the input sequence
         self.register_buffer("mask", torch.tril(torch.ones(config.block_size, config.block_size))
                              .view(1, 1, config.block_size, config.block_size))
+        # attention layer
         self.attn = torch.nn.MultiheadAttention(
             embed_dim=config.n_embd,
             num_heads=config.n_head,
@@ -53,18 +62,28 @@ class MultiheadAttentionLayer(nn.Module):
         )
 
     def forward(self, x):
-        _, seq_size, _ = x.size()
+        B, seq_size, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
+        
+        # multi-head masked self-attention
         y = self.attn(x, x, x, attn_mask=self.mask[0, 0, :seq_size, :seq_size])[0]
-        y = self.resid_drop(self.c_proj(y))
+        
+        # output projection
+        y = self.c_proj(y)
+        y = self.resid_drop()
+
         return y
 
-class Block(nn.Module):
-    """ an unassuming Transformer block """
+
+class TransformerBlock(nn.Module):
+    """
+    an unassuming Transformer block
+    """
     def __init__(self, config: GPTConfig):
         super().__init__()
+        
         self.ln1 = nn.LayerNorm(config.n_embd)
-        self.ln2 = nn.LayerNorm(config.n_embd)
         self.attn = MultiheadAttentionLayer(config)
+        self.ln2 = nn.LayerNorm(config.n_embd)
         self.mlp = nn.Sequential(
             nn.Linear(config.n_embd, 4 * config.n_embd),
             nn.GELU(),
@@ -77,9 +96,12 @@ class Block(nn.Module):
         x = x + self.mlp(self.ln2(x))
         return x
 
+
 class EmbeddingStem(nn.Module):
+    
     def __init__(self, config: GPTConfig, device="cpu", dtype=torch.float32):
         super().__init__()
+        
         self.tok_emb = nn.Embedding(config.vocab_size, config.n_embd, device=device, dtype=dtype)
         self.pos_emb = nn.Parameter(torch.zeros(1, config.block_size, config.n_embd, device=device, dtype=dtype))
         self.drop = nn.Dropout(config.embd_pdrop)
@@ -94,37 +116,51 @@ class EmbeddingStem(nn.Module):
 
         token_embeddings = self.tok_emb(idx)  # each index maps to a (learnable) embedding vector
         position_embeddings = self.pos_emb[:, :t, :]  # each position maps to a (learnable) position vector
-        return self.drop(token_embeddings + position_embeddings)
         
+        return self.drop(token_embeddings + position_embeddings)
+
+
 class GPT(nn.Module):
-    """ GPT Language Model """
+    """
+    GPT Language Model
+    """
 
     def __init__(self, config: GPTConfig):
         super().__init__()
-        self.block_size = config.block_size
-        config = self._set_model_config(config)
 
+        # set model config
+        config = self._set_model_config(config)
+        self.block_size = config.block_size
         # input embedding stem
         self.emb_stem = EmbeddingStem(config)
         # transformer
-        self.blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)])
+        self.blocks = nn.Sequential(*[TransformerBlock(config) for _ in range(config.n_layer)])
         # decoder head
         self.ln_f = nn.LayerNorm(config.n_embd)
         self.head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
         self.apply(self._init_weights)
-        for pn, p in self.named_parameters():
-            if pn.endswith('c_proj.weight'):
-                p.data.normal_(mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
+        for param_name, param in self.named_parameters():
+            if param_name.endswith('c_proj.weight'):
+                param.data.normal_(mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
 
         # report number of parameters (note we don't count the decoder parameters in lm_head)
         n_params = sum(p.numel() for p in self.blocks.parameters())
-        print("number of parameters: %.2fM" % (n_params/1e6,))
+        logger.info("number of parameters: %.2fM" % (n_params/1e6,))
 
     def _set_model_config(self, config):
+        # verify sequence length
+        assert config.vocab_size is not None
+        assert config.block_size is not None
+        # verify model type
         type_given = config.model_type is not None
-        params_given = all([config.n_layer is not None, config.n_head is not None, config.n_embd is not None])
+        # verify model parameters
+        params_given = all([
+            config.n_layer is not None, 
+            config.n_head is not None, 
+            config.n_embd is not None
+        ])
         # assert type_given ^ params_given # exactly one of these (XOR)
         if type_given and not params_given:
             # translate from model_type to detailed configuration
@@ -145,6 +181,7 @@ class GPT(nn.Module):
                 'gpt-micro':    dict(n_layer=4, n_head=4, n_embd=128),
                 'gpt-nano':     dict(n_layer=3, n_head=3, n_embd=48),
             }[config.model_type])
+        
         return config
     
     def _init_weights(self, module):
@@ -207,7 +244,6 @@ def create_optimizer(model: torch.nn.Module, opt_config: OptimizerConfig):
     weight decay for regularization and those that won't (biases, and layernorm/embedding weights).
     We are then returning the PyTorch optimizer object.
     """
-
     # separate out all parameters to those that will and won't experience regularizing weight decay
     decay = set()
     no_decay = set()
