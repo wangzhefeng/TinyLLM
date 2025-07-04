@@ -23,13 +23,11 @@ if ROOT not in sys.path:
 import time
 import platform
 from collections import defaultdict
-import warnings
-warnings.filterwarnings("ignore")
 
 import torch
 from torch.utils.data import DataLoader, RandomSampler
 
-from minigpt.utils import CfgNode as CN
+from todo.miniGPT.minigpt_utils import CfgNode as CN
 from utils.log_util import logger
 
 # global variable
@@ -37,6 +35,9 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Trainer:
+    """
+    GPT Language Model Traner
+    """
     
     @staticmethod
     def get_default_config():
@@ -152,10 +153,17 @@ class Trainer:
 
 # 测试代码 main 函数
 def main():
-    config = None
-    model = None
+    # data
     train_dataset = None
-    trainer = Trainer(config, model, train_dataset)
+    # model
+    model = None
+    # config
+    train_config = Trainer.get_default_config()
+    train_config.learning_rate = 5e-4
+    train_config.max_iters = 1000
+    train_config.batch_size = 32
+    # model training
+    trainer = Trainer(train_config, model, train_dataset)
     trainer.run()
 
 if __name__ == "__main__":

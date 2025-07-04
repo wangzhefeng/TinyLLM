@@ -21,12 +21,24 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import json
+import random
+from typing import Dict
 from ast import literal_eval
-import warnings
-warnings.filterwarnings("ignore")
+
+import numpy as np
+import torch
+
+from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 def setup_logging(config):
@@ -58,17 +70,17 @@ class CfgNode:
     def __str__(self):
         return self._str_helper(0)
 
-    def _str_helper(self, indent):
+    def _str_helper(self, indent: int=0):
         """
         need to have a helper to support nested indentation for pretty printing
         """
         parts = []
         for k, v in self.__dict__.items():
             if isinstance(v, CfgNode):
-                parts.append("%s:\n" % k)
+                parts.append(f"{k}:\n")
                 parts.append(v._str_helper(indent + 1))
             else:
-                parts.append("%s: %s\n" % (k, v))
+                parts.append(f"{k}: {v}\n")
         parts = [' ' * (indent * 4) + p for p in parts]
         
         return "".join(parts)
@@ -82,7 +94,7 @@ class CfgNode:
             for k, v in self.__dict__.items() 
         }
 
-    def merge_from_dict(self, d):
+    def merge_from_dict(self, d: Dict):
         self.__dict__.update(d)
 
     def merge_from_args(self, args):
@@ -124,7 +136,7 @@ class CfgNode:
             assert hasattr(obj, leaf_key), f"{key} is not an attribute that exists in the config"
 
             # overwrite the attribute
-            print("command line overwriting config attribute %s with %s" % (key, val))
+            logger.info("command line overwriting config attribute %s with %s" % (key, val))
             setattr(obj, leaf_key, val)
 
 
@@ -132,7 +144,34 @@ class CfgNode:
 
 # 测试代码 main 函数
 def main():
-    pass
+    C = CfgNode()
+    C.model_type = "gpt"
+    C.n_layer = None
+    C.n_head = None
+    C.n_embd = None
+    C.vocab_size = None
+    C.block_size = None
+    C.embd_pdrop = 0.1
+    C.resid_pdrop = 0.1
+    C.attn_pdrop = 0.1
+    logger.info(f"C: \n{C} \nType of C: {type(C)}")
+    
+    config_print = C._str_helper(indent=0)
+    logger.info(config_print)
+
+    config_dict = C.to_dict()
+    logger.info(config_dict)
+    
+    C.merge_from_dict({
+        "test1": 1,
+        "test2": 2,
+        "test3": 3,
+    })
+    logger.info(f"C: \n{C} \nType of C: {type(C)}")
+
+    # TODO test
+    C.merge_from_args(['--model.n_layer=10', '--trainer.batch_size=32'])
+    logger.info(f"C: \n{C} \nType of C: {type(C)}")
 
 if __name__ == "__main__":
     main()
