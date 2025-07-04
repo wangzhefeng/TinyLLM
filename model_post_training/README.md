@@ -2,6 +2,7 @@
 
 - [Post-training](#post-training)
   - [TODO](#todo)
+  - [SFT tools](#sft-tools)
 - [理解 LLM 微调](#理解-llm-微调)
   - [微调的实际应用](#微调的实际应用)
   - [微调的优势](#微调的优势)
@@ -45,12 +46,18 @@
 * Knowledge distillation
 * Synthetic data
 
-
 ## TODO
 
 * SFT Only
 * SFT + RLHF
 * SFT + DPO
+
+## SFT tools
+
+* HuggingFace `trl`
+* `unsloth`
+
+
 
 # 理解 LLM 微调
 
