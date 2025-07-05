@@ -40,23 +40,25 @@ def device_setting(verbose: bool = False):
         logger.info(f"{40 * '='}")
         logger.info(f"Device Info:")
         logger.info(f"{40 * '='}")
-        logger.info(f"GPU available: {torch.cuda.is_available() or torch.backends.mps.is_available()}")
-        logger.info(f"GPU count: {torch.cuda.device_count()}")
+        logger.info(f"{'GPU available':<13}: {torch.cuda.is_available() or torch.backends.mps.is_available():<13}")
+        logger.info(f"{'GPU count':<13}: {torch.cuda.device_count():<13}")
     
     if torch.cuda.is_available():
         if verbose:
-            logger.info(f"current GPU name: {torch.cuda.get_device_name()}")
-            logger.info(f"current GPU id: {torch.cuda.current_device()}")
+            logger.info(f"{'GPU name':<13}: {torch.cuda.get_device_name():<13}")
+            logger.info(f"{'GPU id':<13}: {torch.cuda.current_device():<13}")
         gpu = torch.cuda.current_device()
         # torch.cuda.set_device(0)
-        device = torch.device(f"cuda{gpu}")
+        device = torch.device(f"cuda:{gpu}")
     elif torch.backends.mps.is_available():
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
     
     if verbose:
-        logger.info(f"Using device: {device.type.upper()}")
+        # logger.info(f"{'Using device':<13}: {device.type.upper():<13}")
+        logger.info(f"{'Using device':<13}: {str(device):<13}")
+        logger.info(f"{40 * '='}")
 
     return device
 
