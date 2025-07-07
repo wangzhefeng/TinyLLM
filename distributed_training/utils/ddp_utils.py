@@ -34,39 +34,40 @@ import torch.multiprocessing as mp                                       # devic
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-def ddp_setup_custom(rank, world_size):
+def ddp_setup_custom(rank: int, world_size: int):
     """
     function to initialize a distributed process group(1 process/GPU)
     this allows communication among processes
 
     Args:
-        rank (_type_): a unique process ID(Unique identifier of each process)
-        world_size (_type_): total number of processes in the group
+        rank (int): a unique process ID(Unique identifier of each process)
+        world_size (int): total number of processes in the group
     """
+    # Only set MASTER_ADDR and MASTER_PORT if not already defined by torchrun
     # rank of machine running rank:0 process, assume all GPUs are on the same machine
     if "MASTER_ADDR" not in os.environ:
         os.environ["MASTER_ADDR"] = "localhost"
     # any free port on the machine
     if "MASTER_PORT" not in os.environ:
-        os.environ["MASTER_PORT"] = "12355"
+        os.environ["MASTER_PORT"] = "12345"
     
     # initialize process group
     if platform.system() == "Windows":
-        # disable libuv because PyTorch for Windows isn't built with support
+        # Disable libuv because PyTorch for Windows isn't built with support
         os.environ["USE_LIBUV"] = "0"
+        # Windows users may have to use "gloo" instead of "nccl" as backend
         # gllo: Facebook Collective Communication Library
         init_process_group(backend="gloo", rank=rank, world_size=world_size)
     else:
         # nccl: NVIDIA Collective Communication Library
         init_process_group(backend="nccl", rank=rank, world_size=world_size)
-
     # set deivce
     torch.cuda.set_device(rank)
 
 
 def ddp_setup():
-    init_process_group(backend="nccl")
-    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
+    init_process_group(backend="gloo|nccl")
+    torch.cuda.set_device(int(os.environ["LOCAL-RANK"]))
 
 
 

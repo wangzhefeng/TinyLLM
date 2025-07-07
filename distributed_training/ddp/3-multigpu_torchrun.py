@@ -20,16 +20,17 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+import platform
 import warnings
 warnings.filterwarnings("ignore")
 
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-import torch.multiprocessing as mp
-from torch.utils.data.distributed import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.distributed import init_process_group, destroy_process_group
+from torch.utils.data.distributed import DistributedSampler              # data
+from torch.nn.parallel import DistributedDataParallel as DDP             # model
+from torch.distributed import init_process_group, destroy_process_group  # process
+import torch.multiprocessing as mp                                       # device
 
 from distributed_training.utils.datautils import MyTrainDataset
 

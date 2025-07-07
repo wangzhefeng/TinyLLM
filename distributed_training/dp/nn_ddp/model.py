@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : datautils.py
+# * File        : model.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
-# * Date        : 2025-07-03
-# * Version     : 1.0.070315
+# * Date        : 2025-07-07
+# * Version     : 1.0.070714
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
@@ -24,23 +24,33 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import torch
-from torch.utils.data import Dataset
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-class MyTrainDataset(Dataset):
-    
-    def __init__(self, size):
-        self.size = size
-        self.data = [(torch.rand(20), torch.rand(1)) for _ in range(size)]
+class NeuralNetwork(torch.nn.Module):
 
-    def __len__(self):
-        return self.size
-    
-    def __getitem__(self, index):
-        return self.data[index]
+    def __init__(self, num_inputs, num_outputs):
+        super().__init__()
+
+        self.layers = torch.nn.Sequential(
+            # 1st hidden layer
+            torch.nn.Linear(num_inputs, 30),
+            torch.nn.ReLU(),
+
+            # 2nd hidden layer
+            torch.nn.Linear(30, 20),
+            torch.nn.ReLU(),
+
+            # output layer
+            torch.nn.Linear(20, num_outputs),
+        )
+
+    def forward(self, x):
+        logits = self.layers(x)
+
+        return logits
 
 
 
