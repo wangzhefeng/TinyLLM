@@ -76,10 +76,9 @@ def prepare_dataset():
     train_loader = DataLoader(
         dataset=train_ds,
         batch_size=2,
-        shuffle=False,  # False because of DistributedSampler below
+        shuffle=True,
         pin_memory=True,
         drop_last=True,
-        # sampler=DistributedSampler(train_ds)  # chunk batches across GPUs without overlapping samples
     )
     test_loader = DataLoader(
         dataset=test_ds,

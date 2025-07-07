@@ -33,6 +33,8 @@ import torch.multiprocessing as mp                                       # devic
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
+from utils.log_util import logger
+
 
 def ddp_setup_custom(rank: int, world_size: int):
     """
@@ -67,14 +69,15 @@ def ddp_setup_custom(rank: int, world_size: int):
 
 def ddp_setup():
     init_process_group(backend="gloo|nccl")
-    torch.cuda.set_device(int(os.environ["LOCAL-RANK"]))
+    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
 
 
 
 
 # 测试代码 main 函数
 def main():
-    pass
+    # ddp_setup_custom(rank=0, world_size=1)
+    ddp_setup()
 
 if __name__ == "__main__":
     main()

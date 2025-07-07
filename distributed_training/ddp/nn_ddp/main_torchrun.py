@@ -109,7 +109,6 @@ def train(rank, world_size, num_epochs):
 
 
 
-
 # 测试代码 main 函数
 @record
 def main():
@@ -118,6 +117,7 @@ def main():
         world_size = int(os.environ["WORLD_SIZE"])
     else:
         world_size = 1
+    logger.info(f"world size: {world_size}")
     
     if "LOCAL_RANK" in os.environ:
         rank = int(os.environ["LOCAL_RANK"])
@@ -125,6 +125,7 @@ def main():
         rank = int(os.environ["RANK"])
     else:
         rank = 0
+    logger.info(f"rank: {rank}")
     
     # Only print on rank 0 to avoid duplicate prints from each GPU process
     if rank == 0:
@@ -135,11 +136,8 @@ def main():
     # set seed
     torch.manual_seed(123)
 
-    # train epochs
-    num_epochs = 3
-
     # training
-    train(rank, world_size, num_epochs)
+    train(rank, world_size, num_epochs=3)
 
 if __name__ == "__main__":
     main()

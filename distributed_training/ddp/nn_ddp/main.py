@@ -21,8 +21,11 @@ if ROOT not in sys.path:
 
 import torch
 import torch.nn.functional as F
-from torch.nn.parallel import DataParallel
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import destroy_process_group
 
+from distributed_training.utils.ddp_utils import ddp_setup_custom
 from distributed_training.ddp.nn_ddp.data_provider import prepare_dataset
 from distributed_training.ddp.nn_ddp.model import NeuralNetwork
 
@@ -50,7 +53,7 @@ def compute_accuracy(model, dataloader, device):
 
 def train(rank, world_size, num_epochs):
     # initialize process group
-    # ddp_setup_custom(rank, world_size)
+    ddp_setup_custom(rank, world_size)
     
     # data prepare
     train_loader, test_loader = prepare_dataset()
@@ -61,8 +64,7 @@ def train(rank, world_size, num_epochs):
     optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
     
     # wrap model with DDP(the core model is now accessible as model.module)
-    # model = DDP(model, device_ids=[rank], output_device=rank)
-    model = DataParallel(model, device_ids=range(world_size))
+    model = DDP(model, device_ids=[rank], output_device=rank)
 
     for epoch in range(num_epochs):
         # set sampler to ensure each epoch has a different shuffle order
@@ -99,7 +101,7 @@ def train(rank, world_size, num_epochs):
         )
     
     # cleanly exit distributed mode
-    # destroy_process_group()
+    destroy_process_group()
 
 
 
@@ -114,7 +116,8 @@ def main():
     torch.manual_seed(123)
     train_epochs = 3
     world_size = torch.cuda.device_count()
-    mp.spawn(main, args = (world_size, train_epochs), nprocs=world_size)
+    
+    mp.spawn(train, args = (world_size, train_epochs), nprocs=world_size)
 
 if __name__ == "__main__":
     main()
