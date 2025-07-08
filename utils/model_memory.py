@@ -9,6 +9,7 @@
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
+# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -16,13 +17,12 @@ __all__ = []
 # python libraries
 import os
 import sys
-from pathlib import Path
-ROOT = str(Path.cwd())
+ROOT = str(os.getcwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from warnings import simplefilter
 simplefilter("ignore")
-
+from pathlib import Path
 
 import torch
 
@@ -54,8 +54,8 @@ def model_memory_size(model, input_dtype=torch.float32, verbose:bool=False):
         for buffer in model.buffers()
     ])
     if verbose:
-        logger.info(f"Model number of parameters: {total_params / 1e6:.2f}M")
-        # logger.info(f"Total number of parameters: {total_params + total_grads + total_buffers}")
+        logger.info(f"Model number of parameters: {total_params / 1e6:.2f}M.")
+        # logger.info(f"Total number of parameters: {total_params + total_grads + total_buffers}.")
 
     # Size in bytes = (Number of elements) * (Size of each element in bytes)
     # assume parameters and gradients are stored in the same type as input dtype
@@ -64,7 +64,32 @@ def model_memory_size(model, input_dtype=torch.float32, verbose:bool=False):
     # convert bytes to gigabytes
     total_memory_gb = total_memory_bytes / (1024 ** 3)
     if verbose:
-        logger.info(f"Model memory used size: {total_memory_gb:.2f}GB")
+        logger.info(f"Model memory used size: {total_memory_gb:.2f}GB.")
+
+    return total_memory_gb
+
+
+def model_memory_size(model, input_dtype=torch.float32):
+    total_params = 0
+    total_grads = 0
+    for param in model.parameters():
+        # Calculate total number of elements per parameter
+        param_size = param.numel()
+        total_params += param_size
+        # Check if gradients are stored for this parameter
+        if param.requires_grad:
+            total_grads += param_size
+
+    # Calculate buffer size (non-parameters that require memory)
+    total_buffers = sum(buf.numel() for buf in model.buffers())
+
+    # Size in bytes = (Number of elements) * (Size of each element in bytes)
+    # We assume parameters and gradients are stored in the same type as input dtype
+    element_size = torch.tensor(0, dtype=input_dtype).element_size()
+    total_memory_bytes = (total_params + total_grads + total_buffers) * element_size
+
+    # Convert bytes to gigabytes
+    total_memory_gb = total_memory_bytes / (1024**3)
 
     return total_memory_gb
 
@@ -73,27 +98,7 @@ def model_memory_size(model, input_dtype=torch.float32, verbose:bool=False):
 
 # 测试代码 main 函数
 def main():
-    from utils.args_tools import DotDict
-    from models.llama2 import Model
-
-    # model params
-    LLAMA2_CONFIG_7B = {
-        "vocab_size": 32000,     # Vocabulary size
-        "context_length": 4096,  # Context length
-        "emb_dim": 4096,         # Embedding dimension
-        "n_heads": 32,           # Number of attention heads
-        "n_layers": 32,          # Number of layers
-        "hidden_dim": 11008,     # NEW: Size of the intermediate dimension in FeedForward
-        "dtype": torch.bfloat16  # NEW: Lower-precision dtype to reduce memory usage
-    }
-    LLAMA2_CONFIG_7B = DotDict(LLAMA2_CONFIG_7B)
-
-    # model
-    model = Model(LLAMA2_CONFIG_7B)
-
-    # model memory size
-    total_memory_gb = model_memory_size(model, input_dtype=torch.float32)
-    total_memory_gb = model_memory_size(model, input_dtype=torch.bfloat16)
+    pass
 
 if __name__ == "__main__":
     main()
