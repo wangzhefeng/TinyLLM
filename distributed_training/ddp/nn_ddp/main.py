@@ -25,7 +25,7 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import destroy_process_group
 
-from distributed_training.utils.ddp_utils import ddp_setup_custom
+from utils.ddp_utils import ddp_setup_custom
 from distributed_training.ddp.nn_ddp.data_provider import prepare_dataset
 from distributed_training.ddp.nn_ddp.model import NeuralNetwork
 

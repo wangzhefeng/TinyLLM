@@ -10,32 +10,24 @@
 import os
 import sys
 import re
-from pathlib import Path
-
 import logging
 from logging import handlers
+from pathlib import Path
 
 
 # 项目根路径
-ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_PATH = Path.cwd()
+
 # 日志路径
-LOG_NAME = os.environ.get("LOG_NAME")
-if sys.platform == "win32":
-    LOG_DIR = f"{ROOT_PATH}\\logs\\{LOG_NAME}"
-    os.makedirs(LOG_DIR, exist_ok=True)
-    log_path = Path(LOG_DIR).joinpath("service")
-else:
-    LOG_DIR = f"{ROOT_PATH}/logs/{LOG_NAME}"
-    os.makedirs(LOG_DIR, exist_ok=True)
-    log_path = Path(LOG_DIR).joinpath("service")
+LOG_DIR = Path(f"{ROOT_PATH}/logs/{os.environ.get('LOG_NAME')}")
+LOG_DIR.mkdir(exist_ok=True)
+log_path = LOG_DIR.joinpath("service")
 
 # 日志级别，默认为INFO
 LOG_LEVEL = os.environ.get("SERVICE_LOG_LEVEL", "INFO")
 
 # 默认日志格式
-default_formatter = logging.Formatter(
-    "[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d:%(funcName)s] %(message)s"
-)
+default_formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d:%(funcName)s] %(message)s")
 
 # ------------------------------
 # 控制台日志处理器

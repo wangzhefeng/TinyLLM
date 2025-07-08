@@ -96,7 +96,7 @@ def prepare_dataset():
 def main():
     rank=0
     world_size=1
-    from distributed_training.utils.ddp_utils import ddp_setup_custom
+    from utils.ddp_utils import ddp_setup_custom
     # initialize process group
     ddp_setup_custom(rank, world_size)
     

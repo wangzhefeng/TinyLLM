@@ -27,12 +27,23 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-from distributed_training.utils.datautils import MyTrainDataset
-
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 os.environ['LOG_NAME'] = LOGGING_LABEL
 from utils.log_util import logger
+
+
+class MyTrainDataset(Dataset):
+    
+    def __init__(self, size):
+        self.size = size
+        self.data = [(torch.rand(20), torch.rand(1)) for _ in range(size)]
+
+    def __len__(self):
+        return self.size
+    
+    def __getitem__(self, index):
+        return self.data[index]
 
 
 class Trainer:
@@ -103,7 +114,6 @@ def main(device, total_epochs, save_every, batch_size):
     train_data = prepare_dataloader(dataset, batch_size)
     trainer = Trainer(model, train_data, optimizer, device, save_every)
     trainer.train(total_epochs)
-
 
 if __name__ == "__main__":
     import argparse

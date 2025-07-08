@@ -30,8 +30,6 @@ from torch.nn.parallel import DistributedDataParallel as DDP             # model
 from torch.distributed import init_process_group, destroy_process_group  # process
 import torch.multiprocessing as mp                                       # device
 
-from distributed_training.utils.datautils import MyTrainDataset
-
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 os.environ['LOG_NAME'] = LOGGING_LABEL
@@ -66,6 +64,19 @@ def ddp_setup(rank, world_size):
     else:
         # nccl: NVIDIA Collective Communication Library
         init_process_group(backend="nccl", rank=rank, world_size=world_size)
+
+
+class MyTrainDataset(Dataset):
+    
+    def __init__(self, size):
+        self.size = size
+        self.data = [(torch.rand(20), torch.rand(1)) for _ in range(size)]
+
+    def __len__(self):
+        return self.size
+    
+    def __getitem__(self, index):
+        return self.data[index]
 
 
 class Trainer:
