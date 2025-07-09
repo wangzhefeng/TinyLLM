@@ -21,7 +21,6 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

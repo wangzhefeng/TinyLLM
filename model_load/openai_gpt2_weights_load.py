@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -269,7 +268,7 @@ def load_weights_download(gpt, params):
 # 测试代码 main 函数
 def main():
     from models.gpt import Model
-    from tokenizer.tokenization import token_ids_to_text, text_to_token_ids
+    from tokenizers.tokenization import token_ids_to_text, text_to_token_ids
     from utils.train_utils.gpt_generate import generate
     from utils.device import device_setting
     from utils.args_tools import DotDict

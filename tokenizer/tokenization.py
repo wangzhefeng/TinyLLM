@@ -9,7 +9,6 @@
 # * Description : tokenizer
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -26,11 +25,11 @@ from typing import List
 
 import torch
 
-from tokenizer.simple_custom import SimpleTokenizer
-from tokenizer.simple_bpe import BPETokenizerSimple
-from tokenizer.gpt2_tiktoken import GPT2Tokenizer
-from tokenizer.llama2_7b_sentencepiece import Llama27bTokenizer
-from tokenizer.llama3_8b_bpe import Llama38bTokenizer
+from tokenizers.simple_custom import SimpleTokenizer
+from tokenizers.simple_bpe import BPETokenizerSimple
+from tokenizers.gpt2_tiktoken import GPT2Tokenizer
+from tokenizers.llama2_7b_sentencepiece import Llama27bTokenizer
+from tokenizers.llama3_8b_bpe import Llama38bTokenizer
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

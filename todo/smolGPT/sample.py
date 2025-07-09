@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -26,7 +25,7 @@ import argparse
 
 import torch
 
-from tokenizer import Tokenizer
+from tokenizers import Tokenizer
 from model import GPT
 from config import GPTConfig
 

@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -33,7 +32,7 @@ import numpy as np
 from concurrent.futures import ProcessPoolExecutor
 import sentencepiece as spm
 
-from tokenizer import Tokenizer
+from tokenizers import Tokenizer
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

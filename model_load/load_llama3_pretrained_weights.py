@@ -60,8 +60,8 @@ def main():
         download_llama3_instruct_model
     )
     from utils.train_utils.gpt_generate import generate
-    from tokenizer.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
-    from tokenizer.chat_format_tokenizer import ChatFormat
+    from tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
+    from tokenizers.chat_format_tokenizer import ChatFormat
     from utils.device import device_setting, torch_gc
     from utils.log_util import logger
 

@@ -60,7 +60,7 @@ def main():
         download_llama2_chat_model
     )
     from utils.train_utils.gpt_generate import generate
-    from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+    from tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.log_util import logger
 

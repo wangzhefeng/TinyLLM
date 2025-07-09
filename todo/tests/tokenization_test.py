@@ -20,8 +20,8 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 
-from tokenizer.simple_custom import SimpleTokenizer
-from tokenizer.simple_bpe import BPETokenizerSimple
+from tokenizers.simple_custom import SimpleTokenizer
+from tokenizers.simple_bpe import BPETokenizerSimple
 from data_provider.pretrain.data_load import data_load
 from utils.log_util import logger
 

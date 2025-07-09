@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -37,7 +36,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 # 测试代码 main 函数
 def main():
     from models.gpt import Model
-    from tokenizer.tokenization import text_to_token_ids, token_ids_to_text
+    from tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.train_utils.gpt_generate import generate_text_simple, generate
     from utils.args_tools import DotDict
     from utils.device import device_setting

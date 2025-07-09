@@ -9,7 +9,6 @@
 # * Description : https://github.com/rasbt/LLMs-from-scratch/blob/2dc46bedc6e86b79a16c4099e557564cd23e03ef/ch02/04_bonus_dataloader-intuition/dataloader-intuition.ipynb
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -171,7 +170,7 @@ def main():
     logger.info(f"raw_text[:99]: {raw_text[-99:]}")
 
     # tokenizer
-    from tokenizer.tokenization import choose_tokenizer
+    from tokenizers.tokenization import choose_tokenizer
     tokenizer = choose_tokenizer(tokenizer_model = "gpt2")         
 
     # data 
