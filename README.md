@@ -1,6 +1,34 @@
+<details><summary>目录</summary><p>
+
+- [TinyLLM](#tinyllm)
+    - [tutorial](#tutorial)
+        - [Transformer](#transformer)
+        - [Pretraining](#pretraining)
+            - [Transformer](#transformer-1)
+            - [MoE](#moe)
+        - [Finetuning](#finetuning)
+            - [GRPO](#grpo)
+        - [Model Evaluation](#model-evaluation)
+            - [Instruction Follow Finetune](#instruction-follow-finetune)
+    - [Usage](#usage)
+        - [Pretraining](#pretraining-1)
+        - [Finetuning](#finetuning-1)
+        - [Agent](#agent)
+    - [others](#others)
+        - [KV Cache](#kv-cache)
+</p></details><p></p>
+
 # TinyLLM
 
 ## tutorial
+
+### Transformer
+
+* Transformer
+    - []()
+* GPT
+* Llama
+* DeepSeek
 
 ### Pretraining
 

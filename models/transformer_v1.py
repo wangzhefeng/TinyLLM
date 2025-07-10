@@ -622,16 +622,20 @@ class Transformer(nn.Module):
 
 # 测试代码 main 函数
 def main():
+    import torch
     from dataclasses import dataclass
 
-    # config
+    # ------------------------------
+    # 创建模型配置文件
+    # ------------------------------ 
+    print("*" * 80)
     @dataclass
     class TransformerConfig:
-        block_size: int = 1024  # 序列长度
+        block_size: int = 1024  # 序列的最大长度
         vocab_size: int = 50304  # 词表大小
         n_layer: int = 4  # Encoder, Deocder 层数
         n_head: int = 4  # 注意力头数量
-        n_embd: int = 768  # Embedding 维度
+        n_embd: int = 768  # Embedding 维度(d_model)
         dropout: float = 0.0
         bias: bool = True
 
@@ -645,28 +649,35 @@ def main():
         bias = True,
     )
     print(f"Model Config:\n{model_config}")
-   
-    # input
+    # ------------------------------
+    # 创建模型
+    # ------------------------------
+    print("*" * 80)
+    print("Model info:")
+    print("-" * 45)
+    model = Transformer(model_config)
+    # ------------------------------
+    # 向前传递
+    # ------------------------------
     idx = torch.randint(1, 10, (4, 8))
     print(f"Model input:\n{idx}")
     print(f"Model input size:\n{idx.size()}")
-
-    # embedding 
-    embed = Embedding(model_config)
-    embed_x = embed(idx)
-    # print(embed_x)
-    print(embed_x.size())
-    
-    # postional encoding
-    pos_enc = PositionalEncoding(model_config)
-    pos_x=  pos_enc(embed_x)
-    # print(pos_x)
-    print(embed_x.size())
-    
-    # dropout
-    dropout = Dropout(model_config)
-    dropout_x = dropout(pos_x)
-    print(dropout_x.size())
+    print("-" * 45)
+    print("Model forward:")
+    logits, loss = model(idx, targets = None)
+    print("-" * 45)
+    print(f"logits:\n{logits} \nlogits size: {logits.size()}")
+    print(f"loss: {loss}")
+    # ------------------------------
+    # 模型推理
+    # ------------------------------ 
+    print("*" * 80)
+    print("Model Inference:")
+    print("-" * 45)
+    result = model.generate(idx, 3)
+    print("-" * 45)
+    print(f"generate result:\n{result}")
+    print(f"generate result size: {result.size()}")
 
 if __name__ == "__main__":
     main()

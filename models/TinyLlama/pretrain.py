@@ -21,10 +21,7 @@ if ROOT not in sys.path:
 import math
 import time
 from contextlib import nullcontext
-from datetime import datetime
 from functools import partial
-from dataclasses import dataclass
-
 
 import torch
 from llama_model import Transformer, ModelArgs, Task
@@ -147,7 +144,7 @@ model.to(device)
 
 
 # initialize a GradScaler. If enabled=False scaler is a no-op
-scaler = torch.cuda.amp.GradScaler(enabled = (dtype == "float16"))
+scaler = torch.amp.GradScaler(device="cuda", enabled = (dtype == "float16"))
 
 
 # optimizer
