@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : opeai_gpt2_models.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-03-02
 # * Version     : 0.1.030223
 # * Description : description

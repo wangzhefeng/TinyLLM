@@ -14,11 +14,11 @@
 __all__ = []
 
 # python libraries
-import os
 import sys
-ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+from pathlib import Path
+ROOT = str(Path.cwd())
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 from dataclasses import dataclass
 
 import torch
@@ -52,18 +52,17 @@ model_config = TransformerConfig(
     bias = True,
 )
 print(f"Model Config:\n{model_config}")
-
 # ------------------------------
 # 创建模型
 # ------------------------------
 print("*" * 80)
 print("Model info:")
+print("-" * 45)
 model = Transformer(model_config)
 
 # ------------------------------
 # 向前传递
 # ------------------------------
-print("*" * 80)
 idx = torch.randint(1, 10, (4, 8))
 print(f"Model input:\n{idx}")
 print(f"Model input size:\n{idx.size()}")
@@ -71,18 +70,18 @@ print("-" * 45)
 print("Model forward:")
 logits, loss = model(idx, targets = None)
 print("-" * 45)
-print(f"logits size:\n{logits.size()}")
-print(f"logits:\n{logits}")
-
+print(f"logits:\n{logits} \nlogits size: {logits.size()}")
+print(f"loss: {loss}")
 # ------------------------------
 # 模型推理
 # ------------------------------ 
 print("*" * 80)
 print("Model Inference:")
+print("-" * 45)
 result = model.generate(idx, 3)
 print("-" * 45)
 print(f"generate result:\n{result}")
-print(f"generate result size:\n{result.size()}")
+print(f"generate result size: {result.size()}")
 
 
 

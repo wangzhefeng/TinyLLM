@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -36,7 +35,7 @@ class CasualAttention(nn.Module):
     """
     def __init__(self, d_in: int, d_out: int, context_length: int, 
                  dropout: float, qkv_bias=False):
-        super(CasualAttention, self).__init__()
+        super().__init__()
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -69,7 +68,7 @@ class MultiHeadAttentionWrapper(nn.Module):
     
     def __init__(self, d_in: int, d_out: int, context_length: int, 
                  dropout: float, num_heads: int, qkv_bias=False):
-        super(MultiHeadAttentionWrapper, self).__init__()
+        super().__init__()
         
         self.heads = nn.ModuleList([
             CasualAttention(d_in, d_out, context_length, dropout, qkv_bias) 

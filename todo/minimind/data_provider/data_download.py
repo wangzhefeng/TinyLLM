@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : https://www.modelscope.cn/datasets/gongjy/minimind_dataset/files
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []

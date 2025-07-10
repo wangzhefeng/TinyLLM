@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : https://github.com/microsoft/markitdown
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []

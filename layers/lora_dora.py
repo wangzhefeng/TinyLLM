@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : lora.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-21
 # * Version     : 0.1.022123
 # * Description : description
@@ -23,10 +23,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils.log_util import logger
+
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-
-from utils.log_util import logger
 
 
 class LoRALayer(nn.Module):
@@ -39,7 +39,7 @@ class LoRALayer(nn.Module):
     """
     
     def __init__(self, in_dim, out_dim, rank, alpha):
-        super(LoRALayer, self).__init__()
+        super().__init__()
 
         # A
         # version 1
@@ -68,7 +68,7 @@ class LinearWithLoRA(nn.Module):
     """
     
     def __init__(self, linear, rank, alpha):
-        super(LinearWithLoRA, self).__init__()
+        super().__init__()
 
         self.linear = linear
         self.lora = LoRALayer(
@@ -90,7 +90,7 @@ class LinearWithDoRA(nn.Module):
     """
     
     def __init__(self, linear, rank, alpha):
-        super(LinearWithDoRA, self).__init__()
+        super().__init__()
         
         self.linear = linear
         self.lora = LoRALayer(
@@ -118,7 +118,7 @@ class LinearWithLoRAMerged(nn.Module):
     """
 
     def __init__(self, linear, rank, alpha) -> None:
-        super(LinearWithLoRAMerged, self).__init__()
+        super().__init__()
 
         self.linear = linear
         self.lora = LoRALayer(
@@ -148,7 +148,7 @@ class LinearWithDoRAMerged(nn.Module):
     """
 
     def __init__(self, linear, rank, alpha) -> None:
-        super(LinearWithDoRAMerged, self).__init__()
+        super().__init__()
 
         self.linear = linear
         self.lora = LoRALayer(
@@ -208,7 +208,6 @@ def freeze_linear_layers(model, verbose=False):
         for name, param in model.named_parameters():
             logger.info(f"{name}: {param.requires_grad}")
 
-    
 
 
 

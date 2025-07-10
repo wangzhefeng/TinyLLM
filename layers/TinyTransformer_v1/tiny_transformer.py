@@ -7,7 +7,7 @@
 # * Date        : 2024-09-24
 # * Version     : 1.0.092404
 # * Description : description
-# * Link        : link
+# * Link        : https://github.com/datawhalechina/tiny-universe/tree/main/content/TinyTransformer
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
@@ -16,9 +16,10 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+from pathlib import Path
+ROOT = str(Path.cwd())
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 import math
 import inspect
 
@@ -57,7 +58,7 @@ class Embedding(nn.Module):
     """
 
     def __init__(self, config) -> None:
-        super(Embedding, self).__init__()
+        super().__init__()
         self.embd = nn.Embedding(config.vocab_size, config.n_embd)
     
     def forward(self, x):
@@ -72,7 +73,7 @@ class Dropout(nn.Module):
     """
 
     def __init__(self, config) -> None:
-        super(Dropout, self).__init__()
+        super().__init__()
         self.dropout = nn.Dropout(config.dropout)
     
     def forward(self, x):
@@ -88,7 +89,7 @@ class PositionalEncoding(nn.Module):
     """
 
     def __init__(self, config):
-        super(PositionalEncoding, self).__init__()
+        super().__init__()
         # Dropout 层
         self.dropout = nn.Dropout(p = config.dropout)
         
@@ -125,10 +126,10 @@ class MultiHeadAttention(nn.Module):
         config (_type_): 配置对象
         is_causal (bool, optional): 是否为 Masked Multi-Head Attention. Defaults to False.
         """
-        super(MultiHeadAttention, self).__init__()
+        super().__init__()
         
         # 隐藏层维度必须是头数的整数倍
-        assert config.n_embd % config.n_head == 0
+        assert (config.n_embd % config.n_head == 0), "n_embd must be divisible by num_heads"
 
         # Wq, Wk, Wv 参数矩阵(每个参数矩阵为 n_embd×n_embd)
         self.c_attns = nn.ModuleList([
@@ -217,7 +218,7 @@ class FeedForward(nn.Module):
         """
         Transformer 的全连接模块有两个线性层，中间加了一个 RELU 激活函数
         """
-        super(FeedForward, self).__init__() 
+        super().__init__() 
         self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd, bias = config.bias)
         self.relu = nn.ReLU()
         self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias = config.bias)
@@ -248,7 +249,7 @@ class LayerNorm(nn.Module):
             ndim (_type_): _description_
             bias (_type_): _description_
         """
-        super(LayerNorm, self).__init__()
+        super().__init__()
         self.weight = nn.Parameter(torch.ones(ndim))
         self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
     
@@ -276,7 +277,7 @@ class EncoderLayer(nn.Module):
         一个 Encoder Layer 中有一个 Feed Forward
         一个 Encoder Layer 中有两个 LayerNorm，分别在 Attention 之前和 FeedForward 之前
         """
-        super(EncoderLayer, self).__init__() 
+        super().__init__() 
         self.ln_1 = LayerNorm(config.n_embd, bias = config.bias) 
         self.attn = MultiHeadAttention(config, is_causal = False)
         self.ln_2 = LayerNorm(config.n_embd, bias = config.bias)
@@ -303,7 +304,7 @@ class Encoder(nn.Module):
         """
         一个 Encoder 由 N 个 Encoder Layer 组成
         """
-        super(Encoder, self).__init__()
+        super().__init__()
         self.layers = nn.ModuleList([
             EncoderLayer(config) for _ in range(config.n_layer)
         ])
@@ -332,7 +333,7 @@ class DecoderLayer(nn.Module):
         一个 Decoder Layer 中有一个 Feed Forward，Decoder 第三部分是 FeedForward
         一个 Decoder Layer 中有三个 LayerNorm，分别在 Mask Attention 之前、Self-Attention 之前和 FeedForward 之前
         """
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self.ln_1 = LayerNorm(config.n_embd, bias = config.bias) 
         self.m_attn = MultiHeadAttention(config, is_causal = True)
         self.ln_2 = LayerNorm(config.n_embd, bias = config.bias) 
@@ -366,7 +367,7 @@ class Decoder(nn.Module):
         """
         一个 Decoder 由 N 个 Decoder Layer 组成
         """
-        super(Decoder, self).__init__() 
+        super().__init__() 
         self.layers = nn.ModuleList([
             DecoderLayer(config) for _ in range(config.n_layer)
         ])
@@ -389,7 +390,7 @@ class Linear(nn.Module):
     """
 
     def __init__(self, config):
-        super(Linear, self).__init__()
+        super().__init__()
         self.linear = nn.Linear(config.n_embd, config.vocab_size, bias = False)
 
     def forward(self, x):
@@ -404,7 +405,7 @@ class Softmax(nn.Module):
     """
 
     def __init__(self, logits):
-        super(Softmax, self).__init__()
+        super().__init__()
         self.softmax = F.softmax(logits, dim = -1)
     
     def forward(self):
@@ -418,6 +419,7 @@ class Transformer(nn.Module):
 
     def __init__(self, config):
         super().__init__()
+        
         # 必须输入: 词表大小和 block size
         assert config.vocab_size is not None
         assert config.block_size is not None
@@ -426,7 +428,7 @@ class Transformer(nn.Module):
         # ------------------------------
         self.config = config
         # ------------------------------
-        # Transformer 
+        # Transformer
         # ------------------------------
         self.transformer = nn.ModuleDict(dict(
             # wte = nn.Embedding(config.vocab_size, config.n_embd),
@@ -625,7 +627,7 @@ def main():
     # config
     @dataclass
     class TransformerConfig:
-        block_size: int = 1024  # TODO
+        block_size: int = 1024  # 序列长度
         vocab_size: int = 50304  # 词表大小
         n_layer: int = 4  # Encoder, Deocder 层数
         n_head: int = 4  # 注意力头数量

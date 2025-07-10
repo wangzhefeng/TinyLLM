@@ -16,9 +16,10 @@ __all__ = []
 # python libraries
 import os
 import sys
-ROOT = os.getcwd()
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))
+from pathlib import Path
+ROOT = str(Path.cwd())
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 import time
 
 import numpy as np
@@ -105,9 +106,7 @@ def train(model,
             total_loss += loss.item()
             if (i + 1) % print_every == 0:
                 loss_avg = total_loss / print_every
-                print(f"Epoch: {epoch+1}, Step: {i+1}, Loss: {loss_avg}, 
-                    Time: {(time.time() - start) // 60}, 
-                    {time.time() - temp} per {print_every}")
+                print(f"Epoch: {epoch+1}, Step: {i+1}, Loss: {loss_avg}, Time: {(time.time() - start) // 60}, {time.time() - temp} per {print_every}")
                 total_loss = 0
                 temp = time.time()
 

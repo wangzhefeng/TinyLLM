@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : exp_basic.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-13
 # * Version     : 0.1.021322
 # * Description : description
@@ -21,7 +21,7 @@ if ROOT not in sys.path:
 
 import torch
 
-from models import gpt, llama2
+from models import gpt, llama2, llama3_8B
 from model_post_training.lora_qlora.scratch_exps.lora_dora_from_scratch import MLP
 # from todo.minimind.model import model as minimind
 from utils.log_util import logger
@@ -37,6 +37,7 @@ class Exp_Basic:
         self.model_dict = {
             "gpt": gpt,
             "llama2": llama2,
+            "llama3_8B": llama3_8B,
             # "minimind": minimind,
             "mlp": MLP,
         }

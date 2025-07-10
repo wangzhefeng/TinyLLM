@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : find_near_duplicates.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-18
 # * Version     : 0.1.021823
 # * Description : description

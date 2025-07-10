@@ -34,7 +34,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class Model(nn.Module):
     
     def __init__(self, args):
-        super(Model, self).__init__()
+        super().__init__()
 
         self.layers = nn.Sequential(
             nn.Linear(args.num_features, args.num_hidden_1),  # 784 * 128

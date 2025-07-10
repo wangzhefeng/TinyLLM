@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : ollama_api.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-17
 # * Version     : 0.1.021723
 # * Description : description

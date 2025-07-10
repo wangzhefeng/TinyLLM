@@ -34,7 +34,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class DeepNeuralNetwork(nn.Module):
     
     def __init__(self, layer_sizes, use_shortcut):
-        super(DeepNeuralNetwork, self).__init__()
+        super().__init__()
 
         self.use_shortcut = use_shortcut
         self.layers = nn.ModuleList([

@@ -10,7 +10,6 @@
 # * Link        : Google SentencePiece: https://github.com/google/sentencepiece
 # *               Llama2 model weights and tokenizer vocabulary on huggingface hub: https://huggingface.co/meta-llama/Llama-2-7b
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []

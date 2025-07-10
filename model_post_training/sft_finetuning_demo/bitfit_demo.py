@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : bitfit_demo.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-23
 # * Version     : 0.1.022321
 # * Description : description
