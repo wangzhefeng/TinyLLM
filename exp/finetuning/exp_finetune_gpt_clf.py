@@ -34,10 +34,10 @@ from tokenizers.tokenization import choose_tokenizer
 from model_load.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
 from model_load.load_pretrained_weights import load_pretrained_model
 # training
-from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.train_utils.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
-from utils.train_utils.train_funcs import select_optimizer
-from utils.train_utils.plot_losses import plot_values_classifier
+from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.llm.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
+from utils.llm.train_funcs import select_optimizer
+from utils.plot_losses import plot_values_classifier
 # utils
 from utils.device import device_setting
 from utils.log_util import logger

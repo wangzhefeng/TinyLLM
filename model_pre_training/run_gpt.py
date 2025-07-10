@@ -25,7 +25,7 @@ import torch.multiprocessing as mp
 from torch.distributed import destroy_process_group
 
 from exp.pretraining.exp_pretrain_gpt import Model_Pretrain
-from utils.args_tools import print_args
+from utils.args_tools import print_args_llm
 from utils.device import torch_gc
 from utils.random_seed import set_seed
 from utils.distributed_training.ddp_utils import ddp_setup
@@ -157,7 +157,7 @@ def main(rank: int, world_size: int, args):
 if __name__ == "__main__":
     # 参数解析
     args = args_parse()
-    print_args(args)
+    print_args_llm(args)
     # distributed data parallelim training
     world_size = torch.cuda.device_count()
     mp.spawn(

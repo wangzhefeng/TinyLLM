@@ -36,14 +36,14 @@ from tokenizers.tokenization import choose_tokenizer
 from tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
-from utils.train_utils.gpt_generate import generate
+from utils.llm.gpt_generate import generate
 # other model
 from model_load.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
 from model_load.load_pretrained_weights import load_pretrained_model
 # model training
-from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.train_utils.train_funcs import select_optimizer
-from utils.train_utils.plot_losses import plot_losses
+from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.llm.train_funcs import select_optimizer
+from utils.plot_losses import plot_losses
 # tools
 from utils.device import device_setting
 from utils.log_util import logger

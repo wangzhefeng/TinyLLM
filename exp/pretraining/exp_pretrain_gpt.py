@@ -38,11 +38,11 @@ from tokenizers.tokenization import (
 # model
 from exp.exp_basic import Exp_Basic
 # training
-from utils.train_utils.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.train_utils.train_funcs import select_optimizer
-from utils.train_utils.train_funcs import adjust_learning_rate, EarlyStopping
-from utils.train_utils.gpt_generate import generate
-from utils.train_utils.plot_losses import plot_losses
+from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.llm.train_funcs import select_optimizer
+from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
+from utils.llm.gpt_generate import generate
+from utils.plot_losses import plot_losses
 # utils
 from utils.model_memory import model_memory_size
 from utils.timestamp_utils import from_unix_time

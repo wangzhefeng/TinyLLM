@@ -22,7 +22,7 @@ from tqdm import tqdm
 
 
 from data_provider.finetune.instruction_format import format_input_alpaca
-from utils.inference_utils.ollama_api import check_if_running, query_model
+from model_inference.inference_utils.ollama_api import check_if_running, query_model
 from utils.log_util import logger
 
 # global variable

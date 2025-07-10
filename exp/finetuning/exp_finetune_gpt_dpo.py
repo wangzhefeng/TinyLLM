@@ -32,7 +32,7 @@ from data_provider.finetune.dpo import data_loader
 from data_provider.finetune import instruction_format
 # model
 from models.gpt import Model
-from utils.train_utils.gpt_generate import generate
+from utils.llm.gpt_generate import generate
 # tokenzier
 from tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
 from model_load.load_gpt2_pretrained_weights import (
@@ -40,8 +40,8 @@ from model_load.load_gpt2_pretrained_weights import (
     gpt2_huggingface_models,
 )
 from model_load.openai_gpt2_weights_load_hf import load_weights_hf
-from utils.train_utils.train_funcs import select_optimizer
-from utils.train_utils.plot_losses import plot_losses
+from utils.llm.train_funcs import select_optimizer
+from utils.plot_losses import plot_losses
 # utils
 from utils.device import device_setting
 from utils.args_tools import DotDict

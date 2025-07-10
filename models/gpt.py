@@ -75,7 +75,7 @@ class Model(nn.Module):
 # 测试代码 main 函数
 def main():
     import tiktoken
-    from utils.train_utils.gpt_generate import generate
+    from utils.llm.gpt_generate import generate
     from utils.args_tools import DotDict
 
     # model params

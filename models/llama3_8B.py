@@ -63,7 +63,7 @@ class Model(nn.Module):
 def main():
     import torch
     from utils.args_tools import DotDict
-    from utils.train_utils.gpt_generate import generate
+    from utils.llm.gpt_generate import generate
     from tokenizers.tokenization import (
         text_to_token_ids,
         token_ids_to_text,

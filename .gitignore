@@ -182,3 +182,4 @@ minbpe/
 wandb/
 .DS_Store
 localtest/
+utils/

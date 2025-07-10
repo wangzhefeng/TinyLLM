@@ -138,7 +138,7 @@ def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
 # 测试代码 main 函数
 def main():
     from models.gpt import Model
-    from utils.train_utils.gpt_generate import generate
+    from utils.llm.gpt_generate import generate
     from tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.args_tools import DotDict
