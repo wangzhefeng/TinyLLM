@@ -14,20 +14,17 @@
 __all__ = []
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockGPT
 from layers.layer_norm import LayerNorm
-from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -36,7 +33,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class Model(nn.Module):
 
     def __init__(self, cfg):
-        super(Model, self).__init__()
+        super().__init__()
 
         # Embedding
         self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.emb_dim)
@@ -52,17 +49,17 @@ class Model(nn.Module):
         self.out_head = nn.Linear(cfg.emb_dim, cfg.vocab_size, bias = False)
 
     def forward(self, in_idx):
-        # in_idx size
+        # TODO in_idx size
         batch_size, seq_len = in_idx.shape
-        # logger.info(f"batch_size: {batch_size} seq_len: {seq_len}")
         # embedding
         tok_embeds = self.tok_emb(in_idx)
         pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
         x = tok_embeds + pos_embeds  # shape: [batch_size, num_tokens, emb_size]
-        x = self.drop_emb(x)  # dropout
+        # dropout
+        x = self.drop_emb(x)
         # transformer blocks
         x = self.trf_blocks(x)
-        # final norm
+        # final layer norm
         x = self.final_norm(x)
         # output head
         logits = self.out_head(x)
@@ -77,8 +74,21 @@ def main():
     import tiktoken
     from utils.llm.gpt_generate import generate
     from utils.args_tools import DotDict
+    from utils.log_util import logger
 
-    # model params
+    # input data
+    start_context = "Hello, I am"
+
+    # tokenization
+    tokenizer = tiktoken.get_encoding("gpt2")
+    token_ids = tokenizer.encode(start_context)
+    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0)
+    logger.info(f"\n{50 * '='}\n{22 * ' '}IN\n{50 * '='}")
+    logger.info(f"Input text: {start_context}")
+    logger.info(f"Encoded input text: {token_ids_tensor} Encoded input shape: {token_ids_tensor.shape}")
+
+    # model
+    torch.manual_seed(123)
     GPT_CONFIG_124M = {
         "vocab_size": 50257,     # Vocabular size
         "context_length": 1024,  # Context length
@@ -90,21 +100,6 @@ def main():
         "qkv_bias": False,       # Query-Key-Value bias
     }
     GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
-
-    # input data
-    start_context = "Hello, I am"
-
-    # tokenization
-    tokenizer = tiktoken.get_encoding("gpt2")
-    token_ids = tokenizer.encode(start_context)
-    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0)
-    logger.info(f"\n{50 * '='}\n{22 * ' '}IN\n{50 * '='}")
-    logger.info(f"Input text: {start_context}")
-    logger.info(f"Encoded input text: {token_ids_tensor}")
-    logger.info(f"Encoded input shape: {token_ids_tensor.shape}")
-
-    # model
-    torch.manual_seed(123)
     model = Model(GPT_CONFIG_124M)
     model.eval()  # disable dropout
     
@@ -115,10 +110,11 @@ def main():
         max_new_tokens = GPT_CONFIG_124M["max_new_toknes"],
         context_size = GPT_CONFIG_124M["context_length"],
     )
+    logger.info(f"\n{50 * '='}\n{22 * ' '}Output\n{50 * '='}")
+    logger.info(f"Output: {out} Outout shape: {out.shape}")
+    
     decoded_text = tokenizer.decode(out.squeeze(0).tolist())
-    logger.info(f"\n{50 * '='}\n{22 * ' '}OUT\n{50 * '='}")
-    logger.info(f"Output: {out}")
-    logger.info(f"Outout shape: {out.shape}")
+    logger.info(f"\n{50 * '='}\n{22 * ' '}Output text\n{50 * '='}")
     logger.info(f"Output text: {decoded_text}")
 
 if __name__ == "__main__":

@@ -12,13 +12,11 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-
 
 import torch
 import torch.nn as nn
@@ -33,7 +31,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class Model(nn.Module):
 
     def __init__(self, cfg):
-        super(Model, self).__init__()
+        super().__init__()
 
         # embedding
         self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.emb_dim, dtype=cfg.dtype)
@@ -47,11 +45,16 @@ class Model(nn.Module):
         self.out_head = nn.Linear(cfg.emb_dim, cfg.vocab_size, bias = False, dtype=cfg.dtype)
     
     def forward(self, in_idx):
+        # TODO in_idx size
+        batch_size, seq_len = in_idx.shape
         # embedding
         tok_embeds = self.tok_emb(in_idx)
         x = tok_embeds
+        # transformer blocks
         x = self.trf_blocks(x)
+        # final rms norm
         x = self.final_norm(x)
+        # TODO output head
         logits = self.out_head(x.to(torch.bfloat16))
 
         return logits

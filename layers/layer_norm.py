@@ -28,17 +28,28 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class LayerNorm(nn.Module):
+    """
+    Layer Normalization
+    
+    Formular: `\gamma \times (x - \mu) / \sqrt{\sigma^2 + \epsilon} + \beta`
+    """
 
     def __init__(self, emb_dim: int, eps: float = 1e-5):
-        super(LayerNorm, self).__init__()
+        super().__init__()
 
+        # a small constant for numerical stability(typically 1e-6)
         self.eps = eps
+        # gamma
         self.scale = nn.Parameter(torch.ones(emb_dim))
+        # beta
         self.shift = nn.Parameter(torch.zeros(emb_dim))
 
     def forward(self, x):
+        # mu
         mean = x.mean(dim=-1, keepdim=True)
+        # power of sigma
         var = x.var(dim=-1, keepdim=True, unbiased=False)
+        # normalization
         norm_x = (x - mean) / torch.sqrt(var + self.eps)
 
         return self.scale * norm_x + self.shift

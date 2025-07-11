@@ -230,7 +230,7 @@ logger.info("Number of adapter parameters added:", total_size)
 class CustomLightningModule(L.LightningModule):
     
     def __init__(self, model, learning_rate=5e-5):
-        super(CustomLightningModule, self).__init__()
+        super().__init__()
         
         self.model = model
         self.learning_rate = learning_rate

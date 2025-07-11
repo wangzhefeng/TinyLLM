@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : dataset.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-09
 # * Version     : 0.1.020920
 # * Description : description
@@ -38,7 +38,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class PretrainDataset(Dataset):
     
     def __init__(self, df, tokenizer, max_length: int = 512):
-        super(PretrainDataset, self).__init__()
+        super().__init__()
 
         self.df = df
         self.tokenizer = tokenizer
@@ -73,7 +73,7 @@ class PretrainDataset(Dataset):
 class SFTDataset(Dataset):
     
     def __init__(self, df, tokenizer, max_length = 1024, prompt_max_len = 512, answer_max_len = 256):
-        super(SFTDataset, self).__init__()
+        super().__init__()
 
         self.df = df
         self.max_length = max_length

@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : pretrain.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2024-09-26
 # * Version     : 0.1.092602
 # * Description : description
@@ -21,10 +21,7 @@ if ROOT not in sys.path:
 import math
 import time
 from contextlib import nullcontext
-from datetime import datetime
 from functools import partial
-from dataclasses import dataclass
-
 
 import torch
 from llama_model import Transformer, ModelArgs, Task
@@ -147,7 +144,7 @@ model.to(device)
 
 
 # initialize a GradScaler. If enabled=False scaler is a no-op
-scaler = torch.cuda.amp.GradScaler(enabled = (dtype == "float16"))
+scaler = torch.amp.GradScaler(device="cuda", enabled = (dtype == "float16"))
 
 
 # optimizer

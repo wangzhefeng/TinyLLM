@@ -24,9 +24,9 @@ import torch
 import torch.nn as nn
 
 from layers.attention import (
-    MultiHeadAttention, 
-    MultiHeadAttentionRoPE, 
-    GroupedQueryAttention
+    MultiHeadAttention,
+    MultiHeadAttentionRoPE,
+    GroupedQueryAttention,
 )
 from layers.feed_forward import FeedForward, FeedForwardSiLU
 from layers.layer_norm import LayerNorm
@@ -40,7 +40,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class TransformerBlockGPT(nn.Module):
     
     def __init__(self, cfg):
-        super(TransformerBlockGPT, self).__init__()
+        super().__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,
@@ -72,14 +72,15 @@ class TransformerBlockGPT(nn.Module):
         return x
 
 
+# TODO 未使用
 class TransformerBlockMoE(nn.Module):
     """
     Mixture of Experts Transformer block
-    communication followed by computation (multi-head self attention + SparseMoE) 
+    communication followed by computation (multi-head self-attention + SparseMoE) 
     """
 
     def __init__(self, cfg):
-        super(TransformerBlockMoE, self).__init__()
+        super().__init__()
         
         self.attn = MultiHeadAttention(
             d_in = cfg.emb_dim,
@@ -114,7 +115,7 @@ class TransformerBlockMoE(nn.Module):
 class TransformerBlockLlama2(nn.Module):
     
     def __init__(self, cfg):
-        super(TransformerBlockLlama2, self).__init__()
+        super().__init__()
 
         self.attn = MultiHeadAttentionRoPE(
             d_in = cfg.emb_dim,
@@ -145,7 +146,7 @@ class TransformerBlockLlama2(nn.Module):
 class TransformerBlockLlama3(nn.Module):
     
     def __init__(self, cfg):
-        super(TransformerBlockLlama3, self).__init__()
+        super().__init__()
 
         self.attn = GroupedQueryAttention(
             d_in = cfg.emb_dim,
@@ -166,13 +167,12 @@ class TransformerBlockLlama3(nn.Module):
         shortcut = x
         x = self.norm1(x)
         x = self.attn(x.to(torch.bfloat16))  # Shape: [batch_size, num_tokens, emb_size]
-        x = x + shortcut  # Add the original input back
-
+        x = x + shortcut
         # Shortcut connection for feed-forward block
         shortcut = x
         x = self.norm2(x)
         x = self.ff(x.to(torch.bfloat16))
-        x = x + shortcut  # Add the original input back
+        x = x + shortcut
 
         return x
 

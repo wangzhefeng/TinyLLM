@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : peft_demo.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2024-10-31
 # * Version     : 0.1.103113
 # * Description : description

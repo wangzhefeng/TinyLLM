@@ -30,7 +30,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class FeedForward(nn.Module):
     
     def __init__(self, cfg):
-        super(FeedForward, self).__init__()
+        super().__init__()
 
         self.fc1 = nn.Linear(in_features=cfg.emb_dim, out_features=4 * cfg.emb_dim, dtype=cfg.dtype, bias=True)
         self.fc2 = nn.Linear(in_features=4 * cfg.emb_dim, out_features=cfg.emb_dim, dtype=cfg.dtype, bias=True)
@@ -50,7 +50,7 @@ class FeedForwardSiLU(nn.Module):
     """
     
     def __init__(self, cfgs):
-        super(FeedForwardSiLU, self).__init__()
+        super().__init__()
 
         self.fc1 = nn.Linear(cfgs.emb_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)
         self.fc2 = nn.Linear(cfgs.emb_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)

@@ -9,7 +9,6 @@
 # * Description : description
 # * Link        : https://arxiv.org/pdf/1910.07467
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# * TODO        : 1.
 # ***************************************************
 
 __all__ = []
@@ -45,7 +44,7 @@ class RMSNorm(nn.Module):
     """
     
     def __init__(self, emb_dim: int, eps: float = 1e-5):
-        super(RMSNorm, self).__init__()
+        super().__init__()
 
         self.eps = eps
         self.emb_dim = emb_dim

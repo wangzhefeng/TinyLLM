@@ -33,7 +33,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class GELU(nn.Module):
     
     def __init__(self):
-        super(GELU, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return 0.5 * x * (1 + torch.tanh(
@@ -45,7 +45,7 @@ class GELU(nn.Module):
 class ReLU(nn.Module):
     
     def __init__(self):
-        super(ReLU, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return torch.maximum(torch.tensor(0.0), x)
@@ -57,7 +57,7 @@ class SiLU(nn.Module):
     """
 
     def __init__(self):
-        super(SiLU, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return x * torch.sigmoid(x)

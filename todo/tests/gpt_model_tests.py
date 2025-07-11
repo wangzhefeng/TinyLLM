@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : tests.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-13
 # * Version     : 0.1.021300
 # * Description : description

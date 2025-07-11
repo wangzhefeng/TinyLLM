@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : evaluating_instruction_flow_openai.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-18
 # * Version     : 0.1.021800
 # * Description : https://github.com/rasbt/LLMs-from-scratch/blob/16738b61fd37bd929ea3b1982857608036d451fa/ch07/03_model-evaluation/llm-instruction-eval-openai.ipynb

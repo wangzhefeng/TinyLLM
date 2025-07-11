@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : uniem_finetune.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2024-10-21
 # * Version     : 0.1.102120
 # * Description : description

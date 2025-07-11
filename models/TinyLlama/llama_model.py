@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : llama_model.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2024-09-26
 # * Version     : 0.1.092602
 # * Description : description
@@ -12,7 +12,6 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())

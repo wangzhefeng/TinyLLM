@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : finetuning_eval.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-03-01
 # * Version     : 0.1.030115
 # * Description : https://mp.weixin.qq.com/s/ndNDMyipWJQzthRoJppIBw

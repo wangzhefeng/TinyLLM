@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : test.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2024-09-27
 # * Version     : 0.1.092717
 # * Description : description

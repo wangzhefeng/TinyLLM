@@ -79,6 +79,11 @@ Decoder-Only: GPT(Generative Pre-trained Transformer)
 * 稀疏注意力：注意力不在整个序列中进行，而只在更相关的 token 之间进行.
 * 低秩近似：将注意力公式近似为低秩矩阵的乘积，从而显著降低计算负担。
 
+Flash Attention：Flash Attention 是一种精确的注意力计算优化方法。它通过充分利用 GPU 硬
+件，在快速的静态随机存取存储器（Static Random-Access Memory, SRAM）中执行矩阵操作，再
+将结果写入较慢的高带宽内存（High Bandwidth Memory, HBM），从而实现更高效的计算。
+注：在实际应用中，Flash Attention 可有效减少内存占用并显著加速注意力计算过程。
+
 
 ## Transformer 架构
 

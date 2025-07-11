@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : gpt_pretrain_test.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-14
 # * Version     : 0.1.021423
 # * Description : description

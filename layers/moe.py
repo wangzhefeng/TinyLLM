@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : moe.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-17
 # * Version     : 0.1.021721
 # * Description : https://zhuanlan.zhihu.com/p/701777558
@@ -25,9 +25,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.args_tools import DotDict
-from utils.log_util import logger
-
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
@@ -35,7 +32,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class _Expert(nn.Module):
     
     def __init__(self, cfgs):
-        super(_Expert, self).__init__()
+        super().__init__()
 
         self.layers = nn.Sequential(
             nn.Linear(cfgs.emb_dim, 4 * cfgs.emb_dim),
@@ -53,7 +50,7 @@ class _Expert(nn.Module):
 class _NoisyTopkRouter(nn.Module):
     
     def __init__(self, cfgs):
-        super(_NoisyTopkRouter, self).__init__()
+        super().__init__()
 
         self.top_k = cfgs.top_k
         self.topk_route_linear = nn.Linear(cfgs.emb_dim, cfgs.num_experts)
@@ -89,7 +86,7 @@ class _NoisyTopkRouter(nn.Module):
 class SparseMoE(nn.Module):
     
     def __init__(self, cfgs):
-        super(SparseMoE, self).__init__()
+        super().__init__()
         
         self.router = _NoisyTopkRouter(cfgs)
         self.experts = nn.ModuleList([
@@ -147,9 +144,11 @@ class SparseMoE(nn.Module):
 
 
 
-
 # 测试代码 main 函数
 def main():
+    from utils.args_tools import DotDict
+    from utils.log_util import logger
+
     torch.manual_seed(2025)
     
     input = torch.randn(2, 3, 6)

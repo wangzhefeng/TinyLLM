@@ -3,7 +3,7 @@
 # ***************************************************
 # * File        : attention_test.py
 # * Author      : Zhefeng Wang
-# * Email       : wangzhefengr@163.com
+# * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-10
 # * Version     : 0.1.021021
 # * Description : https://github.com/rasbt/LLMs-from-scratch/blob/main/ch03/02_bonus_efficient-multihead-attention/mha-implementations.ipynb
@@ -12,14 +12,12 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from importlib.metadata import version
-
 
 import torch
 
