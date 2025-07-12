@@ -6,7 +6,7 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-07-09
 # * Version     : 1.0.070922
-# * Description : description
+# * Description : Fixed Position Embedding
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
@@ -27,9 +27,6 @@ warnings.filterwarnings("ignore")
 LOGGING_LABEL = Path(__file__).name[:-3]
 os.environ['LOG_NAME'] = LOGGING_LABEL
 from utils.log_util import logger
-
-
-
 
 
 
