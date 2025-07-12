@@ -81,7 +81,7 @@ def main():
 
     from models.gpt import Model
     from utils.llm.gpt_generate import generate
-    from tokenizers.tokenization import text_to_token_ids, token_ids_to_text
+    from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.args_tools import DotDict
     from utils.log_util import logger 

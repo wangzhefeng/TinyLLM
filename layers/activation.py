@@ -51,6 +51,16 @@ class ReLU(nn.Module):
         return torch.maximum(torch.tensor(0.0), x)
 
 
+# TODO
+# class ReLU(nn.Module):
+    
+#     def __init__(self):
+#         super().__init__()
+
+#     def forward(self, x):
+#         return torch.nn.functional.relu(x)
+
+
 class SiLU(nn.Module):
     """
     SiLU: https://arxiv.org/abs/1702.03118

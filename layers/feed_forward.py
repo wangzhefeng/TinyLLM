@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : ffn.py
+# * File        : feed_forward.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-12
@@ -21,19 +21,40 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch.nn as nn
-from layers.activation import GELU, SiLU
+from layers.activation import (
+    ReLU, 
+    GELU, 
+    SiLU,
+)
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-class FeedForward(nn.Module):
+class FeedForwardReLU(nn.Module):
+    
+    def __init__(self, cfgs):
+        super().__init__()
+
+        self.fc1 = nn.Linear(cfgs.d_model, cfgs.d_ff, dtype=cfgs.dtype, bias=True)
+        self.fc2 = nn.Linear(cfgs.d_ff, cfgs.d_model, dtype=cfgs.dtype, bias=True)
+        self.relu = nn.ReLU()
+    
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu(x)
+        out = self.fc2(x)
+
+        return out
+
+
+class FeedForwardGELU(nn.Module):
     
     def __init__(self, cfg):
         super().__init__()
 
-        self.fc1 = nn.Linear(in_features=cfg.emb_dim, out_features=4 * cfg.emb_dim, dtype=cfg.dtype, bias=True)
-        self.fc2 = nn.Linear(in_features=4 * cfg.emb_dim, out_features=cfg.emb_dim, dtype=cfg.dtype, bias=True)
+        self.fc1 = nn.Linear(cfg.emb_dim,   4*cfg.emb_dim, dtype=cfg.dtype, bias=True)
+        self.fc2 = nn.Linear(4*cfg.emb_dim, cfg.emb_dim, dtype=cfg.dtype, bias=True)
         self.silu = GELU()
     
     def forward(self, x):
@@ -92,7 +113,7 @@ def main():
     print(type(GPT_CONFIG_124M.dtype))
 
     # feed forward
-    ffn = FeedForward(GPT_CONFIG_124M)
+    ffn = FeedForwardGELU(GPT_CONFIG_124M)
     ffn_silu = FeedForwardSiLU(GPT_CONFIG_124M)
     
     # forward

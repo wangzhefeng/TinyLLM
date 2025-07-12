@@ -34,7 +34,7 @@ from data_provider.finetune import instruction_format
 from models.gpt import Model
 from utils.llm.gpt_generate import generate
 # tokenzier
-from tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
+from layers.tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
 from model_load.load_gpt2_pretrained_weights import (
     gpt2_model_configs, 
     gpt2_huggingface_models,

@@ -66,7 +66,7 @@ def main():
     import torch
     from utils.args_tools import DotDict
     from utils.llm.gpt_generate import generate
-    from tokenizers.tokenization import (
+    from layers.tokenizers.tokenization import (
         text_to_token_ids,
         token_ids_to_text,
     )

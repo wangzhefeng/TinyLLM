@@ -170,7 +170,7 @@ def main():
     logger.info(f"raw_text[:99]: {raw_text[-99:]}")
 
     # tokenizer
-    from tokenizers.tokenization import choose_tokenizer
+    from layers.tokenizers.tokenization import choose_tokenizer
     tokenizer = choose_tokenizer(tokenizer_model = "gpt2")         
 
     # data 

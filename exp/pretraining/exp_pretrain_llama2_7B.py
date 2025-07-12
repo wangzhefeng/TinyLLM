@@ -33,7 +33,7 @@ import torch.nn as nn
 from data_provider.pretrain.data_load import data_load
 from data_provider.pretrain.data_loader import create_dataloader
 # tokenizer
-from tokenizers.tokenization import text_to_token_ids, token_ids_to_text
+from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from exp.exp_basic import Exp_Basic
 from utils.llm.gpt_generate import generate

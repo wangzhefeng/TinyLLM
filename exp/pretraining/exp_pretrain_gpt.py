@@ -30,7 +30,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 # data
 from data_provider.pretrain.data_loader import create_dataloader
 # tokenizer
-from tokenizers.tokenization import (
+from layers.tokenizers.tokenization import (
     choose_tokenizer,
     text_to_token_ids, 
     token_ids_to_text

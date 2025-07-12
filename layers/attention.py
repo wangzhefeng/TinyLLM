@@ -24,7 +24,7 @@ import math
 import torch
 import torch.nn as nn
 
-from layers.rotary_position_embedding import (
+from layers.RoPE import (
     precompute_rope_params, 
     compute_rope
 )

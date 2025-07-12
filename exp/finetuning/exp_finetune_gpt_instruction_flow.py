@@ -32,8 +32,8 @@ import torch
 from data_provider.finetune.instruction_follow import data_loader
 from data_provider.finetune import instruction_format
 # tokenizer
-from tokenizers.tokenization import choose_tokenizer
-from tokenizers.tokenization import text_to_token_ids, token_ids_to_text
+from layers.tokenizers.tokenization import choose_tokenizer
+from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt import Model
 from utils.llm.gpt_generate import generate

@@ -30,7 +30,7 @@ from data_provider.finetune.text_clf.data_loader import create_dataloader
 from models.gpt import Model
 from model_finetuning.model_finetune_clf import finetune_model
 # other model
-from tokenizers.tokenization import choose_tokenizer
+from layers.tokenizers.tokenization import choose_tokenizer
 from model_load.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
 from model_load.load_pretrained_weights import load_pretrained_model
 # training

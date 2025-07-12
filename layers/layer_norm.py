@@ -55,6 +55,25 @@ class LayerNorm(nn.Module):
         return self.scale * norm_x + self.shift
 
 
+# TODO
+# class LayerNorm(nn.Module):
+#     """
+#     Layer Normalization
+    
+#     Formular: `\gamma \times (x - \mu) / \sqrt{\sigma^2 + \epsilon} + \beta`
+#     """
+
+#     def __init__(self, emb_dim: int, eps: float = 1e-5):
+#         super().__init__() 
+
+#         self.ln = nn.LayerNorm(emb_dim, eps=eps)
+
+#     def forward(self, x):
+#         x = self.ln(x)
+
+#         return x
+
+
 
 
 # 测试代码 main 函数

@@ -28,10 +28,11 @@ from layers.attention import (
     MultiHeadAttentionRoPE,
     GroupedQueryAttention,
 )
-from layers.feed_forward import FeedForward, FeedForwardSiLU
+from layers.feed_forward import FeedForwardGELU, FeedForwardSiLU
 from layers.layer_norm import LayerNorm
 from layers.rms_norm import RMSNorm
 from layers.moe import SparseMoE
+from layers.transformer_encdec import Encoder, Decoder
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -50,7 +51,7 @@ class TransformerBlockGPT(nn.Module):
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
         )
-        self.ff = FeedForward(cfg)
+        self.ff = FeedForwardGELU(cfg)
         self.norm1 = LayerNorm(cfg.emb_dim)
         self.norm2 = LayerNorm(cfg.emb_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
@@ -175,6 +176,53 @@ class TransformerBlockLlama3(nn.Module):
         x = x + shortcut
 
         return x
+
+
+class Transformer(nn.Module):
+    
+    def __init__(self, 
+                 woe: str, wpe: str,
+                 src_vocab_size: int, tgt_vocab_size: int, 
+                 d_model: int=512, num_heads: int=8, d_ff: int=2048, 
+                 num_layers: int=6, dropout: float=0.1):
+        super().__init__()
+
+        self.encoder = Encoder(
+            woe, wpe,
+            src_vocab_size, 
+            d_model, 
+            num_heads, 
+            d_ff, 
+            num_layers, 
+            dropout
+        )
+        self.decoder = Decoder(
+            woe, 
+            wpe,
+            tgt_vocab_size, 
+            d_model, 
+            num_heads, 
+            d_ff, 
+            num_layers, 
+            dropout
+        )
+        self.linear = nn.Linear(d_model, tgt_vocab_size)
+    
+    def forward(self, src, tgt, src_mask=None, tgt_mask=None):
+        # encoder
+        enc_output = self.encoder(src, src_mask)
+        # decoder
+        dec_output = self.decoder(tgt, enc_output, src_mask, tgt_mask)
+        # final linear projection
+        output = self.linear(dec_output)
+
+        return output
+    
+    def encode(self, src, src_mask=None):
+        return self.encoder(src, src_mask)
+    
+    def decode(self, tgt, enc_output, src_mask=None, tgt_mask=None):
+        return self.decoder(tgt, enc_output, src_mask, tgt_mask)
 
 
 

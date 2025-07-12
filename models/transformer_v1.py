@@ -90,6 +90,7 @@ class PositionalEncoding(nn.Module):
 
     def __init__(self, config):
         super().__init__()
+
         # Dropout 层
         self.dropout = nn.Dropout(p = config.dropout)
         
@@ -97,20 +98,28 @@ class PositionalEncoding(nn.Module):
         pe = torch.zeros(config.block_size, config.n_embd).float()
         pe.requires_grad = False
         # pos
-        position = torch.arange(0, config.block_size).unsqueeze(1)
-        # 2i
-        two_i = torch.arange(0, config.n_embd, 2)
+        position = torch.arange(0, config.block_size, dtype=torch.float32).unsqueeze(1)
         # 1 / 10000^{2i/d_model}
-        div_term = torch.exp(two_i * -(math.log(10000.0) / config.n_embd))
-        # pe(pos, 2i) = sin(pos / 10000^{2i/d_model})
+        div_term = torch.exp(torch.arange(0, config.n_embd, 2).float() * -(math.log(10000.0) / config.n_embd))
+        
+        # apply sine to even indices: pe(pos, 2i) = sin(pos / 10000^{2i/d_model})
         pe[:, 0::2] = torch.sin(position * div_term)
-        # pe(pos, 2i+1) = cos(pos / 10000^{2i/d_model})
+        # apply cosine to odd indices: pe(pos, 2i+1) = cos(pos / 10000^{2i/d_model})
         pe[:, 1::2] = torch.cos(position * div_term)
+
+        # add batch dimension
         pe = pe.unsqueeze(0)
+
+        # register the positional encoding as a buffer (not a parameter)
         self.register_buffer("pe", pe)
 
     def forward(self, x):
+        """
+        add positional encoding to the input tensor
+        """
+        # x.shape: [batch_size, seq_len, d_model]
         x = x + self.pe[:, :x.size(1)]
+        # dropout
         x = self.dropout(x)
 
         return x
