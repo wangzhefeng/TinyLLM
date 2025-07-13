@@ -14,22 +14,32 @@
 __all__ = []
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+import math
 import warnings
 warnings.filterwarnings("ignore")
 
+import torch
+import torch.nn as nn
+
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-os.environ['LOG_NAME'] = LOGGING_LABEL
-from utils.log_util import logger
 
 
+class Embeddings(nn.Module):
 
+    def __init__(self, d_model, vocab_size):
+        super().__init__()
+
+        self.lut = nn.Embedding(vocab_size, d_model)
+        self.d_model = d_model
+    
+    def forward(self, x):
+        return self.lut(x) * math.sqrt(self.d_model)
 
 
 

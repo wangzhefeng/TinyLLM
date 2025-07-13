@@ -169,7 +169,7 @@ def main():
     logger.info(f"total_tokens: {total_tokens}")
  
     # training and validation data loader create
-    from data_provider.pretrain.data_loader import create_dataloader
+    from data_provider.data_loader import create_dataloader
     train_ratio = 0.90
     split_idx = int(train_ratio * len(raw_text))
     train_data = raw_text[:split_idx]

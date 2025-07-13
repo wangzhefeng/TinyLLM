@@ -20,7 +20,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 
-from data_provider.pretrain.data_loader import create_dataloader
+from data_provider.data_loader import create_dataloader
 from utils.log_util import logger
 
 # global variable

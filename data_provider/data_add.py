@@ -22,15 +22,11 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import warnings
 warnings.filterwarnings("ignore")
-import math
-import copy
 import random
 from typing import Dict, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 
 # global variable
@@ -146,97 +142,10 @@ def create_dataloader():
     return train_dl, valid_dl
 
 
-def clones(module, N):
-    """
-    Produce N identical layers
-
-    Args:
-        module (_type_): _description_
-        N (_type_): _description_
-    """
-    return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
-
-
-class ScaledDotProductAttention(nn.Module):
-    """
-    Compute Scaled Dot-Product Attention
-    """
-    
-    def __init__(self):
-        super().__init__()
-    
-    def forward(self, query, key, value, mask=None, dropout=None):
-        d_k = query.size(-1)
-        # attention
-        scores = query@key.transpose(-2, -1) / math.sqrt(d_k)
-        # mask attention
-        if mask is not None:
-            scores = scores.masked_fill(mask == 0, -1e20)
-        p_attn = F.softmax(scores, dim=-1)
-        # dropout
-        if dropout is not None:
-            p_attn = dropout(p_attn)
-        
-        return p_attn@value, p_attn
-
-
-class MultiHeadAttention(nn.Module):
-    """
-    Compute Multi-Head Attention
-    """
-    
-    def __init__(self, n_head, d_model, dropout=0.1):
-        super().__init__()
-
-        assert d_model % n_head == 0
-
-        # assume d_value always equals d_key
-        self.d_k = d_model // n_head
-        self.n_head = n_head
-        self.linears = clones(
-            nn.Linear(d_model, d_model), 4
-        )
-        # 记录 attention 矩阵结果
-        self.attn = None
-        self.dropout = nn.Dropout(dropout)
-        self.attention = ScaledDotProductAttention()
-
-    def forward(self, query, key, value, mask=None):
-        # same mask applied to all h heads
-        if mask is not None:
-            mask = mask.unsqueeze(1)
-        # number of batches
-        n_batch = query.size(0)
-        # do all the linear projections in batch from: d_model => n_head x d_k
-        query, key, value = [
-            linear(x).view(n_batch, -1, self.n_head, self.d_k).transpose(1, 2)
-            for linear, x in zip(self.linears, (query, key, value))
-        ]
-        # apply attention on all the projected vectors in batch
-        x, self.attn = self.attention(query, key, value, mask=mask, dropout=self.dropout)
-        # concat using a view and apply a final linear
-        x = x.transpose(1, 2).contiguous().view(n_batch, -1, self.n_head * self.d_k)
-        output = self.linears[-1](x)
-
-        return output
-
-
-
 
 
 # 测试代码 main 函数
-def main():
-    # vocab
-    vocab_x, vocab_xr, vocab_y, vocab_yr = get_vocab()
-
-    # x, y = encode_data(vocab_x, vocab_y) 
-    # print(f"x: \n{x} \nx len: {len(x)}")
-    # print(f"y: \n{y} \ny len: {len(y)}")
-    
-    # words_x, words_y = decode_data(x, y, vocab_xr, vocab_yr)
-    # print(f"words_x: \n{words_x}")
-    # print(f"words_y: \n{words_y}")
-
+def main(): 
     # data loader
     train_dl, valid_dl = create_dataloader()
     for src, target in train_dl:

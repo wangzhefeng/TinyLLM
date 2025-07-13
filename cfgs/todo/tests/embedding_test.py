@@ -89,7 +89,7 @@ def real_data_embedding():
     )
 
     # dataloader
-    from data_provider.pretrain.data_loader import create_dataloader
+    from data_provider.data_loader import create_dataloader
     batch_size = 8
     max_length = 4  # 1024
     dataloader = create_dataloader(

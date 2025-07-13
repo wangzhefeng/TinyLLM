@@ -34,15 +34,15 @@ class LayerNorm(nn.Module):
     Formular: `\gamma \times (x - \mu) / \sqrt{\sigma^2 + \epsilon} + \beta`
     """
 
-    def __init__(self, emb_dim: int, eps: float = 1e-5):
+    def __init__(self, emb_dim: int, eps: float = 1e-6):
         super().__init__()
-
-        # a small constant for numerical stability(typically 1e-6)
-        self.eps = eps
+ 
         # gamma
         self.scale = nn.Parameter(torch.ones(emb_dim))
         # beta
         self.shift = nn.Parameter(torch.zeros(emb_dim))
+        # a small constant for numerical stability(typically 1e-6)
+        self.eps = eps
 
     def forward(self, x):
         # mu

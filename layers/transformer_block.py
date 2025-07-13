@@ -179,8 +179,13 @@ class TransformerBlockLlama3(nn.Module):
 
 
 class Transformer(nn.Module):
+    """
+    Encoder-Decoder
+
+    A standard Encoder-Decoder architecture. Base for this and many other models.
+    """
     
-    def __init__(self, 
+    def __init__(self,
                  woe: str, wpe: str,
                  src_vocab_size: int, tgt_vocab_size: int, 
                  d_model: int=512, num_heads: int=8, d_ff: int=2048, 
@@ -223,6 +228,7 @@ class Transformer(nn.Module):
     
     def decode(self, tgt, enc_output, src_mask=None, tgt_mask=None):
         return self.decoder(tgt, enc_output, src_mask, tgt_mask)
+
 
 
 

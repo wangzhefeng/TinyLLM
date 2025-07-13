@@ -24,7 +24,7 @@ import re
 from typing import List
 
 
-from data_provider.pretrain.data_loader import data_load
+from data_provider.data_loader import data_load
 from utils.log_util import logger
 
 # global variable

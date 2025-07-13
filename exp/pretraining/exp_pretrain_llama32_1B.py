@@ -31,7 +31,7 @@ import torch.nn as nn
 
 # data
 from data_provider.pretrain.data_load import data_load
-from data_provider.pretrain.data_loader import create_dataloader
+from data_provider.data_loader import create_dataloader
 # tokenizer
 from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 # model

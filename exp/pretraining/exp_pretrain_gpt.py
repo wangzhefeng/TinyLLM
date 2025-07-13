@@ -28,7 +28,7 @@ import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 # data
-from data_provider.pretrain.data_loader import create_dataloader
+from data_provider.data_loader import create_dataloader
 # tokenizer
 from layers.tokenizers.tokenization import (
     choose_tokenizer,
