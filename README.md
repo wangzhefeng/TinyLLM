@@ -1,5 +1,6 @@
 <details><summary>目录</summary><p>
 
+- [Pre-training](#pre-training)
 - [LLM 架构](#llm-架构)
     - [Tokenizers](#tokenizers)
     - [Embeddings](#embeddings)
@@ -31,6 +32,17 @@
     - [others](#others)
         - [KV Cache](#kv-cache)
 </p></details><p></p>
+
+# Pre-training
+
+* Q&A format
+* Long-context stage
+* Continued pre-training
+* High-quality stage
+* Knowledge distillation
+
+> * 专注于数据集过滤（而不是尽可能多地收集数据）是 LLM 训练中的一个显著趋势。
+>   但前提是它必须符合一定的质量标准。
 
 # LLM 架构
 
