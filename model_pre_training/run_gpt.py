@@ -24,7 +24,7 @@ import torch
 import torch.multiprocessing as mp
 from torch.distributed import destroy_process_group
 
-from exp.pretraining.exp_pretrain_gpt import Model_Pretrain
+from exp.exp_pretrain_gpt import Model_Pretrain
 from utils.args_tools import print_args_llm
 from utils.device import torch_gc
 from utils.random_seed import set_seed
