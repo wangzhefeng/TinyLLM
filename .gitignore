@@ -183,3 +183,4 @@ wandb/
 .DS_Store
 localtest/
 utils/
+tokenizers/

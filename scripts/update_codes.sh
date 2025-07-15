@@ -29,3 +29,19 @@ echo "Successfully pulled the latest changes."
 
 git push
 echo "Successfully checked out master and updated the code."
+
+
+# push tokenizers
+echo "--------------------------"
+echo "update utils codes..."
+echo "--------------------------"
+cd layers/tokenizers
+
+git add .
+git commit -m "update"
+
+git pull
+echo "Successfully pulled the latest changes."
+
+git push
+echo "Successfully checked out master and updated the code."
