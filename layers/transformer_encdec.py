@@ -48,7 +48,7 @@ from layers.normailzation.layer_norm import LayerNorm
 from layers.position_encoding.RoPE import precompute_rope_params, compute_rope
 from layers.position_encoding.FixPE import PositionalEncoding
 # word embedding
-from layers.embedding.WoEmbed import Embeddings
+from layers.embedding.text_embedding import TokenEmbeddings
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -565,8 +565,8 @@ def make_model(src_vocab, tgt_vocab,
     model = EncoderDecoder(
         Encoder(EncoderLayer(d_model, c(mha), c(pff), dropout), n_layers),
         Decoder(DecoderLayer(d_model, c(mha), c(mha), c(pff), dropout), n_layers),
-        nn.Sequential(Embeddings(d_model, src_vocab), c(wpe)),
-        nn.Sequential(Embeddings(d_model, tgt_vocab), c(wpe)),
+        nn.Sequential(TokenEmbeddings(d_model, src_vocab), c(wpe)),
+        nn.Sequential(TokenEmbeddings(d_model, tgt_vocab), c(wpe)),
         Generator(d_model, tgt_vocab)
     )
     # Initialize parameters with Glorot / fan_avg.

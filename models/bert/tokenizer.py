@@ -28,13 +28,13 @@ from layers.tokenizers import BertWordPieceTokenizer
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
 
 
-def tokenizer_train(train_data, vocab_size, special_tokens, max_length, model_path):
+def tokenizer_train(train_data, vocab_size, special_tokens, max_len, model_path):
     # 初始化 WordPiece 词元分析器
     tokenizer = BertWordPieceTokenizer()
     # 训练词元分析器
     tokenizer.train(files=train_data, vocab_size=vocab_size, special_tokens=special_tokens)
     # 允许截断达到最大 512 词元
-    tokenizer.enable_truncation(max_length=max_length)
+    tokenizer.enable_truncation(max_len=max_len)
     # 保存词元分析器模型
     if not os.path.isdir(model_path):
         os.mkdir(model_path)
@@ -48,8 +48,8 @@ def tokenizer_train(train_data, vocab_size, special_tokens, max_length, model_pa
             "pad_token": "[PAD]",
             "cls_token": "[CLS]",
             "mask_token": "[MASK]",
-            "model_max_length": max_length,
-            "max_len": max_length,
+            "model_max_length": max_len,
+            "max_len": max_len,
         }
         json.dump(tokenizer_cfg, f)
 
@@ -68,10 +68,10 @@ def main():
     # 特殊字符
     special_tokens = ["[PAD]", "UNK", "[CLS]", "[SEP]", "[MASK]", "<S>", "T"]
     # 最大序列长度，长度越低训练速度越快
-    max_length = 512
+    max_len = 512
     
     # 模型训练
-    tokenizer_train(train_data, vocab_size, special_tokens, max_length, model_path)
+    tokenizer_train(train_data, vocab_size, special_tokens, max_len, model_path)
 
 
 if __name__ == "__main__":

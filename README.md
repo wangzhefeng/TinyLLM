@@ -48,9 +48,6 @@
 
 ## Tokenizers
 
-
-
-
 Tokens: A token is an indivisible unit of text, such as a word, subword or character, 
 and is part of a predefined vocabulary.
 
@@ -64,8 +61,8 @@ Main types of tokenizers:
 
 Commonly-used subword-level tokenizer:
 
-* Byte-Pair Encoding(BPE)
-* Unigram
+* [Byte-Pair Encoding(BPE)]()
+* [Unigram]()
 
 ## Embeddings
 

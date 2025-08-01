@@ -66,7 +66,7 @@ class Model_Pretrain(Exp_Basic):
         train_loader = create_dataloader(
             train_data,
             batch_size=self.args.batch_size,
-            max_length=self.args.context_length,
+            max_len=self.args.context_length,
             stride=self.args.context_length,
             drop_last=True,
             shuffle=True,
@@ -75,7 +75,7 @@ class Model_Pretrain(Exp_Basic):
         valid_loader = create_dataloader(
             valid_data,
             batch_size=self.args.batch_size,
-            max_length=self.args.context_length,
+            max_len=self.args.context_length,
             stride=self.args.context_length,
             drop_last=False,
             shuffle=False,

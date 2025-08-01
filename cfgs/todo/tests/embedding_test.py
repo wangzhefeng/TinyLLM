@@ -91,12 +91,12 @@ def real_data_embedding():
     # dataloader
     from data_provider.data_loader import create_dataloader
     batch_size = 8
-    max_length = 4  # 1024
+    max_len = 4  # 1024
     dataloader = create_dataloader(
         raw_text,
         batch_size=batch_size,
-        max_length=max_length,
-        stride=max_length,
+        max_len=max_len,
+        stride=max_len,
         shuffle=False,
         drop_last=True,
     )
@@ -123,12 +123,12 @@ def real_data_embedding():
 
     # position embedding
     # ---------------
-    context_length = max_length
+    context_length = max_len
     pos_embedding_layer = torch.nn.Embedding(
         num_embeddings=context_length, 
         embedding_dim=output_dim
     )
-    pos_embeddings = pos_embedding_layer(torch.arange(max_length))
+    pos_embeddings = pos_embedding_layer(torch.arange(max_len))
     logger.info(f"Position embeddings: \n{pos_embeddings}")
     logger.info(f"Position embeddings shape: {pos_embeddings.shape}")
     

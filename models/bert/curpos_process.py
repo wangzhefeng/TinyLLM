@@ -37,8 +37,8 @@ def encode_with_truncation(examples, tokenizer):
     return tokenizer(
         examples["text"],
         truncation=True,
-        padding="max_length",
-        max_length=512,
+        padding="max_len",
+        max_len=512,
         return_special_tokens_mask=True
     )
 

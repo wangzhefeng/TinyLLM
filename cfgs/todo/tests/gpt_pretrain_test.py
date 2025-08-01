@@ -187,7 +187,7 @@ def main():
     train_loader = create_dataloader(
         train_data,
         batch_size=2,
-        max_length=GPT_CONFIG_124M.context_length,
+        max_len=GPT_CONFIG_124M.context_length,
         stride=GPT_CONFIG_124M.context_length,
         drop_last=True,
         shuffle=True,
@@ -196,7 +196,7 @@ def main():
     val_loader = create_dataloader(
         val_data,
         batch_size=2,
-        max_length=GPT_CONFIG_124M.context_length,
+        max_len=GPT_CONFIG_124M.context_length,
         stride=GPT_CONFIG_124M.context_length,
         drop_last=False,
         shuffle=False,

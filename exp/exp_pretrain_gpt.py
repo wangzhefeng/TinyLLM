@@ -79,7 +79,7 @@ class Model_Pretrain(Exp_Basic):
             train_ratio=self.args.train_ratio,
             tokenizer=self.tokenizer,
             batch_size=self.args.batch_size,
-            max_length=self.args.context_length,
+            max_len=self.args.context_length,
             stride=self.args.context_length,
             num_workers=self.args.num_workers,
         )
@@ -90,7 +90,7 @@ class Model_Pretrain(Exp_Basic):
             train_ratio=self.args.train_ratio,
             tokenizer=self.tokenizer,
             batch_size=self.args.batch_size,
-            max_length=self.args.context_length,
+            max_len=self.args.context_length,
             stride=self.args.context_length,
             num_workers=self.args.num_workers,
         )

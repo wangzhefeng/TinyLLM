@@ -23,7 +23,7 @@ import json
 
 import torch
 
-from layers.tokenizers.llama3_8b_bpe import llama3_8b_tokenizer
+from layers.tokenizers.bpe.llama3_8b_bpe import llama3_8b_tokenizer
 from utils.log_util import logger
 
 # global variable
