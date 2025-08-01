@@ -48,10 +48,13 @@
 
 ## Tokenizers
 
+
+
+
 Tokens: A token is an indivisible unit of text, such as a word, subword or character, 
 and is part of a predefined vocabulary.
 
-Tokenizer: A tokenizer `$T$` divides text into tokens of an arbitrary level of granularity.
+Tokenizer: A tokenizer $T$ divides text into tokens of an arbitrary level of granularity.
 
 Main types of tokenizers:
 
@@ -66,11 +69,11 @@ Commonly-used subword-level tokenizer:
 
 ## Embeddings
 
-Embedding: An embedding is a numerical representation of an element(e.g. token, sentence) and is characterized by a vector `$x\in \mathbf{R}^{n}$`.
+Embedding: An embedding is a numerical representation of an element(e.g. token, sentence) and is characterized by a vector $x\in \mathbf{R}^{n}$.
 
-Similarity: The cosine similarity between two tokens `$t_{1}$`, `$t_{2}$` is quantified by:
+Similarity: The cosine similarity between two tokens $t_{1}$, $t_{2}$ is quantified by:
 
-`$$\text{similarity}(t_{1}, t_{2})=\frac{t_{1} \cdot t_{2}}{||t_{1}|| ||t_{2}||} =cos(\theta) \in \[-1, 1\]$$`
+$$\text{similarity}(t_{1}, t_{2})=\frac{t_{1} \cdot t_{2}}{||t_{1}|| ||t_{2}||} =cos(\theta) \in \[-1, 1\]$$
 
 ## Transformer
 
@@ -78,14 +81,14 @@ Similarity: The cosine similarity between two tokens `$t_{1}$`, `$t_{2}$` is qua
 
 #### Self-Attention
 
-Attention: Given a query `$q$`, we want to know which key `$k$` the query should pay "attention" to with respect to the associated value `$v$`.
+Attention: Given a query $q$, we want to know which key $k$ the query should pay "attention" to with respect to the associated value $v$.
 
 ![img](images/)
 
-Attention can be efficiently computed using matrices `$Q$`, `$K$`, `$V$` that contain queries `$q$`, 
-key `$k$` and values `$v$` respectively, along with the dimension `$d_{k}$` of keys:
+Attention can be efficiently computed using matrices $Q$, $K$, $V$ that contain queries $q$, 
+key $k$ and values $v$ respectively, along with the dimension $d_{k}$ of keys:
 
-`$$\text{attention} = \text{softmax}\Big(\frac{QK^{T}}{\sqrt{d_{k}}}\Big)V$$`
+$$\text{attention} = \text{softmax}\Big(\frac{QK^{T}}{\sqrt{d_{k}}}\Big)V$$
 
 #### Multi-Head Attention(MHA)
 
@@ -131,8 +134,8 @@ Position Embeddings:
 
 ## 计算优化
 
-注意力机制近似：注意力计算的时间复杂度为 `$\mathbb{O}(n2)$`，
-当序列长度 `$n$` 增加时，计算成本也迅速上升。常见的近似方法包括：
+注意力机制近似：注意力计算的时间复杂度为 $\mathbb{O}(n2)$，
+当序列长度 $n$ 增加时，计算成本也迅速上升。常见的近似方法包括：
 
 * 稀疏注意力：注意力不在整个序列中进行，而只在更相关的 token 之间进行.
 * 低秩近似：将注意力公式近似为低秩矩阵的乘积，从而显著降低计算负担。

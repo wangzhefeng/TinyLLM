@@ -24,7 +24,7 @@ import math
 import torch
 import torch.nn as nn
 
-from layers.RoPE import (
+from layers.position_encoding.RoPE import (
     precompute_rope_params, 
     compute_rope
 )

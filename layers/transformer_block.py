@@ -29,8 +29,8 @@ from layers.attention import (
     GroupedQueryAttention,
 )
 from layers.feed_forward import FeedForwardGELU, FeedForwardSiLU
-from layers.layer_norm import LayerNorm
-from layers.rms_norm import RMSNorm
+from layers.normailzation.layer_norm import LayerNorm
+from layers.normailzation.rms_norm import RMSNorm
 from layers.moe import SparseMoE
 from layers.transformer_encdec import Encoder, Decoder
 

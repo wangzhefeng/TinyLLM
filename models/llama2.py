@@ -21,7 +21,7 @@ if ROOT not in sys.path:
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockLlama2
-from layers.rms_norm import RMSNorm
+from layers.normailzation.rms_norm import RMSNorm
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

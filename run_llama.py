@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : run_llama_pretrain.py
+# * File        : run_llama.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
-# * Date        : 2025-02-15
-# * Version     : 0.1.021516
+# * Date        : 2025-08-01
+# * Version     : 1.0.080121
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
+
+__all__ = []
 
 # python libraries
 import os
@@ -18,12 +20,18 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-
+from importlib.metadata import version
+import warnings
+warnings.filterwarnings("ignore")
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+os.environ['LOG_NAME'] = LOGGING_LABEL
+from utils.log_util import logger
 
 
+logger.info(f"torch version: {version('torch')}")
+logger.info(f"tiktoken version: {version('tiktoken')}")
 
 
 

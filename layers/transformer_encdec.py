@@ -42,13 +42,13 @@ from layers.feed_forward import (
     FeedForwardSiLU,
 )
 # normization
-from layers.rms_norm import RMSNorm
-from layers.layer_norm import LayerNorm
+from layers.normailzation.rms_norm import RMSNorm
+from layers.normailzation.layer_norm import LayerNorm
 # positional encoding
-from layers.RoPE import precompute_rope_params, compute_rope
-from layers.FixPE import PositionalEncoding
+from layers.position_encoding.RoPE import precompute_rope_params, compute_rope
+from layers.position_encoding.FixPE import PositionalEncoding
 # word embedding
-from layers.WoEmbed import Embeddings
+from layers.embedding.WoEmbed import Embeddings
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
