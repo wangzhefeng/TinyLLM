@@ -20,6 +20,7 @@ echo "--------------------------"
 echo "update utils codes..."
 echo "--------------------------"
 cd utils
+pwd
 
 git add .
 git commit -m "update"
@@ -33,9 +34,10 @@ echo "Successfully checked out master and updated the code."
 
 # push tokenizers
 echo "--------------------------"
-echo "update utils codes..."
+echo "update tokenizer codes..."
 echo "--------------------------"
 cd ../layers/tokenizers
+pwd
 
 git add .
 git commit -m "update"
