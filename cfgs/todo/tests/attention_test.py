@@ -12,13 +12,11 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-
 
 import torch
 import torch.nn as nn
@@ -33,20 +31,20 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 # input text -> tokenization -> token IDs embedding
 # ------------------------------
 # input text
-input_strings = "Your journey starts with one step."
-logger.info(f"input_strings: {input_strings}")
+inputs = "Your journey starts with one step."
+logger.info(f"inputs: {inputs}")
 
 # token ids
-# TODO
+# ...
 
 # token ids embeddings
 inputs_embed = torch.tensor(
     [[0.43, 0.15, 0.89],  # Your     (x^1)
-    [0.55, 0.87, 0.66],  # journey  (x^2)
-    [0.57, 0.85, 0.64],  # starts   (x^3)
-    [0.22, 0.58, 0.33],  # with     (x^4)
-    [0.77, 0.25, 0.10],  # one      (x^5)
-    [0.05, 0.80, 0.55]]  # step     (x^6)
+    [0.55, 0.87, 0.66],   # journey  (x^2)
+    [0.57, 0.85, 0.64],   # starts   (x^3)
+    [0.22, 0.58, 0.33],   # with     (x^4)
+    [0.77, 0.25, 0.10],   # one      (x^5)
+    [0.05, 0.80, 0.55]]   # step     (x^6)
 )
 logger.info(f"inputs_embed: \n{inputs_embed}")
 logger.info(f"inputs_embed.shape: {inputs_embed.shape}")
@@ -63,10 +61,11 @@ logger.info("-" * 40)
 query_2 = inputs_embed[1, :]
 attn_scores_2 = torch.empty(inputs_embed.shape[0])
 for i, x_i in enumerate(inputs_embed):
-    logger.info(f"x_i: {x_i}")
+    logger.info(f"x_{i}: {x_i}")
     logger.info(f"query_2: {query_2}")
     attn_scores_2[i] = torch.dot(x_i, query_2)
     logger.info(f"attn_scores_2[{i}]: {attn_scores_2[i]}")
+    logger.info("")
 
 logger.info(f"attn_scores_2: {attn_scores_2}")
 logger.info(f"attn_scores_2.shape: {attn_scores_2.shape}")
@@ -80,15 +79,15 @@ logger.info(f"Calculate Attention Weights...")
 logger.info("-" * 40)
 
 attn_weights_2_tmp = attn_scores_2 / attn_scores_2.sum()
-logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
+logger.info(f"attn_weights_2_tmp: {attn_weights_2_tmp}")
 # or
-# def softmax_naive(x):
-#     return torch.exp(x) / torch.sum(torch.exp(x))
-# attn_weights_2_tmp = softmax_naive(attn_scores_2)
-# logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
+def softmax_naive(x):
+    return torch.exp(x) / torch.sum(torch.exp(x))
+attn_weights_2_tmp_softmax = softmax_naive(attn_scores_2)
+logger.info(f"attn_weights_2_tmp_softmax: {attn_weights_2_tmp_softmax}")
 # or
-# attn_weights_2_tmp = torch.softmax(attn_scores_2, dim=0)
-# logger.info(f"attn_weights_2_tmp: \n{attn_weights_2_tmp}")
+attn_weights_2_tmp_softmax = torch.softmax(attn_scores_2, dim=0)
+logger.info(f"attn_weights_2_tmp_softmax: {attn_weights_2_tmp_softmax}")
 
 
 # ------------------------------
@@ -105,8 +104,9 @@ for i, x_i in enumerate(inputs_embed):
     logger.info(f"attn_weights_2_tmp[i] * x_i: {attn_weights_2_tmp[i] * x_i}")
     context_vec_2 += attn_weights_2_tmp[i] * x_i
     logger.info(f"context_vec_2: {context_vec_2}")
+    logger.info("")
 
-logger.info(f"context_vec_2: \n{context_vec_2}")
+logger.info(f"context_vec_2: {context_vec_2}")
 
 
 # ------------------------------
@@ -117,15 +117,13 @@ logger.info(f"Calculate All Context Vector...")
 logger.info("-" * 40)
 
 # attention scores
-# attn_scores = torch.empty(inputs_embed.shape[0], inputs_embed.shape[0])
-# for i, x_i in enumerate(inputs_embed):
-#     for j, x_j in enumerate(inputs_embed):
-#         attn_scores[i, j] = torch.dot(x_i, x_j)
-# logger.info(f"attn_scores: \n{attn_scores}")
+attn_scores = torch.empty(inputs_embed.shape[0], inputs_embed.shape[0])
+for i, x_i in enumerate(inputs_embed):
+    for j, x_j in enumerate(inputs_embed):
+        attn_scores[i, j] = torch.dot(x_i, x_j)
+logger.info(f"attn_scores: \n{attn_scores}")
 # or
 attn_scores = inputs_embed @ inputs_embed.T  # (6, 6)
-# logger.info(f"inputs_embed: \n{inputs_embed}")
-# logger.info(f"inputs_embed.T: \n{inputs_embed.T}")
 logger.info(f"attn_scores: \n{attn_scores}")
 
 # attention weights
@@ -136,7 +134,7 @@ logger.info(f"attn_weights: \n{attn_weights}")
 context_vecs = attn_weights @ inputs_embed  # (6, 6) @ (6, 3) -> (6, 3)
 logger.info(f"context_vecs: \n{context_vecs}")
 
-
+"""
 # ------------------------------
 # self-attention with trainable weights
 # ------------------------------
@@ -303,7 +301,7 @@ example = torch.ones(6, 6)
 logger.info(f"dropout(example): {dropout(example)}")
 torch.manual_seed(123)
 logger.info(f"dropout(attn_weights): {dropout(attn_weights)}")
-
+"""
 
 
 

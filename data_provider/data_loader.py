@@ -106,9 +106,9 @@ class LLMDataset(Dataset):
         self.input_ids = []
         self.target_ids = []
         for i in range(0, len(token_ids) - max_len, stride):
-            logger.info(f"i: {i}")
-            logger.info(f"input_chunk  start_idx:end_idx: {i}:{(i + max_len)}")
-            logger.info(f"target_chunk start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
+            # logger.info(f"i: {i}")
+            # logger.info(f"input_chunk  start_idx:end_idx: {i}:{(i + max_len)}")
+            # logger.info(f"target_chunk start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
             input_chunk =  token_ids[i      :(i + max_len)]
             target_chunk = token_ids[(i + 1):(i + max_len + 1)]
             self.input_ids.append(torch.tensor(input_chunk))
