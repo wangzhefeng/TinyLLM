@@ -20,7 +20,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 
-from models.gpt import main
+from models.gpt2 import main
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

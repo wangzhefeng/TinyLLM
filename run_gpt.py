@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : run_gpt_pretrain.py
+# * File        : run_gpt.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-15
@@ -12,7 +12,6 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
@@ -28,7 +27,7 @@ from exp.exp_pretrain_gpt import Model_Pretrain
 from utils.args_tools import print_args_llm
 from utils.device import torch_gc
 from utils.random_seed import set_seed
-from utils.distributed_training.ddp_utils import ddp_setup
+from utils.ddp_utils import ddp_setup
 from utils.log_util import logger
 
 # global variable
@@ -67,7 +66,7 @@ def args_parse():
     parser.add_argument("--tokenizer_model", type=str, required=True, default="gpt2", help="tokenizer model")
     # model pretrain params
     parser.add_argument("--seed", type=int, required=True, default=42, help="seed")
-    parser.add_argument("--iters", type=int, required=True, default=10, help="number of iterations")
+    parser.add_argument("--itrs", type=int, required=True, default=10, help="number of iterations")
     parser.add_argument("--train_epochs", type=int, required=True, default=10, help="number of training epochs")
     parser.add_argument("--batch_size", type=int, required=True, default=2, help="batch size")
     parser.add_argument("--train_ratio", type=float, required=True, default=0.9, help="train data ratio")
@@ -108,7 +107,7 @@ def run(args):
     Exp = Model_Pretrain
     # 模型训练
     if args.is_train:
-        for itr in range(args.iters):
+        for itr in range(args.itrs):
             # setting record of experiments
             setting = f"{args.task_name}_{args.model_name}_dt{args.data_name}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}_itr{itr}"
             logger.info(f">>>>>>>training: iter-{itr} {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")

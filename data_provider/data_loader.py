@@ -26,6 +26,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
+from utils.ddp_utils import is_dist
 from utils.log_util import logger
 
 # global variable
@@ -35,12 +36,14 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 def data_download(url: str, file_path: str):
     """
     data download
-    data url: ("https://raw.githubusercontent.com/rasbt/"
+
+    data url example: ("https://raw.githubusercontent.com/rasbt/"
                "LLMs-from-scratch/main/ch02/01_main-chapter-code/"
                "the-verdict.txt")
     """
     # version 1
     urllib.request.urlretrieve(url, file_path)
+    
     '''
     # version 2
     # download
@@ -64,19 +67,18 @@ def data_load(url: str=None, data_path: str=None, data_file: str=None):
     # 数据下载、数据加载
     if not Path(file_path).exists():
         # data download
-        logger.info(f"Download data...")
+        logger.info(f"Download train data...")
         data_download(url, file_path)
         logger.info(f"Data has downloaded into '{data_path}'")
         # data read
-        logger.info(f"Load data...")
+        logger.info(f"Load train data...")
         with open(file_path, "r", encoding="utf-8") as file:
             raw_text = file.read()
         logger.info(f"Total number of character: {len(raw_text)}")
     else:
-        logger.info(f"Load data...")
+        logger.info(f"Load train data...")
         with open(file_path, "r", encoding="utf-8") as file:
             raw_text = file.read()
-        logger.info(f"Total number of character: {len(raw_text)}")
 
     return raw_text
 
@@ -94,21 +96,20 @@ def data_split(text: str, train_ratio: float=0.8):
 
 class LLMDataset(Dataset):
     
-    def __init__(self, text: str, tokenizer: Any, max_len: int, stride: int):
+    def __init__(self, text: str, tokenizer: Any, max_len: int, stride: int, flag: str):
         # tokenize the entrie text
+        logger.info("Tokenization...")
         token_ids = tokenizer.encode(text)
         assert len(token_ids) > max_len, "Number of tokenized inputs must at least be equal to max_len+1"
-        # logger.info(f"debug::text length: {len(text)}")
-        # logger.info(f"debug::token_ids length: {len(token_ids)}")
+        logger.info(f"{flag.capitalize()} token length: {len(token_ids)}")
 
-        # Data sampling with a sliding window
-        # use a sliding window to chunk the text into overlapping sequences of max_len
+        # Data sampling with a sliding window to chunk the text into overlapping sequences of max_len
         self.input_ids = []
         self.target_ids = []
         for i in range(0, len(token_ids) - max_len, stride):
-            # logger.info(f"i: {i}")
-            # logger.info(f"input_chunk  start_idx:end_idx: {i}:{(i + max_len)}")
-            # logger.info(f"target_chunk start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
+            # logger.info(f"debug::i: {i}")
+            # logger.info(f"debug::input_chunk  start_idx:end_idx: {i}:{(i + max_len)}")
+            # logger.info(f"debug::target_chunk start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
             input_chunk =  token_ids[i      :(i + max_len)]
             target_chunk = token_ids[(i + 1):(i + max_len + 1)]
             self.input_ids.append(torch.tensor(input_chunk))
@@ -132,10 +133,10 @@ def create_dataloader(data_path: str,
                       batch_size: int=4,
                       max_len: int=256,
                       stride: int=128,
-                      num_workers: bool=0,
-                      ddp: bool=False):  # TODO
+                      num_workers: bool=0):
     # data load
     raw_text = data_load(data_path=data_path, data_file=data_file)
+    logger.info(f"Train data character length: {len(raw_text)}")
     # data split
     train_data, valid_data = data_split(text=raw_text, train_ratio=train_ratio)
     assert flag in ['train', 'valid']
@@ -148,10 +149,11 @@ def create_dataloader(data_path: str,
         text=text,
         tokenizer=tokenizer, 
         max_len=max_len, 
-        stride=stride
+        stride=stride,
+        flag=flag,
     )
     # create dataloader
-    if ddp:
+    if is_dist():
         dataloader = DataLoader(
             dataset,
             batch_size=batch_size,
@@ -181,24 +183,28 @@ def create_dataloader(data_path: str,
 def main():
     # data path
     data_path = "./dataset/pretrain/gpt"
-    data_file = "the-verdict.txt"
-
-    # llm pretrain data load
-    raw_text = data_load(data_path = data_path, data_file = data_file)
-    logger.info(type(raw_text))
-    logger.info(f"len(raw_text): {len(raw_text)}")
-    logger.info(f"raw_text[:99]: {raw_text[:99]}")
-    logger.info(f"raw_text[:99]: {raw_text[-99:]}")
+    data_file = "the-verdict.txt" 
 
     # tokenizer
     from layers.tokenizers.tokenization import choose_tokenizer
-    tokenizer = choose_tokenizer(tokenizer_model = "gpt2")         
+    tokenizer = choose_tokenizer(tokenizer_model = "tiktoken_gpt2_bpe")         
 
     # dataloader
     train_dataset, train_dataloader = create_dataloader(
         data_path = data_path, 
         data_file = data_file,
         flag = "train", 
+        train_ratio = 0.8,
+        tokenizer = tokenizer,
+        batch_size = 4,
+        max_len = 256,
+        stride = 256,
+        num_workers = 0,
+    )
+    valid_dataset, valid_dataloader = create_dataloader(
+        data_path = data_path, 
+        data_file = data_file,
+        flag = "valid", 
         train_ratio = 0.8,
         tokenizer = tokenizer,
         batch_size = 4,

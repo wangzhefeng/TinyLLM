@@ -25,10 +25,10 @@ from typing import List
 import warnings
 warnings.filterwarnings("ignore")
 
+from utils.log_util import logger
+
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-os.environ['LOG_NAME'] = LOGGING_LABEL
-from utils.log_util import logger
 
 
 def download_file_if_absent(url: str, filename: str, search_dirs: List):

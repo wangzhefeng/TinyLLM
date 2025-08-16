@@ -43,10 +43,6 @@ logger.info(f"torch version: {version('torch')}")
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-# device
-device = device_setting()
-
-
 def random_data_attention():
     # tokens embeddings
     embeddings = torch.tensor(
@@ -100,6 +96,9 @@ def random_data_attention():
 
 # 测试代码 main 函数
 def main():
+    # device
+    device = device_setting(verbose=True)
+
     # ------------------------------
     # random data 1
     # ------------------------------
@@ -116,6 +115,7 @@ def main():
     embeddings = torch.randn((batch_size, context_len, embed_dim), device=device)
     logger.info(f"embeddings: \n{embeddings}")
     logger.info(f"embeddings.shape: {embeddings.shape}")
+    
     # ------------------------------
     # method 1: CausalAttention MHA wrapper
     # ------------------------------

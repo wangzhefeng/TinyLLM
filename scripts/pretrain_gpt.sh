@@ -1,9 +1,13 @@
 export CUDA_VISIBLE_DEVICES=0
 export LOG_NAME=gpt
 
-model_name=gpt
+tk_model_name=gpt2
+lm_model_name=gpt2
 
-python -u ./model_pre_training/run_gpt.py \
+# --context_length 256
+# --context_length 1024
+
+python -u ./exp/exp_pretrain_gpt.py \
     --task_name tiny_gpt_pretrain \
     --des 'Tiny GPT Pretrain' \
     --is_train 1 \
@@ -12,22 +16,23 @@ python -u ./model_pre_training/run_gpt.py \
     --data_path ./dataset/pretrain/gpt \
     --data_file the-verdict.txt \
     --data_name the-verdict \
+    --tokenizer_model $tk_model_name \
     --model_name $model_name \
-    --context_length 256 \
+    --train_ratio 0.95 \
     --vocab_size 50257 \
+    --context_length 1024 \
     --emb_dim 768 \
     --n_heads 12 \
     --n_layers 12 \
     --dropout 0.1 \
     --qkv_bias 0 \
     --dtype float32 \
+    --use_amp 0 \
     --max_new_tokens 50 \
-    --tokenizer_model gpt2 \
     --seed 42 \
-    --iters 1 \
+    --itrs 1 \
     --train_epochs 30 \
     --batch_size 2 \
-    --train_ratio 0.95 \
     --learning_rate 5e-4 \
     --initial_lr 3e-5 \
     --min_lr 1e-6 \
@@ -36,7 +41,6 @@ python -u ./model_pre_training/run_gpt.py \
     --patience 14 \
     --checkpoints ./saved_results/pretrained_models/ \
     --test_results ./saved_results/test_results/ \
-    --use_amp 0 \
     --num_workers 0 \
     --use_gpu 1 \
     --gpu_type cuda \

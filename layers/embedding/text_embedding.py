@@ -26,8 +26,6 @@ warnings.filterwarnings("ignore")
 import torch
 import torch.nn as nn
 
-from utils.log_util import logger
-
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
@@ -62,6 +60,8 @@ class AbsolutePositionEmbeddings(nn.Module):
 
 # 测试代码 main 函数
 def main():
+    from utils.log_util import logger
+
     max_context_length = 100
     token_embed = TokenEmbeddings(d_model=512, vocab_size=1000)
     pos_embed = AbsolutePositionEmbeddings(d_model=512, context_length=100)
@@ -70,7 +70,7 @@ def main():
     for batch in dataloader:
         x, y = batch
         input_embed = token_embed(x) + pos_embed(torch.arange(max_context_length))
-        print(input_embed)
+        logger.info(input_embed)
 
 if __name__ == "__main__":
     main()

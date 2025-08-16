@@ -119,6 +119,8 @@ def check_packages(reqs):
             print(f"[OK] {pkg_name} {actual_ver_parsed}")
 
 
+
+
 def main():
     reqs = get_requirements_dict()
     check_packages(reqs)

@@ -267,7 +267,7 @@ def load_weights_download(gpt, params):
 
 # 测试代码 main 函数
 def main():
-    from models.gpt import Model
+    from models.gpt2 import Model
     from layers.tokenizers.tokenization import token_ids_to_text, text_to_token_ids
     from utils.llm.gpt_generate import generate
     from utils.device import device_setting

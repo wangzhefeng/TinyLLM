@@ -2,7 +2,9 @@
 
 - [Data Preprocessing](#data-preprocessing)
     - [数据形式](#数据形式)
-    - [Synthetic Data, 合成](#synthetic-data-合成)
+    - [Filtering](#filtering)
+    - [Synthetic Data](#synthetic-data)
+    - [Mixing](#mixing)
 </p></details><p></p>
 
 # Data Preprocessing
@@ -15,7 +17,13 @@
 
 * instruction-response pairs
 
-## Synthetic Data, 合成
+
+## Filtering
+
+
+## Synthetic Data
+
+> 数据合成
 
 * 从无到有生成指令数据--Instruction SFT
     - [Magpie: Alignment Data Synthesis from Scratch by Prompting Aligned LLMs with Nothing](https://arxiv.org/abs/2406.08464)
@@ -25,4 +33,6 @@
 * Instruction Synthesizer
     - [Mistral 7B v0.1 LLM](https://magazine.sebastianraschka.com/i/138555764/mistral-b)
     - [HotpotQA Dataset](https://arxiv.org/abs/1809.09600)
+
+## Mixing
 

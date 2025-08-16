@@ -35,7 +35,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 # 测试代码 main 函数
 def main():
-    from models.gpt import Model
+    from models.gpt2 import Model
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.llm.gpt_generate import generate_text_simple, generate
     from utils.args_tools import DotDict
