@@ -20,67 +20,20 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from typing import Any
-import urllib.request
 
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
+from data_provider.load_save_data import (
+    load_local_data, 
+    load_hf_data,
+)
 from utils.ddp_utils import is_dist
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-
-
-def data_download(url: str, file_path: str):
-    """
-    data download
-
-    data url example: ("https://raw.githubusercontent.com/rasbt/"
-               "LLMs-from-scratch/main/ch02/01_main-chapter-code/"
-               "the-verdict.txt")
-    """
-    # version 1
-    urllib.request.urlretrieve(url, file_path)
-    
-    '''
-    # version 2
-    # download
-    with urllib.request.urlopen(url) as response:
-        text_data = response.read().decode("utf-8")
-    # write
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(text_data)
-    '''
-
-
-def data_load(url: str=None, data_path: str=None, data_file: str=None):
-    """
-    data load
-    """
-    # 数据文件路径
-    if url is not None:
-        file_path = Path(data_path).joinpath(url.split("/")[-1])
-    else:
-        file_path = Path(data_path).joinpath(data_file)
-    # 数据下载、数据加载
-    if not Path(file_path).exists():
-        # data download
-        logger.info(f"Download train data...")
-        data_download(url, file_path)
-        logger.info(f"Data has downloaded into '{data_path}'")
-        # data read
-        logger.info(f"Load train data...")
-        with open(file_path, "r", encoding="utf-8") as file:
-            raw_text = file.read()
-        logger.info(f"Total number of character: {len(raw_text)}")
-    else:
-        logger.info(f"Load train data...")
-        with open(file_path, "r", encoding="utf-8") as file:
-            raw_text = file.read()
-
-    return raw_text
 
 
 def data_split(text: str, train_ratio: float=0.8):
@@ -96,7 +49,10 @@ def data_split(text: str, train_ratio: float=0.8):
 
 class LLMDataset(Dataset):
     
-    def __init__(self, text: str, tokenizer: Any, max_len: int, stride: int, flag: str):
+    def __init__(self, text: str, tokenizer: Any, max_len: int, stride: int, num_examples: int, flag: str, dtype, device):
+        # sampling stride
+        stride = stride if stride is not None else max_len + 1
+        
         # tokenize the entrie text
         logger.info("Tokenization...")
         token_ids = tokenizer.encode(text)
@@ -104,38 +60,69 @@ class LLMDataset(Dataset):
         logger.info(f"{flag.capitalize()} token length: {len(token_ids)}")
 
         # Data sampling with a sliding window to chunk the text into overlapping sequences of max_len
-        self.input_ids = []
-        self.target_ids = []
-        for i in range(0, len(token_ids) - max_len, stride):
-            # logger.info(f"debug::i: {i}")
-            # logger.info(f"debug::input_chunk  start_idx:end_idx: {i}:{(i + max_len)}")
-            # logger.info(f"debug::target_chunk start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
-            input_chunk =  token_ids[i      :(i + max_len)]
-            target_chunk = token_ids[(i + 1):(i + max_len + 1)]
-            self.input_ids.append(torch.tensor(input_chunk))
-            self.target_ids.append(torch.tensor(target_chunk))
+        self.input_blocks = []
+        self.target_blocks = []
+        for i in range(0, len(token_ids), stride):
+            # sampling block
+            block = token_ids[i:(i + max_len + 1)]
+
+            # Skip blocks that are too short
+            if len(block) < max_len + 1:
+                continue
+
+            # sampling input and target
+            input_seq =  block[:-1]
+            target_seq = block[1:]
+            logger.info(f"debug::i: {i}")
+            logger.info(f"debug::input_seq  start_idx:end_idx: {i}:{(i + max_len)}")
+            logger.info(f"debug::target_seq start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
+
+            # input and target block
+            self.input_blocks.append(input_seq)
+            self.target_blocks.append(target_seq)
+            # self.input_blocks.append(torch.tensor(input_seq))
+            # self.target_blocks.append(torch.tensor(target_seq))
+
+            # Stop if have enough examles
+            if len(self.input_blocks) > num_examples:
+                break
+        # Convert to tensors for PyTorch and move to device
+        self.input_blocks = torch.tensor(self.input_blocks, dtype=dtype)
+        self.target_blocks = torch.tensor(self.target_blocks, dtype=dtype)
+        if device:
+            self.input_blocks = self.input_blocks.to(device)
+            self.target_blocks = self.target_blocks.to(device)
     
     def __len__(self):
-        return len(self.input_ids)
+        return len(self.input_blocks)
     
     def __getitem__(self, index: int):
-        input_ids = self.input_ids[index]
-        target_ids = self.target_ids[index]
+        input_blocks = self.input_blocks[index]
+        target_blocks = self.target_blocks[index]
 
-        return input_ids, target_ids
+        return input_blocks, target_blocks
 
 
-def create_dataloader(data_path: str,
+def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
+                      data_path: str,
                       data_file: str,
                       flag: str,
                       train_ratio: float,
                       tokenizer: Any,
                       batch_size: int=4,
                       max_len: int=256,
-                      stride: int=128,
-                      num_workers: bool=0):
+                      stride: int=None,
+                      num_examples: int=10000,
+                      dtype=torch.long,
+                      num_workers: bool=0,
+                      device=None):
     # data load
-    raw_text = data_load(data_path=data_path, data_file=data_file)
+    assert data_source in ['huggingface', 'local'], "data_source must be in ['huggingface', 'local']"
+    if data_source == "local":
+        raw_text = load_local_data(data_path=data_path, data_file=data_file)    
+    elif data_source == "huggingface":
+        raw_text = load_hf_data(data_path=data_path, data_name=data_file, cache_dir="./dataset/pretrain")
+
     logger.info(f"Train data character length: {len(raw_text)}")
     # data split
     train_data, valid_data = data_split(text=raw_text, train_ratio=train_ratio)
@@ -146,12 +133,15 @@ def create_dataloader(data_path: str,
     drop_last = False
     # create dataset
     dataset = LLMDataset(
-        text=text,
+        text=text, 
         tokenizer=tokenizer, 
         max_len=max_len, 
         stride=stride,
+        num_examples=num_examples,
         flag=flag,
-    )
+        dtype=dtype,
+        device=device,
+    ) 
     # create dataloader
     if is_dist():
         dataloader = DataLoader(
@@ -167,7 +157,7 @@ def create_dataloader(data_path: str,
         dataloader = DataLoader(
             dataset,
             batch_size=batch_size,
-            pin_memory=True,
+            # pin_memory=True,
             shuffle=shuffle,
             drop_last=drop_last,
             # sampler=DistributedSampler(dataset),
@@ -182,15 +172,20 @@ def create_dataloader(data_path: str,
 # 测试代码 main 函数
 def main():
     # data path
-    data_path = "./dataset/pretrain/gpt"
-    data_file = "the-verdict.txt" 
+    # data_path = "./dataset/pretrain/gpt"
+    # data_file = "the-verdict.txt" 
+
+    # huggingface data path
+    data_path="EleutherAI/wikitext_document_level"
+    data_file="wikitext-2-raw-v1"
 
     # tokenizer
     from layers.tokenizers.tokenization import choose_tokenizer
-    tokenizer = choose_tokenizer(tokenizer_model = "tiktoken_gpt2_bpe")         
+    tokenizer = choose_tokenizer(tokenizer_model = "tiktoken_gpt2_bpe")
 
     # dataloader
     train_dataset, train_dataloader = create_dataloader(
+        data_source="huggingface",
         data_path = data_path, 
         data_file = data_file,
         flag = "train", 
@@ -198,20 +193,18 @@ def main():
         tokenizer = tokenizer,
         batch_size = 4,
         max_len = 256,
-        stride = 256,
         num_workers = 0,
     )
-    valid_dataset, valid_dataloader = create_dataloader(
-        data_path = data_path, 
-        data_file = data_file,
-        flag = "valid", 
-        train_ratio = 0.8,
-        tokenizer = tokenizer,
-        batch_size = 4,
-        max_len = 256,
-        stride = 256,
-        num_workers = 0,
-    )
+    # valid_dataset, valid_dataloader = create_dataloader(
+    #     data_path = data_path, 
+    #     data_file = data_file,
+    #     flag = "valid", 
+    #     train_ratio = 0.8,
+    #     tokenizer = tokenizer,
+    #     batch_size = 4,
+    #     max_len = 256,
+    #     num_workers = 0,
+    # )
     for input, label in train_dataloader:
         logger.info(f"input: \n{input} \ninput.shape: {input.shape}")
         logger.info(f"label: \n{label} \nlabel.shape: {label.shape}")
