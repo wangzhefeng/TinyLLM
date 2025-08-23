@@ -37,19 +37,17 @@ class CasualAttention(nn.Module):
     """
     Casual Self Attention
     """
-    def __init__(self, d_in: int, d_out: int, context_length: int, 
-                 dropout: float, qkv_bias=False):
+    def __init__(self, d_model: int, d_out: int, context_length: int, dropout: float, qkv_bias=False):
         super().__init__()
 
-        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_query = nn.Linear(d_model, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_model, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_model, d_out, bias=qkv_bias)
         self.dropout = nn.Dropout(dropout)
-        mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
-        self.register_buffer("mask", mask)
+        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
     
     def forward(self, x):
-        batch_size, num_tokens, d_in = x.shape
+        batch_size, num_tokens, d_model = x.shape
         # q, k, v
         queries = self.W_query(x)
         keys = self.W_key(x)
@@ -64,65 +62,67 @@ class CasualAttention(nn.Module):
         attn_weights = self.dropout(attn_weights)
         # context scores
         context_vec = attn_weights @ values
-    
+        
         return context_vec
 
 
 class MultiHeadAttentionWrapper(nn.Module):
     
-    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias=False):
+    def __init__(self, d_model: int, d_out: int, context_length: int, n_heads: int, dropout: float, qkv_bias=False, proj: bool=False):
         super().__init__()
         
         self.heads = nn.ModuleList([
-            CasualAttention(d_in, d_out, context_length, dropout, qkv_bias) 
-            for _ in range(num_heads)
+            CasualAttention(d_model, d_out, context_length, dropout, qkv_bias) 
+            for _ in range(n_heads)
         ])
-        self.out_proj = nn.Linear(d_out * num_heads, d_out * num_heads)
+        self.proj = proj
+        if proj:
+            self.out_proj = nn.Linear(d_out * n_heads, d_out * n_heads)
 
     def forward(self, x):
-        context_vector = torch.cat([head(x) for head in self.heads], dim=-1)
-        projection = self.out_proj(context_vector)
+        x = torch.cat([head(x) for head in self.heads], dim=-1)
+        if self.proj:
+            x = self.out_proj(x)
 
-        return projection
+        return x
 
 
 class MultiHeadAttention(nn.Module):
     
-    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias=False):
+    def __init__(self, d_model: int, d_out: int, n_heads: int, context_length: int, dropout: float=0.0, qkv_bias=False):
         super().__init__()
 
-        assert (d_out % num_heads == 0), "d_out must be divisible by num_heads"
+        assert (d_out % n_heads == 0), "d_out must be divisible by n_heads"
+        
         self.d_out = d_out
-        self.num_heads = num_heads
-        self.head_dim = d_out // num_heads
+        self.n_heads = n_heads
         # query, key, value weights
-        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_query = nn.Linear(d_model, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_model, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_model, d_out, bias=qkv_bias)
         # Linear layer to combine head outputs
         self.out_proj = nn.Linear(d_out, d_out)
         # dropout
         self.dropout = nn.Dropout(dropout)
-        # mask
-        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
+        # mask buffer
+        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool())
     
     def forward(self, x):
-        # shape: [batch_size, num_tokens, d_in]
-        batch_size, num_tokens, d_in = x.shape
-        # ------------------------------
+        # shape: [batch_size, num_tokens, d_model]
+        batch_size, num_tokens, d_model = x.shape
         # Query, Key, Value
-        # ------------------------------
-        # shape: [batch_size, num_tokens, d_out]
+        # shape: [batch_size, num_tokens, d_model]->[batch_size, num_tokens, d_out]
         queries = self.W_query(x)
         keys = self.W_key(x)
         values = self.W_value(x)
-        # split the matrix by adding a "num_heads" dimension, unroll last dim
-        # shape: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, num_heads, head_dim)
-        queries = queries.view(batch_size, num_tokens, self.num_heads, self.head_dim)
-        keys = keys.view(batch_size, num_tokens, self.num_heads, self.head_dim)
-        values = values.view(batch_size, num_tokens, self.num_heads, self.head_dim)
-        # transpose
-        # shape: (batch_size, num_tokens, num_heads, head_dim) -> (batch_size, num_heads, num_tokens, head_dim)
+        # Split the matrix by adding a "n_heads" dimension, unroll last dim
+        # shape: [batch_size, num_tokens, d_out]->[batch_size, num_tokens, n_heads, head_dim]
+        head_dim = self.d_out // self.n_heads
+        queries = queries.view(batch_size, num_tokens, self.n_heads, head_dim)
+        keys =       keys.view(batch_size, num_tokens, self.n_heads, head_dim)
+        values =   values.view(batch_size, num_tokens, self.n_heads, head_dim)
+        # Transpose
+        # shape: [batch_size, num_tokens, n_heads, head_dim]->[batch_size, n_heads, num_tokens, head_dim]
         queries = queries.transpose(1, 2)
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
@@ -130,22 +130,26 @@ class MultiHeadAttention(nn.Module):
         # scaled dot-product attention(aka self-attention) with a causal mask
         # ------------------------------
         # dot product for each head
+        # [_, _, num_tokens, head_dim]->[_, _, head_dim, num_tokens]->[_, _, num_tokens, num_tokens]
         attn_scores = queries @ keys.transpose(2, 3)
         # mask to fill attention scores
-        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        # [batch_size, n_heads, num_tokens, num_tokens]
+        mask_bool = self.mask[:num_tokens, :num_tokens]
         # use the mask to fill attention scores
+        # [batch_size, n_heads, num_tokens, num_tokens]
         attn_scores.masked_fill_(mask_bool, -torch.inf)
         # ------------------------------
         # attention weights
         # ------------------------------
+        # [batch_size, n_heads, num_tokens, num_tokens]
         attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
         # ------------------------------
         # context vector
         # ------------------------------
-        # shape: (batch_size, num_tokens, num_heads, head_dim)
+        # shape:[_, _, num_tokens, num_tokens]@[_, _, num_tokens, head_dim]->[batch_size, num_tokens, n_heads, head_dim]
         context_vec = (attn_weights @ values).transpose(1, 2)
-        # combine heads, where self.d_out = self.num_heads * self.head_dim
+        # combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)
         # optional projection
         context_vec = self.out_proj(context_vec)
@@ -153,25 +157,69 @@ class MultiHeadAttention(nn.Module):
         return context_vec
 
 
+class MHAPyTorchClass(nn.Module):
+    
+    def __init__(self, d_model: int, d_out: int, n_heads: int, context_length: int, dropout: float=0.0, qkv_bias=False, need_weights=True):
+        super().__init__()
+        
+        assert (d_out % n_heads == 0), "d_out must be divisible by n_heads"
+
+        self.context_length = context_length
+        self.need_weights = need_weights
+        # MHA
+        self.multihead_attn = nn.MultiheadAttention(
+            embed_dim=d_out,
+            num_heads=n_heads,
+            dropout=dropout,
+            bias=qkv_bias,
+            add_bias_kv=qkv_bias,
+            batch_first=True,
+        )
+        # Linear layer to combine head outputs
+        self.out_proj = nn.Linear(d_out, d_out)
+        # mask buffer
+        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool())
+
+    def forward(self, x):
+        # shape: [batch_size, num_tokens, d_model]
+        batch_size, num_tokens, d_model = x.shape
+        # Ensure attn_mask is compatible with expected shape and `batch_first=True`
+        # No need to manually adjust for n_heads; ensure it's right for the sequence
+        if self.context_length >= num_tokens:
+            attn_mask = self.mask[:num_tokens, :num_tokens]
+        else:
+            attn_mask = self.mask[:self.context_length, :self.context_length]
+        # attn_mask broadcasting will handle batch_size dimension implicitly
+        attn_output, _ = self.multihead_attn(
+            x, x, x, 
+            attn_mask=attn_mask, 
+            need_weights=self.need_weights
+        )
+        # Linear layer to combine head outputs
+        output = self.out_proj(attn_output)
+
+        return output
+
+
 class MultiHeadAttentionRoPE(nn.Module):
     
     def __init__(self, 
-                 d_in: int, 
+                 d_model: int, 
                  d_out: int, 
                  context_length: int, 
-                 num_heads: int, 
+                 n_heads: int, 
                  dtype = None):
         super().__init__()
-        assert (d_out % num_heads == 0), "d_out must be divisible by num_heads"
+        assert (d_out % n_heads == 0), "d_out must be divisible by n_heads"
         
         self.d_out = d_out
-        self.num_heads = num_heads
+        self.n_heads = n_heads
         # reduce the projection dim to match desired output dim
-        self.head_dim = d_out // num_heads
+        self.head_dim = d_out // n_heads
         # query, key, value weights
-        self.W_query = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
-        self.W_key = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
-        self.W_value = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.W_query = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
+        self.W_key = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
         # Linear layer to combine head outputs
         self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
         # mask
@@ -182,8 +230,8 @@ class MultiHeadAttentionRoPE(nn.Module):
         self.register_buffer("sin", sin)
     
     def forward(self, x):
-        # shape: [batch_size, num_tokens, d_in]
-        batch_size, num_tokens, d_in = x.shape
+        # shape: [batch_size, num_tokens, d_model]
+        batch_size, num_tokens, d_model = x.shape
         # ------------------------------
         # Query, Key, Value
         # ------------------------------
@@ -191,13 +239,13 @@ class MultiHeadAttentionRoPE(nn.Module):
         queries = self.W_query(x)
         keys = self.W_key(x)
         values = self.W_value(x)
-        # split the matrix by adding a "num_heads" dimension, unroll last dim
-        # shape: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, num_heads, head_dim)
-        queries = queries.view(batch_size, num_tokens, self.num_heads, self.head_dim)
-        keys = keys.view(batch_size, num_tokens, self.num_heads, self.head_dim)
-        values = values.view(batch_size, num_tokens, self.num_heads, self.head_dim)
+        # split the matrix by adding a "n_heads" dimension, unroll last dim
+        # shape: (batch_size, num_tokens, d_out) -> (batch_size, num_tokens, n_heads, head_dim)
+        queries = queries.view(batch_size, num_tokens, self.n_heads, self.head_dim)
+        keys = keys.view(batch_size, num_tokens, self.n_heads, self.head_dim)
+        values = values.view(batch_size, num_tokens, self.n_heads, self.head_dim)
         # transpose
-        # shape: (batch_size, num_tokens, num_heads, head_dim) -> (batch_size, num_heads, num_tokens, head_dim)
+        # shape: (batch_size, num_tokens, n_heads, head_dim) -> (batch_size, n_heads, num_tokens, head_dim)
         queries = queries.transpose(1, 2)
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
@@ -220,10 +268,10 @@ class MultiHeadAttentionRoPE(nn.Module):
         # ------------------------------
         # context vector
         # ------------------------------
-        # shape: (batch_size, num_tokens, num_heads, head_dim)
+        # shape: (batch_size, num_tokens, n_heads, head_dim)
         context_vec = (attn_weights @ values).transpose(1, 2)
 
-        # combine heads, where self.d_out = self.num_heads * self.head_dim
+        # combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)
         # or
         # context_vec = context_vec.reshape(batch_size, num_tokens, self.d_out)
@@ -256,30 +304,30 @@ class SharedBuffers:
 class GroupedQueryAttention(nn.Module):
     
     def __init__(
-            self, d_in, d_out, context_length, num_heads,
+            self, d_model, d_out, context_length, n_heads,
             num_kv_groups,       # NEW
             rope_base=10_000,    # NEW
             rope_config=None,    # NEW
             dtype=None
         ):
         super().__init__()
-        assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
-        assert num_heads % num_kv_groups == 0, "num_heads must be divisible by num_kv_groups"  # NEW
+        assert d_out % n_heads == 0, "d_out must be divisible by n_heads"
+        assert n_heads % num_kv_groups == 0, "n_heads must be divisible by num_kv_groups"  # NEW
 
         self.d_out = d_out
-        self.num_heads = num_heads
-        self.head_dim = d_out // num_heads
+        self.n_heads = n_heads
+        self.head_dim = d_out // n_heads
 
         ############################# NEW  #############################
-        # self.W_key = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
-        # self.W_value = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
-        self.W_key = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
-        self.W_value = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        # self.W_key = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
+        # self.W_value = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
+        self.W_key = nn.Linear(d_model, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_model, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
         self.num_kv_groups = num_kv_groups
-        self.group_size = num_heads // num_kv_groups
+        self.group_size = n_heads // num_kv_groups
         ################################################################
 
-        self.W_query = nn.Linear(d_in, d_out, bias=False, dtype=dtype)
+        self.W_query = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
         self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
 
         ############################# NEW  #############################
@@ -292,25 +340,25 @@ class GroupedQueryAttention(nn.Module):
         self.register_buffer("sin", sin)
 
     def forward(self, x):
-        b, num_tokens, d_in = x.shape
+        b, num_tokens, d_model = x.shape
 
         queries = self.W_query(x)  # Shape: (b, num_tokens, d_out)
         keys = self.W_key(x)  # Shape: (b, num_tokens, num_kv_groups * head_dim)
         values = self.W_value(x)  # Shape: (b, num_tokens, num_kv_groups * head_dim)
 
         # Reshape queries, keys, and values
-        queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
+        queries = queries.view(b, num_tokens, self.n_heads, self.head_dim)
 
         ##################### NEW  #####################
-        # keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
-        # values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+        # keys = keys.view(b, num_tokens, self.n_heads, self.head_dim)
+        # values = values.view(b, num_tokens, self.n_heads, self.head_dim)
         keys = keys.view(b, num_tokens, self.num_kv_groups, self.head_dim)
         values = values.view(b, num_tokens, self.num_kv_groups, self.head_dim)
         ################################################
 
         # Transpose keys, values, and queries
-        keys = keys.transpose(1, 2)  # Shape: (b, num_heads, num_tokens, head_dim)
-        values = values.transpose(1, 2)  # Shape: (b, num_heads, num_tokens, head_dim)
+        keys = keys.transpose(1, 2)  # Shape: (b, n_heads, num_tokens, head_dim)
+        values = values.transpose(1, 2)  # Shape: (b, n_heads, num_tokens, head_dim)
         queries = queries.transpose(1, 2)  # Shape: (b, num_query_groups, num_tokens, head_dim)
 
         # Apply RoPE
@@ -319,10 +367,10 @@ class GroupedQueryAttention(nn.Module):
 
         ##################### NEW  #####################
         # Expand keys and values to match the number of heads
-        # Shape: (b, num_heads, num_tokens, head_dim)
+        # Shape: (b, n_heads, num_tokens, head_dim)
 
-        keys = keys.repeat_interleave(self.group_size, dim=1)  # Shape: (b, num_heads, num_tokens, head_dim)
-        values = values.repeat_interleave(self.group_size, dim=1)  # Shape: (b, num_heads, num_tokens, head_dim)
+        keys = keys.repeat_interleave(self.group_size, dim=1)  # Shape: (b, n_heads, num_tokens, head_dim)
+        values = values.repeat_interleave(self.group_size, dim=1)  # Shape: (b, n_heads, num_tokens, head_dim)
         # For example, before repeat_interleave along dim=1 (query groups):
         #   [K1, K2]
         # After repeat_interleave (each query group is repeated group_size times):
@@ -332,7 +380,7 @@ class GroupedQueryAttention(nn.Module):
         ################################################
 
         # Compute scaled dot-product attention (aka self-attention) with a causal mask
-        # Shape: (b, num_heads, num_tokens, num_tokens)
+        # Shape: (b, n_heads, num_tokens, num_tokens)
         attn_scores = queries @ keys.transpose(2, 3)  # Dot product for each head
 
         # Original mask truncated to the number of tokens and converted to boolean
@@ -344,31 +392,28 @@ class GroupedQueryAttention(nn.Module):
         attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
         assert keys.shape[-1] == self.head_dim
 
-        # Shape: (b, num_tokens, num_heads, head_dim)
+        # Shape: (b, num_tokens, n_heads, head_dim)
         context_vec = (attn_weights @ values).transpose(1, 2)
 
-        # Combine heads, where self.d_out = self.num_heads * self.head_dim
+        # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.reshape(b, num_tokens, self.d_out)
         context_vec = self.out_proj(context_vec)  # optional projection
 
         return context_vec
 
 
-# ------------------------------
-# TODO
-# ------------------------------
 class MultiHeadAttentionCombinedQKV(nn.Module):
     
-    def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
+    def __init__(self, d_model, d_out, n_heads, context_length, dropout=0.0, qkv_bias=False):
         super().__init__()
 
-        assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
+        assert d_out % n_heads == 0, "embed_dim is indivisible by n_heads"
 
-        self.num_heads = num_heads
+        self.n_heads = n_heads
         self.context_length = context_length
-        self.head_dim = d_out // num_heads
+        self.head_dim = d_out // n_heads
 
-        self.qkv = nn.Linear(d_in, 3 * d_out, bias=qkv_bias)
+        self.qkv = nn.Linear(d_model, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = nn.Dropout(dropout)
 
@@ -382,16 +427,16 @@ class MultiHeadAttentionCombinedQKV(nn.Module):
         # (b, num_tokens, embed_dim) --> (b, num_tokens, 3 * embed_dim)
         qkv = self.qkv(x)
 
-        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, num_heads, head_dim)
-        qkv = qkv.view(batch_size, num_tokens, 3, self.num_heads, self.head_dim)
+        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, n_heads, head_dim)
+        qkv = qkv.view(batch_size, num_tokens, 3, self.n_heads, self.head_dim)
 
-        # (b, num_tokens, 3, num_heads, head_dim) --> (3, b, num_heads, num_tokens, head_dim)
+        # (b, num_tokens, 3, n_heads, head_dim) --> (3, b, n_heads, num_tokens, head_dim)
         qkv = qkv.permute(2, 0, 3, 1, 4)
 
-        # (3, b, num_heads, num_tokens, head_dim) -> 3 times (b, num_head, num_tokens, head_dim)
+        # (3, b, n_heads, num_tokens, head_dim) -> 3 times (b, num_head, num_tokens, head_dim)
         queries, keys, values = qkv.unbind(0)
 
-        # (b, num_heads, num_tokens, head_dim) --> (b, num_heads, num_tokens, num_tokens)
+        # (b, n_heads, num_tokens, head_dim) --> (b, n_heads, num_tokens, num_tokens)
         attn_scores = queries @ keys.transpose(-2, -1)
         attn_scores = attn_scores.masked_fill(
             self.mask.bool()[:num_tokens, :num_tokens], -torch.inf
@@ -400,13 +445,13 @@ class MultiHeadAttentionCombinedQKV(nn.Module):
         attn_weights = torch.softmax(attn_scores / keys.shape[-1]**-0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
 
-        # (b, num_heads, num_tokens, num_tokens) --> (b, num_heads, num_tokens, head_dim)
+        # (b, n_heads, num_tokens, num_tokens) --> (b, n_heads, num_tokens, head_dim)
         context_vec = attn_weights @ values
 
-        # (b, num_heads, num_tokens, head_dim) --> (b, num_tokens, num_heads, head_dim)
+        # (b, n_heads, num_tokens, head_dim) --> (b, num_tokens, n_heads, head_dim)
         context_vec = context_vec.transpose(1, 2)
 
-        # (b, num_tokens, num_heads, head_dim) --> (b, num_tokens, embed_dim)
+        # (b, num_tokens, n_heads, head_dim) --> (b, num_tokens, embed_dim)
         context_vec = context_vec.contiguous().view(batch_size, num_tokens, embed_dim)
 
         context_vec = self.proj(context_vec)
@@ -416,18 +461,18 @@ class MultiHeadAttentionCombinedQKV(nn.Module):
 
 class MHAEinsum(nn.Module):
 
-    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+    def __init__(self, d_model, d_out, context_length, dropout, n_heads, qkv_bias=False):
         super().__init__()
-        assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
+        assert d_out % n_heads == 0, "d_out must be divisible by n_heads"
 
         self.d_out = d_out
-        self.num_heads = num_heads
-        self.head_dim = d_out // num_heads
+        self.n_heads = n_heads
+        self.head_dim = d_out // n_heads
 
         # Initialize parameters for Q, K, V
-        self.W_query = nn.Parameter(torch.randn(d_out, d_in))
-        self.W_key = nn.Parameter(torch.randn(d_out, d_in))
-        self.W_value = nn.Parameter(torch.randn(d_out, d_in))
+        self.W_query = nn.Parameter(torch.randn(d_out, d_model))
+        self.W_key = nn.Parameter(torch.randn(d_out, d_model))
+        self.W_value = nn.Parameter(torch.randn(d_out, d_model))
 
         if qkv_bias:
             self.bias_q = nn.Parameter(torch.zeros(d_out))
@@ -472,15 +517,15 @@ class MHAEinsum(nn.Module):
             V += self.bias_v
 
         # Reshape for multi-head attention
-        Q = Q.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
-        K = K.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
-        V = V.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        Q = Q.view(b, n, self.n_heads, self.head_dim).transpose(1, 2)
+        K = K.view(b, n, self.n_heads, self.head_dim).transpose(1, 2)
+        V = V.view(b, n, self.n_heads, self.head_dim).transpose(1, 2)
 
         # Scaled dot-product attention
         scores = torch.einsum("bhnd,bhmd->bhnm", Q, K) / (self.head_dim ** 0.5)
 
         # Apply mask
-        mask = self.mask[:n, :n].unsqueeze(0).unsqueeze(1).expand(b, self.num_heads, n, n)
+        mask = self.mask[:n, :n].unsqueeze(0).unsqueeze(1).expand(b, self.n_heads, n, n)
         scores = scores.masked_fill(mask.bool(), -torch.inf)
 
         # Softmax and dropout
@@ -499,17 +544,17 @@ class MHAEinsum(nn.Module):
 
 class MHAPyTorchScaledDotProduct(nn.Module):
     
-    def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
+    def __init__(self, d_model, d_out, n_heads, context_length, dropout=0.0, qkv_bias=False):
         super().__init__()
 
-        assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
+        assert d_out % n_heads == 0, "embed_dim is indivisible by n_heads"
 
-        self.num_heads = num_heads
+        self.n_heads = n_heads
         self.context_length = context_length
-        self.head_dim = d_out // num_heads
+        self.head_dim = d_out // n_heads
         self.d_out = d_out
 
-        self.qkv = nn.Linear(d_in, 3 * d_out, bias=qkv_bias)
+        self.qkv = nn.Linear(d_model, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = dropout
 
@@ -519,13 +564,13 @@ class MHAPyTorchScaledDotProduct(nn.Module):
         # (b, num_tokens, embed_dim) --> (b, num_tokens, 3 * embed_dim)
         qkv = self.qkv(x)
 
-        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, num_heads, head_dim)
-        qkv = qkv.view(batch_size, num_tokens, 3, self.num_heads, self.head_dim)
+        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, n_heads, head_dim)
+        qkv = qkv.view(batch_size, num_tokens, 3, self.n_heads, self.head_dim)
 
-        # (b, num_tokens, 3, num_heads, head_dim) --> (3, b, num_heads, num_tokens, head_dim)
+        # (b, num_tokens, 3, n_heads, head_dim) --> (3, b, n_heads, num_tokens, head_dim)
         qkv = qkv.permute(2, 0, 3, 1, 4)
 
-        # (3, b, num_heads, num_tokens, head_dim) -> 3 times (b, num_heads, num_tokens, head_dim)
+        # (3, b, n_heads, num_tokens, head_dim) -> 3 times (b, n_heads, num_tokens, head_dim)
         queries, keys, values = qkv
 
         use_dropout = 0. if not self.training else self.dropout
@@ -533,7 +578,7 @@ class MHAPyTorchScaledDotProduct(nn.Module):
         context_vec = nn.functional.scaled_dot_product_attention(
             queries, keys, values, attn_mask=None, dropout_p=use_dropout, is_causal=True)
 
-        # Combine heads, where self.d_out = self.num_heads * self.head_dim
+        # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.transpose(1, 2).contiguous().view(batch_size, num_tokens, self.d_out)
 
         context_vec = self.proj(context_vec)
@@ -543,17 +588,17 @@ class MHAPyTorchScaledDotProduct(nn.Module):
 
 class MHAPyTorchSDPAWithoutFlash(nn.Module):
     
-    def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
+    def __init__(self, d_model, d_out, n_heads, context_length, dropout=0.0, qkv_bias=False):
         super().__init__()
 
-        assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
+        assert d_out % n_heads == 0, "embed_dim is indivisible by n_heads"
 
-        self.num_heads = num_heads
+        self.n_heads = n_heads
         self.context_length = context_length
-        self.head_dim = d_out // num_heads
+        self.head_dim = d_out // n_heads
         self.d_out = d_out
 
-        self.qkv = nn.Linear(d_in, 3 * d_out, bias=qkv_bias)
+        self.qkv = nn.Linear(d_model, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = dropout
         self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool())
@@ -564,19 +609,19 @@ class MHAPyTorchSDPAWithoutFlash(nn.Module):
         # (b, num_tokens, embed_dim) --> (b, num_tokens, 3 * embed_dim)
         qkv = self.qkv(x)
 
-        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, num_heads, head_dim)
-        qkv = qkv.view(batch_size, num_tokens, 3, self.num_heads, self.head_dim)
+        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, n_heads, head_dim)
+        qkv = qkv.view(batch_size, num_tokens, 3, self.n_heads, self.head_dim)
 
-        # (b, num_tokens, 3, num_heads, head_dim) --> (3, b, num_heads, num_tokens, head_dim)
+        # (b, num_tokens, 3, n_heads, head_dim) --> (3, b, n_heads, num_tokens, head_dim)
         qkv = qkv.permute(2, 0, 3, 1, 4)
 
-        # (3, b, num_heads, num_tokens, head_dim) -> 3 times (b, num_heads, num_tokens, head_dim)
+        # (3, b, n_heads, num_tokens, head_dim) -> 3 times (b, n_heads, num_tokens, head_dim)
         queries, keys, values = qkv
 
         use_dropout = 0. if not self.training else self.dropout
 
         # Ensure attn_mask is compatible with expected shape and `batch_first=True`
-        # No need to manually adjust for num_heads; ensure it's right for the sequence
+        # No need to manually adjust for n_heads; ensure it's right for the sequence
         if self.context_length >= num_tokens:
             attn_mask = self.mask[:num_tokens, :num_tokens]
         else:
@@ -585,51 +630,12 @@ class MHAPyTorchSDPAWithoutFlash(nn.Module):
         context_vec = nn.functional.scaled_dot_product_attention(
             queries, keys, values, attn_mask=attn_mask, dropout_p=use_dropout, is_causal=False)
 
-        # Combine heads, where self.d_out = self.num_heads * self.head_dim
+        # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.transpose(1, 2).contiguous().view(batch_size, num_tokens, self.d_out)
 
         context_vec = self.proj(context_vec)
 
         return context_vec
-
-
-class MHAPyTorchClass(nn.Module):
-    
-    def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False, need_weights=True):
-        super().__init__()
-
-        self.context_length = context_length
-        self.multihead_attn = nn.MultiheadAttention(
-            embed_dim=d_out,
-            num_heads=num_heads,
-            dropout=dropout,
-            bias=qkv_bias,
-            add_bias_kv=qkv_bias,
-            batch_first=True,
-        )
-
-        self.need_weights = need_weights
-        self.proj = nn.Linear(d_out, d_out)
-        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool())
-
-    def forward(self, x):
-        batch_size, num_tokens, _ = x.shape
-
-        # Ensure attn_mask is compatible with expected shape and `batch_first=True`
-        # No need to manually adjust for num_heads; ensure it's right for the sequence
-        if self.context_length >= num_tokens:
-            attn_mask = self.mask[:num_tokens, :num_tokens]
-        else:
-            attn_mask = self.mask[:self.context_length, :self.context_length]
-
-        # attn_mask broadcasting will handle batch_size dimension implicitly
-        attn_output, _ = self.multihead_attn(
-            x, x, x, attn_mask=attn_mask, need_weights=self.need_weights
-        )
-
-        output = self.proj(attn_output)
-
-        return output
 
 
 from packaging.version import parse as parse_version
@@ -649,17 +655,17 @@ def causal(b, h, q_idx, kv_idx):
 
 class MHAPyTorchFlexAttention(nn.Module):
 
-    def __init__(self, d_in, d_out, num_heads, context_length, dropout=0.0, qkv_bias=False):
+    def __init__(self, d_model, d_out, n_heads, context_length, dropout=0.0, qkv_bias=False):
         super().__init__()
 
-        assert d_out % num_heads == 0, "embed_dim is indivisible by num_heads"
+        assert d_out % n_heads == 0, "embed_dim is indivisible by n_heads"
 
-        self.num_heads = num_heads
+        self.n_heads = n_heads
         self.context_length = context_length
-        self.head_dim = d_out // num_heads
+        self.head_dim = d_out // n_heads
         self.d_out = d_out
 
-        self.qkv = nn.Linear(d_in, 3 * d_out, bias=qkv_bias)
+        self.qkv = nn.Linear(d_model, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = dropout
         # self.register_buffer("block_mask", create_block_mask(causal, B=None, H=None, Q_LEN=context_length, KV_LEN=context_length))
@@ -673,19 +679,19 @@ class MHAPyTorchFlexAttention(nn.Module):
         # (b, num_tokens, embed_dim) --> (b, num_tokens, 3 * embed_dim)
         qkv = self.qkv(x)
 
-        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, num_heads, head_dim)
-        qkv = qkv.view(batch_size, num_tokens, 3, self.num_heads, self.head_dim)
+        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, n_heads, head_dim)
+        qkv = qkv.view(batch_size, num_tokens, 3, self.n_heads, self.head_dim)
 
-        # (b, num_tokens, 3, num_heads, head_dim) --> (3, b, num_heads, num_tokens, head_dim)
+        # (b, num_tokens, 3, n_heads, head_dim) --> (3, b, n_heads, num_tokens, head_dim)
         qkv = qkv.permute(2, 0, 3, 1, 4)
 
-        # (3, b, num_heads, num_tokens, head_dim) -> 3 times (b, num_heads, num_tokens, head_dim)
+        # (3, b, n_heads, num_tokens, head_dim) -> 3 times (b, n_heads, num_tokens, head_dim)
         queries, keys, values = qkv
 
         use_dropout = 0. if not self.training else self.dropout
 
         # Ensure attn_mask is compatible with expected shape and `batch_first=True`
-        # No need to manually adjust for num_heads; ensure it's right for the sequence
+        # No need to manually adjust for n_heads; ensure it's right for the sequence
         if self.context_length >= num_tokens:
             attn_mask = self.block_mask[:num_tokens, :num_tokens]
         else:
@@ -693,7 +699,7 @@ class MHAPyTorchFlexAttention(nn.Module):
 
         context_vec = flex_attention(queries, keys, values, block_mask=attn_mask)
 
-        # Combine heads, where self.d_out = self.num_heads * self.head_dim
+        # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.transpose(1, 2).contiguous().view(batch_size, num_tokens, self.d_out)
 
         context_vec = self.proj(context_vec)
@@ -705,61 +711,15 @@ class MHAPyTorchFlexAttention(nn.Module):
 
 # 测试代码 main 函数
 def main():
-    from utils.log_util import logger
-
-    # settings
-    batch_size = 1
-    context_len = 3000
-    max_context_len = 8192
-    embed_dim = 4096
-    num_heads = 32
-    llama3_context_len = 8192
-    llama3_theta_base = 500_000
-
-    # input
-    example_batch = torch.randn((batch_size, context_len, embed_dim))
-
-    # ------------------------------
-    # attention
-    # ------------------------------
-    mha = MultiHeadAttentionRoPE(
-        d_in = embed_dim,
-        d_out = embed_dim,
-        context_length = max_context_len,
-        num_heads = num_heads,
-    )
-    mha(example_batch)
-    logger.info(f"W_key: {mha.W_key.weight.shape}")
-    logger.info(f"W_value: {mha.W_value.weight.shape}")
-    logger.info(f"W_query: {mha.W_query.weight.shape}")
-    # ------------------------------
-    # attention
-    # ------------------------------
-    gqa = GroupedQueryAttention(
-        d_in = embed_dim,
-        d_out = embed_dim,
-        context_length = max_context_len,
-        num_heads = num_heads,
-        num_kv_groups = 8,
-        rope_base = llama3_theta_base,
-    )
-    gqa(example_batch)
-    logger.info(f"W_key: {gqa.W_key.weight.shape}")
-    logger.info(f"W_value: {gqa.W_value.weight.shape}")
-    logger.info(f"W_query: {gqa.W_query.weight.shape}")
-    # ------------------------------
-    # number of params
-    # ------------------------------
-    logger.info(f"Total number of parameters:")
-    mha_total_params = sum(p.numel() for p in mha.parameters())
-    logger.info(f"MHA: {mha_total_params}")
-
-    gqa_total_params = sum(p.numel() for p in gqa.parameters())
-    logger.info(f"GQA: {gqa_total_params}")
-    
-    # free up memory
-    del mha
-    del gqa
+    x = torch.randn(2, 6, 2, 3)
+    print(x)
+    print(x.shape)
+    x = x.contiguous()
+    print(x)
+    print(x.shape)
+    x = x.view(2, 6, 6)
+    print(x)
+    print(x.shape)
 
 if __name__ == "__main__":
     main()

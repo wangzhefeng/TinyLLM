@@ -65,8 +65,8 @@ def compute_rope(x, cos, sin):
     RoPE: RoFormer: Enhanced Transformer with Rotary Position Embedding (2021)
     https://arxiv.org/abs/2104.09864
     """
-    # x: (batch_size, num_heads, seq_len, head_dim)
-    batch_size, num_heads, seq_len, head_dim = x.shape
+    # x: (batch_size, n_heads, seq_len, head_dim)
+    batch_size, n_heads, seq_len, head_dim = x.shape
     assert head_dim % 2 == 0, "Head dimension must be even"
 
     # Split x into first half and second half
@@ -90,7 +90,7 @@ def compute_rope(x, cos, sin):
 def main():
     # Settings
     batch_size = 2
-    num_heads = 4
+    n_heads = 4
     head_dim = 16
 
     llama2_context_len = 4096
@@ -110,8 +110,8 @@ def main():
     )
     # Dummy query and key tensors
     torch.manual_seed(123)
-    queries = torch.randn(batch_size, num_heads, llama2_context_len, head_dim)
-    keys = torch.randn(batch_size, num_heads, llama2_context_len, head_dim)
+    queries = torch.randn(batch_size, n_heads, llama2_context_len, head_dim)
+    keys = torch.randn(batch_size, n_heads, llama2_context_len, head_dim)
     # Apply rotary position embeddings
     queries_rot = compute_rope(queries, cos, sin)
     keys_rot = compute_rope(keys, cos, sin)
@@ -126,8 +126,8 @@ def main():
     )
     # Dummy query and key tensors
     torch.manual_seed(123)
-    queries = torch.randn(batch_size, num_heads, llama3_context_len, head_dim)
-    keys = torch.randn(batch_size, num_heads, llama3_context_len, head_dim)
+    queries = torch.randn(batch_size, n_heads, llama3_context_len, head_dim)
+    keys = torch.randn(batch_size, n_heads, llama3_context_len, head_dim)
     # Apply rotary position embeddings
     queries_rot = compute_rope(queries, cos, sin)
     keys_rot = compute_rope(keys, cos, sin)

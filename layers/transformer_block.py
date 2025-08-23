@@ -44,10 +44,10 @@ class TransformerBlockGPT(nn.Module):
         super().__init__()
         
         self.attn = MultiHeadAttention(
-            d_in = cfg.emb_dim,
+            d_model = cfg.emb_dim,
             d_out = cfg.emb_dim,
+            n_heads = cfg.n_heads,
             context_length = cfg.context_length,
-            num_heads = cfg.n_heads,
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
         )
@@ -84,10 +84,10 @@ class TransformerBlockMoE(nn.Module):
         super().__init__()
         
         self.attn = MultiHeadAttention(
-            d_in = cfg.emb_dim,
+            d_model = cfg.emb_dim,
             d_out = cfg.emb_dim,
+            n_heads = cfg.n_heads,
             context_length = cfg.context_length,
-            num_heads = cfg.n_heads,
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
         )
@@ -119,10 +119,10 @@ class TransformerBlockLlama2(nn.Module):
         super().__init__()
 
         self.attn = MultiHeadAttentionRoPE(
-            d_in = cfg.emb_dim,
+            d_model = cfg.emb_dim,
             d_out = cfg.emb_dim,
             context_length=cfg.context_length,
-            num_heads = cfg.n_heads,
+            n_heads = cfg.n_heads,
             dtype = cfg.dtype,
         )
         self.ff = FeedForwardSiLU(cfg)
@@ -150,10 +150,10 @@ class TransformerBlockLlama3(nn.Module):
         super().__init__()
 
         self.attn = GroupedQueryAttention(
-            d_in = cfg.emb_dim,
+            d_model = cfg.emb_dim,
             d_out = cfg.emb_dim,
             context_length = cfg.context_length,
-            num_heads = cfg.n_heads,
+            n_heads = cfg.n_heads,
             num_kv_groups = cfg.n_kv_groups,
             rope_base = cfg.rope_base,
             rope_config = cfg.rope_freq,
@@ -188,7 +188,7 @@ class Transformer(nn.Module):
     def __init__(self,
                  woe: str, wpe: str,
                  src_vocab_size: int, tgt_vocab_size: int, 
-                 d_model: int=512, num_heads: int=8, d_ff: int=2048, 
+                 d_model: int=512, n_heads: int=8, d_ff: int=2048, 
                  num_layers: int=6, dropout: float=0.1):
         super().__init__()
 
@@ -196,7 +196,7 @@ class Transformer(nn.Module):
             woe, wpe,
             src_vocab_size, 
             d_model, 
-            num_heads, 
+            n_heads, 
             d_ff, 
             num_layers, 
             dropout
@@ -206,7 +206,7 @@ class Transformer(nn.Module):
             wpe,
             tgt_vocab_size, 
             d_model, 
-            num_heads, 
+            n_heads, 
             d_ff, 
             num_layers, 
             dropout

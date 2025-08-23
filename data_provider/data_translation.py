@@ -289,7 +289,7 @@ def main():
         src_vocab_size=src_vocab_size,
         tgt_vocab_size=tgt_vocab_size,
         d_model=64,
-        num_heads=2,
+        n_heads=2,
         d_ff=128,
         num_layers=2,
         dropout=0.1

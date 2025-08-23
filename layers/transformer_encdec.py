@@ -164,14 +164,14 @@ class MultiHeadAttention(nn.Module):
     Multi-Head Attention
     """
     
-    def __init__(self, num_heads, d_model, dropout=0.1):
+    def __init__(self, n_heads, d_model, dropout=0.1):
         super().__init__()
 
-        assert d_model % num_heads == 0
+        assert d_model % n_heads == 0
 
         # assume d_value always equals d_key
-        self.d_k = d_model // num_heads
-        self.num_heads = num_heads
+        self.d_k = d_model // n_heads
+        self.n_heads = n_heads
         self.linears = clones(
             nn.Linear(d_model, d_model), 4
         )
@@ -186,9 +186,9 @@ class MultiHeadAttention(nn.Module):
             mask = mask.unsqueeze(1)
         # number of batches
         n_batches = query.size(0)
-        # do all the linear projections in batch from: d_model => num_heads x d_k
+        # do all the linear projections in batch from: d_model => n_heads x d_k
         query, key, value = [
-            linear(x).view(n_batches, -1, self.num_heads, self.d_k).transpose(1, 2)
+            linear(x).view(n_batches, -1, self.n_heads, self.d_k).transpose(1, 2)
             for linear, x in zip(self.linears, (query, key, value))
         ]
         # apply attention on all the projected vectors in batch
@@ -198,7 +198,7 @@ class MultiHeadAttention(nn.Module):
             x \
             .transpose(1, 2) \
             .contiguous() \
-            .view(n_batches, -1, self.num_heads * self.d_k)
+            .view(n_batches, -1, self.n_heads * self.d_k)
         )
         # delete query, key, value
         del query, key, value
@@ -248,10 +248,10 @@ class EncoderLayer(nn.Module):
 
     def __init__(self, 
                  ffn: str, mha: str, norm: str,
-                 d_model: int, num_heads: int, d_ff: int, dropout: float=0.1):
+                 d_model: int, n_heads: int, d_ff: int, dropout: float=0.1):
         super().__init__()
 
-        self.self_attn = mha_type[mha](d_model, num_heads)
+        self.self_attn = mha_type[mha](d_model, n_heads)
         self.feed_forward = ffn_type[ffn](d_model, d_ff)
         self.norm1 = norm_type[norm](d_model)
         self.norm2 = norm_type[norm](d_model)
@@ -276,7 +276,7 @@ class Encoder(nn.Module):
     """
     
     def __init__(self, woe: str, wpe: str,
-                 vocab_size: int, d_model: int, num_heads: int, 
+                 vocab_size: int, d_model: int, n_heads: int, 
                  d_ff: int, num_layers: int, dropout: float=0.1):
         super().__init__()
 
@@ -286,7 +286,7 @@ class Encoder(nn.Module):
         self.word_embedding = woe_type[woe](vocab_size, d_model)
         self.positional_encoding = wpe_type[wpe](d_model)
         self.layers = nn.ModuleList([
-            EncoderLayer(d_model, num_heads, d_ff, dropout)
+            EncoderLayer(d_model, n_heads, d_ff, dropout)
             for _ in range(num_layers)
         ])
         self.dropout = nn.Dropout(dropout)
@@ -358,11 +358,11 @@ class DecoderLayer(nn.Module):
     
     def __init__(self, 
                  ffn: str, mha: str, norm: str,
-                 d_model: int, num_heads: int, d_ff: int, dropout: float=0.1):
+                 d_model: int, n_heads: int, d_ff: int, dropout: float=0.1):
         super().__init__()
 
-        self.self_attn = mha_type[mha](d_model, num_heads)
-        self.cross_attn = mha_type[mha](d_model, num_heads)
+        self.self_attn = mha_type[mha](d_model, n_heads)
+        self.cross_attn = mha_type[mha](d_model, n_heads)
         self.feed_forward = ffn_type[ffn](d_model, d_ff)
         self.norm1 = norm_type[norm](d_model)
         self.norm2 = norm_type[norm](d_model)
@@ -389,7 +389,7 @@ class DecoderLayer(nn.Module):
 class Decoder(nn.Module):
     
     def __init__(self, woe: str, wpe: str,
-                 vocab_size: int, d_model: int, num_heads: int, 
+                 vocab_size: int, d_model: int, n_heads: int, 
                  d_ff: int, num_layers: int, dropout: float=0.1):
         super().__init__()
 
@@ -399,7 +399,7 @@ class Decoder(nn.Module):
         self.word_embedding = woe_type[woe](vocab_size, d_model)
         self.positional_encoding = wpe_type[wpe](d_model)
         self.layers = nn.ModuleList([
-            DecoderLayer(d_model, num_heads, d_ff, dropout)
+            DecoderLayer(d_model, n_heads, d_ff, dropout)
             for _ in range(num_layers)
         ])
         self.dropout = nn.Dropout(dropout)
@@ -544,7 +544,7 @@ class DummyScheduler:
 
 def make_model(src_vocab, tgt_vocab, 
                n_layers: int=6, d_model: int=512, 
-               d_ff: int=2048, num_heads: int=8, 
+               d_ff: int=2048, n_heads: int=8, 
                dropout: float=0.1):
     """
     Construct a model from hyperparameters
@@ -555,11 +555,11 @@ def make_model(src_vocab, tgt_vocab,
         n_layers (int, optional): _description_. Defaults to 6.
         d_model (int, optional): _description_. Defaults to 512.
         d_ff (int, optional): _description_. Defaults to 2048.
-        num_heads (int, optional): _description_. Defaults to 8.
+        n_heads (int, optional): _description_. Defaults to 8.
         dropout (float, optional): _description_. Defaults to 0.1.
     """
     c = copy.deepcopy
-    mha = MultiHeadAttention(num_heads, d_model)
+    mha = MultiHeadAttention(n_heads, d_model)
     pff = PositionwiseFeedForward(d_model, d_ff, dropout)
     wpe = PositionalEncoding(d_model, dropout)
     model = EncoderDecoder(

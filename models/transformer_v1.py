@@ -138,7 +138,7 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         
         # 隐藏层维度必须是头数的整数倍
-        assert (config.n_embd % config.n_head == 0), "n_embd must be divisible by num_heads"
+        assert (config.n_embd % config.n_head == 0), "n_embd must be divisible by n_heads"
 
         # Wq, Wk, Wv 参数矩阵(每个参数矩阵为 n_embd×n_embd)
         self.c_attns = nn.ModuleList([

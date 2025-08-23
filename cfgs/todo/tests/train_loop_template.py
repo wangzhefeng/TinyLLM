@@ -12,14 +12,12 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
-
 
 import torch
 
@@ -32,19 +30,12 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 # ------------------------------
 # train process
 # ------------------------------
-def train(model, 
-          optimizer, 
-          train_loader, 
-          valid_loader, 
+def train(model, tokenizer, optimizer,  
+          train_loader, valid_loader, 
           device, 
-          train_epochs, 
-          eval_freq, 
-          eval_iter, 
+          train_epochs, eval_freq, eval_iter, 
           start_context, 
-          tokenizer, 
-          warmup_steps, 
-          initial_lr = 3e-5, 
-          min_lr = 1e-6):
+          warmup_steps, initial_lr = 3e-5, min_lr = 1e-6):
     # Initialize to track training result
     train_losses, val_losses = [], [] 
     track_tokens_seen = []

@@ -54,7 +54,7 @@ class MultiheadAttentionLayer(nn.Module):
         # attention layer
         self.attn = torch.nn.MultiheadAttention(
             embed_dim=config.n_embd,
-            num_heads=config.n_head,
+            n_heads=config.n_head,
             dropout=config.attn_pdrop,
             batch_first=True,
             device=device,
