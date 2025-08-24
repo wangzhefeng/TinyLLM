@@ -11,7 +11,9 @@
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
-__all__ = []
+__all__ = [
+    "LayerNorm",
+]
 
 # python libraries
 import sys
@@ -34,13 +36,13 @@ class LayerNorm(nn.Module):
     Formular: `\gamma \times (x - \mu) / \sqrt{\sigma^2 + \epsilon} + \beta`
     """
 
-    def __init__(self, emb_dim: int, eps: float = 1e-6):
+    def __init__(self, embed_dim: int, eps: float = 1e-5):
         super().__init__()
  
         # gamma
-        self.scale = nn.Parameter(torch.ones(emb_dim))
+        self.scale = nn.Parameter(torch.ones(embed_dim))
         # beta
-        self.shift = nn.Parameter(torch.zeros(emb_dim))
+        self.shift = nn.Parameter(torch.zeros(embed_dim))
         # a small constant for numerical stability(typically 1e-6)
         self.eps = eps
 
@@ -55,31 +57,31 @@ class LayerNorm(nn.Module):
         return self.scale * norm_x + self.shift
 
 
-# TODO
-# class LayerNorm(nn.Module):
-#     """
-#     Layer Normalization
+class LayerNormPyTorch(nn.Module):
+    """
+    Layer Normalization
     
-#     Formular: `\gamma \times (x - \mu) / \sqrt{\sigma^2 + \epsilon} + \beta`
-#     """
+    Formular: `\gamma \times (x - \mu) / \sqrt{\sigma^2 + \epsilon} + \beta`
+    """
 
-#     def __init__(self, emb_dim: int, eps: float = 1e-5):
-#         super().__init__() 
+    def __init__(self, embed_dim: int, eps: float = 1e-5):
+        super().__init__() 
 
-#         self.ln = nn.LayerNorm(emb_dim, eps=eps)
+        self.ln = nn.LayerNorm(embed_dim, eps=eps)
 
-#     def forward(self, x):
-#         x = self.ln(x)
+    def forward(self, x):
+        x = self.ln(x)
 
-#         return x
+        return x
 
 
 
 
 # 测试代码 main 函数
 def main():
+    torch.set_printoptions(sci_mode=False)
+    
     from utils.log_util import logger
-
     # ------------------------------
     # Layer Norm test
     # ------------------------------
@@ -89,7 +91,19 @@ def main():
     logger.info(f"batch_example: \n{batch_example}")
     
     # layer norm
-    ln = LayerNorm(emb_dim=5)
+    ln = LayerNorm(embed_dim=5)
+    out_ln = ln(batch_example)
+    logger.info(f"out_ln: \n{out_ln}")
+    
+    mean = out_ln.mean(dim=-1, keepdim=True)
+    var = out_ln.var(dim=-1, unbiased=False, keepdim=True)
+    logger.info(f"Mean: \n{mean}")
+    logger.info(f"Variance: \n{var}")
+    # ------------------------------
+    # PyTorch Layer Norm test
+    # ------------------------------
+    # pytorch layer norm
+    ln = LayerNormPyTorch(embed_dim=5)
     out_ln = ln(batch_example)
     logger.info(f"out_ln: \n{out_ln}")
     

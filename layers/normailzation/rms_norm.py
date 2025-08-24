@@ -34,22 +34,22 @@ class RMSNorm(nn.Module):
     Root Mean Square Layer Normalization (RMSNorm) implementation.
     
     Args:
-        emb_dim (int): Dimension of the input embeddings
+        embed_dim (int): Dimension of the input embeddings
         eps (float, optional): Small value to avoid division by zero. Defaults to 1e-5.
     
     Attributes:
         eps (float): Small value for numerical stability
-        emb_dim (int): Dimension of the input embeddings
+        embed_dim (int): Dimension of the input embeddings
         weight (nn.Parameter): Learnable scaling parameter
     """
     
-    def __init__(self, emb_dim: int, eps: float = 1e-5):
+    def __init__(self, embed_dim: int, eps: float = 1e-5):
         super().__init__()
 
         self.eps = eps
-        self.emb_dim = emb_dim
-        # self.weight = nn.Parameter(torch.ones(emb_dim, dtype=torch.float32))
-        self.weight = nn.Parameter(torch.ones(emb_dim)).float()
+        self.embed_dim = embed_dim
+        # self.weight = nn.Parameter(torch.ones(embed_dim, dtype=torch.float32))
+        self.weight = nn.Parameter(torch.ones(embed_dim)).float()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -78,7 +78,7 @@ def main():
     # input
     example_batch = torch.randn(2, 3, 4)
     # RMSNorm
-    rms_norm = RMSNorm(emb_dim=example_batch.shape[-1], eps=1e-5)
+    rms_norm = RMSNorm(embed_dim=example_batch.shape[-1], eps=1e-5)
     rms_norm_pytorch = nn.RMSNorm(example_batch.shape[-1], eps=1e-5)
     print(rms_norm(example_batch))
     print(rms_norm_pytorch(example_batch))

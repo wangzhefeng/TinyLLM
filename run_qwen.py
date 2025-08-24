@@ -28,7 +28,7 @@ import torch
 import torch.multiprocessing as mp
 from torch.distributed import destroy_process_group
 
-from exp.exp_pretrain_gpt import Model_Pretrain
+from exp.exp_pretrain_gpt2_124M import Model_Pretrain
 from utils.args_tools import print_args_llm
 from utils.device import torch_gc
 from utils.random_seed import set_seed
@@ -61,7 +61,7 @@ def args_parse():
     parser.add_argument("--model_name", type=str, required=True, default="gpt", help="model name")
     parser.add_argument("--context_length", type=int, required=True, default=1024, help="context length")
     parser.add_argument("--vocab_size", type=int, required=True, default=50257, help="vocab size")
-    parser.add_argument("--emb_dim", type=int, required=True, default=768, help="embedding dimension")
+    parser.add_argument("--embed_dim", type=int, required=True, default=768, help="embedding dimension")
     parser.add_argument("--n_heads", type=int, required=True, default=12, help="number of heads")
     parser.add_argument("--n_layers", type=int, required=True, default=12, help="number of layers")
     parser.add_argument("--dropout", type=float, required=True, default=0.1, help="dropout rate")

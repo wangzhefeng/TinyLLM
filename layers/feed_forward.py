@@ -53,8 +53,8 @@ class FeedForwardGELU(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
-        self.fc1 = nn.Linear(cfg.emb_dim,   4*cfg.emb_dim, dtype=cfg.dtype, bias=True)
-        self.fc2 = nn.Linear(4*cfg.emb_dim, cfg.emb_dim, dtype=cfg.dtype, bias=True)
+        self.fc1 = nn.Linear(cfg.embed_dim,   4*cfg.embed_dim, dtype=cfg.dtype, bias=True)
+        self.fc2 = nn.Linear(4*cfg.embed_dim, cfg.embed_dim, dtype=cfg.dtype, bias=True)
         self.silu = GELU()
     
     def forward(self, x):
@@ -73,9 +73,9 @@ class FeedForwardSiLU(nn.Module):
     def __init__(self, cfgs):
         super().__init__()
 
-        self.fc1 = nn.Linear(cfgs.emb_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)
-        self.fc2 = nn.Linear(cfgs.emb_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)
-        self.fc3 = nn.Linear(cfgs.hidden_dim, cfgs.emb_dim, dtype=cfgs.dtype, bias=False)
+        self.fc1 = nn.Linear(cfgs.embed_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)
+        self.fc2 = nn.Linear(cfgs.embed_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)
+        self.fc3 = nn.Linear(cfgs.hidden_dim, cfgs.embed_dim, dtype=cfgs.dtype, bias=False)
         self.silu = SiLU()
 
     def forward(self, x):
@@ -101,7 +101,7 @@ def main():
     GPT_CONFIG_124M = {
         "vocab_size": 50257,
         "context_length": 1024,
-        "emb_dim": 768,
+        "embed_dim": 768,
         "n_heads": 12,
         "n_layers": 12,
         "hidden_dim": 100,

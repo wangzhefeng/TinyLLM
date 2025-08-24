@@ -59,16 +59,14 @@ def subsequent_mask(size):
     Mask out subsequent positions
     """
     attn_shape = (1, size, size)
-    subsequent_mask = torch.triu(
-        torch.ones(attn_shape), 
-        diagonal=1
-    ).type(torch.uint8)
-    print(subsequent_mask)
+    subsequent_mask = torch.triu(torch.ones(attn_shape), diagonal=1).type(torch.uint8)
 
     return subsequent_mask == 0
 
 
-# TODO
+# ------------------------------
+# test
+# ------------------------------
 def example_mask():
     import altair as alt
     LS_data = pd.concat([

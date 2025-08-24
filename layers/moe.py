@@ -35,9 +35,9 @@ class _Expert(nn.Module):
         super().__init__()
 
         self.layers = nn.Sequential(
-            nn.Linear(cfgs.emb_dim, 4 * cfgs.emb_dim),
+            nn.Linear(cfgs.embed_dim, 4 * cfgs.embed_dim),
             nn.ReLU(),
-            nn.Linear(4 * cfgs.emb_dim, cfgs.emb_dim),
+            nn.Linear(4 * cfgs.embed_dim, cfgs.embed_dim),
             nn.Dropout(cfgs.dropout),
         )
 
@@ -53,15 +53,15 @@ class _NoisyTopkRouter(nn.Module):
         super().__init__()
 
         self.top_k = cfgs.top_k
-        self.topk_route_linear = nn.Linear(cfgs.emb_dim, cfgs.num_experts)
+        self.topk_route_linear = nn.Linear(cfgs.embed_dim, cfgs.num_experts)
         # add noise
-        self.noise_linear = nn.Linear(cfgs.emb_dim, cfgs.num_experts)
+        self.noise_linear = nn.Linear(cfgs.embed_dim, cfgs.num_experts)
     
     def forward(self, mh_output):
         """
         假设：
         top_k = 2
-        mh_output.shape = [batch_size, tokens, emb_dim] = [2, 4, 32]
+        mh_output.shape = [batch_size, tokens, embed_dim] = [2, 4, 32]
         linear_layer.shape = [batch_size, tokens, num_experts] = [2, 4, 4]
         """
         # logits
@@ -155,7 +155,7 @@ def main():
     logger.info(f"input: \n{input}")
 
     cfgs = {
-        "emb_dim": 6,
+        "embed_dim": 6,
         "dropout": 0.1,
         "top_k": 2,
         "num_experts": 4,

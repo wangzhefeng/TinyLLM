@@ -22,7 +22,7 @@ if ROOT not in sys.path:
 import torch
 
 from models import (
-    gpt2, 
+    gpt2_124M, 
     llama2, 
     llama3_8B,
 )
@@ -37,7 +37,7 @@ class Exp_Basic:
     def __init__(self, args):
         self.args = args
         self.model_dict = {
-            "gpt2": gpt2,
+            "gpt2_124M": gpt2_124M,
             "llama2": llama2,
             "llama3_8B": llama3_8B,
             # "minimind": minimind,

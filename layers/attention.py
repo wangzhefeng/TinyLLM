@@ -88,6 +88,7 @@ class MultiHeadAttentionWrapper(nn.Module):
         return x
 
 
+# GPT2_124M
 class MultiHeadAttention(nn.Module):
     
     def __init__(self, d_model: int, d_out: int, n_heads: int, context_length: int, dropout: float=0.0, qkv_bias: bool=False):

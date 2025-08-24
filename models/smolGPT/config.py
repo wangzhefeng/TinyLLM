@@ -35,7 +35,7 @@ class ModelConfig:
     vocab_size: int = 4096
     n_layer: int = 8
     n_head: int = 8
-    n_embed: int = 512
+    embed_dim: int = 512
     dropout: float = 0.2
     bias: bool = False
 

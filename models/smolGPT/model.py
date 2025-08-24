@@ -76,10 +76,10 @@ class CausalSelfAttention(nn.Module):
         super().__init__()
         
         self.config = config
-        assert config.n_embed % config.n_head == 0
-        self.head_dim = config.n_embed // config.n_head
-        self.c_attn = nn.Linear(config.n_embed, 3 * config.n_embed, bias=config.bias)
-        self.c_proj = nn.Linear(config.n_embed, config.n_embed, bias=config.bias)
+        assert config.embed_dim % config.n_head == 0
+        self.head_dim = config.embed_dim // config.n_head
+        self.c_attn = nn.Linear(config.embed_dim, 3 * config.embed_dim, bias=config.bias)
+        self.c_proj = nn.Linear(config.embed_dim, config.embed_dim, bias=config.bias)
         self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
 
@@ -100,7 +100,7 @@ class CausalSelfAttention(nn.Module):
     def forward(self, x):
         B, T, C = x.shape
 
-        q, k, v = self.c_attn(x).split(self.config.n_embed, dim=2)
+        q, k, v = self.c_attn(x).split(self.config.embed_dim, dim=2)
         q = q.view(B, T, self.config.n_head, C // self.config.n_head).transpose(1, 2)
         k = k.view(B, T, self.config.n_head, C // self.config.n_head).transpose(1, 2)
         v = v.view(B, T, self.config.n_head, C // self.config.n_head).transpose(1, 2)
@@ -139,11 +139,11 @@ class FeedForward(nn.Module):
     def __init__(self, config):
         super().__init__()
 
-        hidden_dim = 4 * config.n_embed
+        hidden_dim = 4 * config.embed_dim
         hidden_dim = int(2 * hidden_dim / 3)
-        self.w1 = nn.Linear(config.n_embed, hidden_dim, bias=False)
-        self.w2 = nn.Linear(hidden_dim, config.n_embed, bias=False)
-        self.w3 = nn.Linear(config.n_embed, hidden_dim, bias=False)
+        self.w1 = nn.Linear(config.embed_dim, hidden_dim, bias=False)
+        self.w2 = nn.Linear(hidden_dim, config.embed_dim, bias=False)
+        self.w3 = nn.Linear(config.embed_dim, hidden_dim, bias=False)
         self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, x):
@@ -155,9 +155,9 @@ class Block(nn.Module):
     def __init__(self, config):
         super().__init__()
         
-        self.ln_1 = nn.RMSNorm(config.n_embed)
+        self.ln_1 = nn.RMSNorm(config.embed_dim)
         self.attn = CausalSelfAttention(config)
-        self.ln_2 = nn.RMSNorm(config.n_embed)
+        self.ln_2 = nn.RMSNorm(config.embed_dim)
         self.ffd = FeedForward(config)
 
     def forward(self, x):
@@ -175,19 +175,19 @@ class GPT(nn.Module):
 
         # Create base transformer components
         transformer_dict = {
-            "wte": nn.Embedding(config.vocab_size, config.n_embed),
+            "wte": nn.Embedding(config.vocab_size, config.embed_dim),
             "drop": nn.Dropout(config.dropout),
             "h": nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-            "ln_f": nn.RMSNorm(config.n_embed),
+            "ln_f": nn.RMSNorm(config.embed_dim),
         }
 
         # Only add positional embeddings if not using rotary
         if not config.use_rotary:
-            transformer_dict["wpe"] = nn.Embedding(config.block_size, config.n_embed)
+            transformer_dict["wpe"] = nn.Embedding(config.block_size, config.embed_dim)
 
         self.transformer = nn.ModuleDict(transformer_dict)
 
-        self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False)
+        self.lm_head = nn.Linear(config.embed_dim, config.vocab_size, bias=False)
 
         self.transformer.wte.weight = self.lm_head.weight
 

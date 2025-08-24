@@ -41,7 +41,7 @@ from exp.exp_basic import Exp_Basic
 from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.llm.train_funcs import select_optimizer
 from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
-from utils.llm.gpt_generate import generate
+from layers.gpt_generate import generate
 from utils.plot_losses import plot_losses
 # utils
 from utils.model_memory import model_memory_size
@@ -110,7 +110,7 @@ class Model_Pretrain(Exp_Basic):
         elif self.args.use_ddp:
             model = DDP(model, device_ids=[self.device])
         # 打印模型参数量
-        total_memory_gb = model_memory_size(model, verbose=True)
+        model_memory_size(model, verbose=True)
         
         return model
 

@@ -29,51 +29,49 @@ from layers.attention import (
     GroupedQueryAttention,
 )
 from layers.feed_forward import FeedForwardGELU, FeedForwardSiLU
+from layers.moe import SparseMoE
 from layers.normailzation.layer_norm import LayerNorm
 from layers.normailzation.rms_norm import RMSNorm
-from layers.moe import SparseMoE
-from layers.transformer_encdec import Encoder, Decoder
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-class TransformerBlockGPT(nn.Module):
+class TransformerBlockGPT2_124M(nn.Module):
     
     def __init__(self, cfg):
         super().__init__()
         
         self.attn = MultiHeadAttention(
-            d_model = cfg.emb_dim,
-            d_out = cfg.emb_dim,
+            d_model = cfg.embed_dim,
+            d_out = cfg.embed_dim,
             n_heads = cfg.n_heads,
             context_length = cfg.context_length,
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
         )
         self.ff = FeedForwardGELU(cfg)
-        self.norm1 = LayerNorm(cfg.emb_dim)
-        self.norm2 = LayerNorm(cfg.emb_dim)
+        self.norm1 = LayerNorm(cfg.embed_dim)
+        self.norm2 = LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
     def forward(self, x):
         # shortcut connection for attention block
         shortcut = x
-        x = self.norm1(x)
-        x = self.attn(x)  # shape: [batch_size, num_tokens, emb_dim]
-        x = self.drop_shortcut(x)
-        x = shortcut + x
+        x = self.norm1(x)  # shape: [batch_size, num_tokens, embed_dim]
+        x = self.attn(x)  # shape: [batch_size, num_tokens, embed_dim]
+        x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
+        x = shortcut + x  # shape: [batch_size, num_tokens, embed_dim]
         # shortcut connection for feed forward block
         shortcut = x
-        x = self.norm2(x)
-        x = self.ff(x)
-        x = self.drop_shortcut(x)
-        x = shortcut + x
+        x = self.norm2(x)  # shape: [batch_size, num_tokens, embed_dim]
+        x = self.ff(x)  # shape: [batch_size, num_tokens, embed_dim]
+        x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
+        x = shortcut + x  # shape: [batch_size, num_tokens, embed_dim]
         
         return x
 
 
-# TODO 未使用
 class TransformerBlockMoE(nn.Module):
     """
     Mixture of Experts Transformer block
@@ -84,23 +82,23 @@ class TransformerBlockMoE(nn.Module):
         super().__init__()
         
         self.attn = MultiHeadAttention(
-            d_model = cfg.emb_dim,
-            d_out = cfg.emb_dim,
+            d_model = cfg.embed_dim,
+            d_out = cfg.embed_dim,
             n_heads = cfg.n_heads,
             context_length = cfg.context_length,
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
         )
         self.smoe = SparseMoE(cfg)
-        self.norm1 = LayerNorm(cfg.emb_dim)
-        self.norm2 = LayerNorm(cfg.emb_dim)
+        self.norm1 = LayerNorm(cfg.embed_dim)
+        self.norm2 = LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
     def forward(self, x):
         # shortcut connection for attention block
         shortcut = x
         x = self.norm1(x)
-        x = self.attn(x)  # shape: [batch_size, num_tokens, emb_dim]
+        x = self.attn(x)  # shape: [batch_size, num_tokens, embed_dim]
         x = self.drop_shortcut(x)
         x = shortcut + x
         # shortcut connection for feed forward block
@@ -119,15 +117,15 @@ class TransformerBlockLlama2(nn.Module):
         super().__init__()
 
         self.attn = MultiHeadAttentionRoPE(
-            d_model = cfg.emb_dim,
-            d_out = cfg.emb_dim,
-            context_length=cfg.context_length,
+            d_model = cfg.embed_dim,
+            d_out = cfg.embed_dim,
             n_heads = cfg.n_heads,
+            context_length=cfg.context_length,
             dtype = cfg.dtype,
         )
         self.ff = FeedForwardSiLU(cfg)
-        self.norm1 = RMSNorm(cfg.emb_dim)
-        self.norm2 = RMSNorm(cfg.emb_dim)
+        self.norm1 = RMSNorm(cfg.embed_dim, eps=1e-5)
+        self.norm2 = RMSNorm(cfg.embed_dim, eps=1e-5)
     
     def forward(self, x):
         # shortcut connection for attention block
@@ -150,18 +148,18 @@ class TransformerBlockLlama3(nn.Module):
         super().__init__()
 
         self.attn = GroupedQueryAttention(
-            d_model = cfg.emb_dim,
-            d_out = cfg.emb_dim,
-            context_length = cfg.context_length,
+            d_model = cfg.embed_dim,
+            d_out = cfg.embed_dim,
             n_heads = cfg.n_heads,
+            context_length = cfg.context_length,
             num_kv_groups = cfg.n_kv_groups,
             rope_base = cfg.rope_base,
             rope_config = cfg.rope_freq,
             dtype = cfg.dtype,
         )
         self.ff = FeedForwardSiLU(cfg)
-        self.norm1 = RMSNorm(cfg.emb_dim, eps = 1e-5)
-        self.norm2 = RMSNorm(cfg.emb_dim, eps = 1e-5)
+        self.norm1 = RMSNorm(cfg.embed_dim, eps=1e-5)
+        self.norm2 = RMSNorm(cfg.embed_dim, eps=1e-5)
     
     def forward(self, x):
         # Shortcut connection for attention block
@@ -178,86 +176,36 @@ class TransformerBlockLlama3(nn.Module):
         return x
 
 
-class Transformer(nn.Module):
-    """
-    Encoder-Decoder
-
-    A standard Encoder-Decoder architecture. Base for this and many other models.
-    """
-    
-    def __init__(self,
-                 woe: str, wpe: str,
-                 src_vocab_size: int, tgt_vocab_size: int, 
-                 d_model: int=512, n_heads: int=8, d_ff: int=2048, 
-                 num_layers: int=6, dropout: float=0.1):
-        super().__init__()
-
-        self.encoder = Encoder(
-            woe, wpe,
-            src_vocab_size, 
-            d_model, 
-            n_heads, 
-            d_ff, 
-            num_layers, 
-            dropout
-        )
-        self.decoder = Decoder(
-            woe, 
-            wpe,
-            tgt_vocab_size, 
-            d_model, 
-            n_heads, 
-            d_ff, 
-            num_layers, 
-            dropout
-        )
-        self.linear = nn.Linear(d_model, tgt_vocab_size)
-    
-    def forward(self, src, tgt, src_mask=None, tgt_mask=None):
-        # encoder
-        enc_output = self.encoder(src, src_mask)
-        # decoder
-        dec_output = self.decoder(tgt, enc_output, src_mask, tgt_mask)
-        # final linear projection
-        output = self.linear(dec_output)
-
-        return output
-    
-    def encode(self, src, src_mask=None):
-        return self.encoder(src, src_mask)
-    
-    def decode(self, tgt, enc_output, src_mask=None, tgt_mask=None):
-        return self.decoder(tgt, enc_output, src_mask, tgt_mask)
-
-
-
 
 
 # 测试代码 main 函数
 def main():
     import torch
+    from utils.args_tools import DotDict
     from utils.log_util import logger
 
     # ------------------------------
     # Transformer Block test
     # ------------------------------
-    # shape: [batch_size, num_tokens, emb_dim]
-    GPT_CONFIG_124M = {
+    # shape: [batch_size, num_tokens, embed_dim]
+    GPT2_124M_CONFIG = {
         "vocab_size": 50257,
         "context_length": 1024,
-        "emb_dim": 768,
+        "embed_dim": 768,
         "n_heads": 12,
         "n_layers": 12,
         "dropout": 0.1,
         "qkv_bias": False,
+        "dtype": torch.float32,
     }
+    GPT2_124M_CONFIG = DotDict(GPT2_124M_CONFIG)
 
     # input
     torch.manual_seed(123)
     x = torch.rand(2, 4, 768)
 
     # transformer
-    block = TransformerBlockGPT(GPT_CONFIG_124M)
+    block = TransformerBlockGPT2_124M(GPT2_124M_CONFIG)
     output = block(x)
     logger.info(f"Input shape: {x.shape}")
     logger.info(f"Output shape: {output.shape}")

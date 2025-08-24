@@ -19,7 +19,7 @@ class GPTConfig:
     # model configurations
     n_layer: int = None
     n_head: int = None
-    n_embd: int =  None
+    embed_dim: int =  None
     # openai's values for gpt2
     vocab_size: int = 50257 
     block_size: int = 1024
@@ -43,9 +43,9 @@ class MultiheadAttentionLayer(nn.Module):
     def __init__(self, config, device="cpu", dtype=torch.float32):
         super().__init__()
         
-        assert config.n_embd % config.n_head == 0
+        assert config.embed_dim % config.n_head == 0
         # output projection
-        self.c_proj = nn.Linear(config.n_embd, config.n_embd, device=device, dtype=dtype)
+        self.c_proj = nn.Linear(config.embed_dim, config.embed_dim, device=device, dtype=dtype)
         # regularization
         self.resid_drop = nn.Dropout(config.resid_pdrop)
         # causal mask to ensure that attention is only applied to the left in the input sequence
@@ -53,7 +53,7 @@ class MultiheadAttentionLayer(nn.Module):
                              .view(1, 1, config.block_size, config.block_size))
         # attention layer
         self.attn = torch.nn.MultiheadAttention(
-            embed_dim=config.n_embd,
+            embed_dim=config.embed_dim,
             n_heads=config.n_head,
             dropout=config.attn_pdrop,
             batch_first=True,
@@ -62,7 +62,7 @@ class MultiheadAttentionLayer(nn.Module):
         )
 
     def forward(self, x):
-        B, seq_size, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
+        B, seq_size, C = x.size() # batch size, sequence length, embedding dimensionality (embed_dim)
         
         # multi-head masked self-attention
         y = self.attn(x, x, x, attn_mask=self.mask[0, 0, :seq_size, :seq_size])[0]
@@ -81,13 +81,13 @@ class TransformerBlock(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
         
-        self.ln1 = nn.LayerNorm(config.n_embd)
+        self.ln1 = nn.LayerNorm(config.embed_dim)
         self.attn = MultiheadAttentionLayer(config)
-        self.ln2 = nn.LayerNorm(config.n_embd)
+        self.ln2 = nn.LayerNorm(config.embed_dim)
         self.mlp = nn.Sequential(
-            nn.Linear(config.n_embd, 4 * config.n_embd),
+            nn.Linear(config.embed_dim, 4 * config.embed_dim),
             nn.GELU(),
-            nn.Linear(4 * config.n_embd, config.n_embd),
+            nn.Linear(4 * config.embed_dim, config.embed_dim),
             nn.Dropout(config.resid_pdrop),
         )
 
@@ -102,8 +102,8 @@ class EmbeddingStem(nn.Module):
     def __init__(self, config: GPTConfig, device="cpu", dtype=torch.float32):
         super().__init__()
         
-        self.tok_emb = nn.Embedding(config.vocab_size, config.n_embd, device=device, dtype=dtype)
-        self.pos_emb = nn.Parameter(torch.zeros(1, config.block_size, config.n_embd, device=device, dtype=dtype))
+        self.tok_emb = nn.Embedding(config.vocab_size, config.embed_dim, device=device, dtype=dtype)
+        self.pos_emb = nn.Parameter(torch.zeros(1, config.block_size, config.embed_dim, device=device, dtype=dtype))
         self.drop = nn.Dropout(config.embd_pdrop)
         self.block_size = config.block_size
 
@@ -136,8 +136,8 @@ class GPT(nn.Module):
         # transformer
         self.blocks = nn.Sequential(*[TransformerBlock(config) for _ in range(config.n_layer)])
         # decoder head
-        self.ln_f = nn.LayerNorm(config.n_embd)
-        self.head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.ln_f = nn.LayerNorm(config.embed_dim)
+        self.head = nn.Linear(config.embed_dim, config.vocab_size, bias=False)
 
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
         self.apply(self._init_weights)
@@ -159,7 +159,7 @@ class GPT(nn.Module):
         params_given = all([
             config.n_layer is not None, 
             config.n_head is not None, 
-            config.n_embd is not None
+            config.embed_dim is not None
         ])
         # assert type_given ^ params_given # exactly one of these (XOR)
         if type_given and not params_given:

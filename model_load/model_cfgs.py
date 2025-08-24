@@ -37,7 +37,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 GPT_CONFIG_124M = {
     "vocab_size": 50257,     # Vocabulary size
     "context_length": 1024,  # Context length
-    "emb_dim": 768,          # Embedding dimension
+    "embed_dim": 768,          # Embedding dimension
     "n_heads": 12,           # Number of attention heads
     "n_layers": 12,          # Number of layers
     "drop_rate": 0.1,        # Dropout rate
@@ -49,7 +49,7 @@ GPT_CONFIG_124M = {
 GPT_CONFIG_1558M = {
     "vocab_size": 50257,     # Vocabulary size
     "context_length": 1024,  # Context length
-    "emb_dim": 1600,         # Embedding dimension
+    "embed_dim": 1600,         # Embedding dimension
     "n_heads": 25,           # Number of attention heads
     "n_layers": 48,          # Number of layers
     "drop_rate": 0.1,        # Dropout rate
@@ -61,7 +61,7 @@ GPT_CONFIG_1558M = {
 LLAMA2_CONFIG_7B = {
     "vocab_size": 32000,     # Vocabulary size
     "context_length": 4096,  # Context length
-    "emb_dim": 4096,         # Embedding dimension
+    "embed_dim": 4096,         # Embedding dimension
     "n_heads": 32,           # Number of attention heads
     "n_layers": 32,          # Number of layers
     "hidden_dim": 11008,     # NEW: Size of the intermediate dimension in FeedForward
@@ -73,7 +73,7 @@ LLAMA2_CONFIG_7B = {
 LLAMA3_CONFIG_8B = {
     "vocab_size": 128_256,   # NEW: Larger vocabulary size
     "context_length": 8192,  # NEW: Larger context length
-    "emb_dim": 4096,         # Embedding dimension
+    "embed_dim": 4096,         # Embedding dimension
     "n_heads": 32,           # Number of attention heads
     "n_layers": 32,          # Number of layers
     "hidden_dim": 14_336,    # NEW: Larger size of the intermediate dimension in FeedForward
@@ -87,7 +87,7 @@ LLAMA3_CONFIG_8B = {
 LLAMA31_CONFIG_8B = {
     "vocab_size": 128_256,      # Vocabulary size
     "context_length": 131_072,  # NEW: Larger supported context length
-    "emb_dim": 4096,            # Embedding dimension
+    "embed_dim": 4096,            # Embedding dimension
     "n_heads": 32,              # Number of attention heads
     "n_layers": 32,             # Number of layers
     "hidden_dim": 14_336,       # Size of the intermediate dimension in FeedForward

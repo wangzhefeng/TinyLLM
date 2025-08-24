@@ -46,10 +46,10 @@ gpt2_model_names = {
     "gpt2-xl (1558M)": "gpt2-xl"         # works ok
 }
 gpt2_model_configs = {
-    "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
-    "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
-    "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
-    "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
+    "gpt2-small (124M)": {"embed_dim": 768, "n_layers": 12, "n_heads": 12},
+    "gpt2-medium (355M)": {"embed_dim": 1024, "n_layers": 24, "n_heads": 16},
+    "gpt2-large (774M)": {"embed_dim": 1280, "n_layers": 36, "n_heads": 20},
+    "gpt2-xl (1558M)": {"embed_dim": 1600, "n_layers": 48, "n_heads": 25},
 }
 # huggingface gpt2 model
 gpt2_huggingface_models = {
@@ -70,7 +70,7 @@ def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gp
         "context_length": cfgs.context_length,  # Context length: 1024
         "dropout": cfgs.dropout,                # Dropout rate: 0.0
         "qkv_bias": cfgs.qkv_bias,              # Query-key-value bias: True
-        "emb_dim": cfgs.emb_dim,                # Embedding dimension: 768
+        "embed_dim": cfgs.embed_dim,                # Embedding dimension: 768
         "n_layers": cfgs.n_layers,              # Number of layers: 12
         "n_heads": cfgs.n_heads,                # Number of heads: 12
     }

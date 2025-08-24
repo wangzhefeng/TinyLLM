@@ -59,7 +59,7 @@ class Embedding(nn.Module):
 
     def __init__(self, config) -> None:
         super().__init__()
-        self.embd = nn.Embedding(config.vocab_size, config.n_embd)
+        self.embd = nn.Embedding(config.vocab_size, config.embed_dim)
     
     def forward(self, x):
         x = self.embd(x)
@@ -95,12 +95,12 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(p = config.dropout)
         
         # Position Embeding 层
-        pe = torch.zeros(config.block_size, config.n_embd).float()
+        pe = torch.zeros(config.block_size, config.embed_dim).float()
         pe.requires_grad = False
         # pos
         position = torch.arange(0, config.block_size, dtype=torch.float32).unsqueeze(1)
         # 1 / 10000^{2i/d_model}
-        div_term = torch.exp(torch.arange(0, config.n_embd, 2).float() * -(math.log(10000.0) / config.n_embd))
+        div_term = torch.exp(torch.arange(0, config.embed_dim, 2).float() * -(math.log(10000.0) / config.embed_dim))
         
         # apply sine to even indices: pe(pos, 2i) = sin(pos / 10000^{2i/d_model})
         pe[:, 0::2] = torch.sin(position * div_term)
@@ -138,16 +138,16 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         
         # 隐藏层维度必须是头数的整数倍
-        assert (config.n_embd % config.n_head == 0), "n_embd must be divisible by n_heads"
+        assert (config.embed_dim % config.n_head == 0), "embed_dim must be divisible by n_heads"
 
         # Wq, Wk, Wv 参数矩阵(每个参数矩阵为 n_embd×n_embd)
         self.c_attns = nn.ModuleList([
-            nn.Linear(config.n_embd, config.n_embd, bias = config.bias)
+            nn.Linear(config.embed_dim, config.embed_dim, bias = config.bias)
             for _ in range(3)
         ])
         
         # 输出的线性层(维度为 n_embd×n_embd)
-        self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias = config.bias)
+        self.c_proj = nn.Linear(config.embed_dim, config.embed_dim, bias = config.bias)
         
         # 注意力的 dropout
         self.attn_dropout = nn.Dropout(config.dropout)
@@ -157,7 +157,7 @@ class MultiHeadAttention(nn.Module):
         # 头数
         self.n_head = config.n_head
         # 隐藏层维度
-        self.n_embd = config.n_embd
+        self.embed_dim = config.embed_dim
         # dropout 概率
         self.dropout = config.dropout
         # 是否是解码器的 Casual LM
@@ -182,11 +182,11 @@ class MultiHeadAttention(nn.Module):
     
     def forward(self, query, key, value):
         """
-        输入为 query、key、value，维度为 (B, seq_len, n_embd)
+        输入为 query、key、value，维度为 (B, seq_len, embed_dim)
         """
-        # batch_size, sequence length, embedding dimensionality(n_embd)
+        # batch_size, sequence length, embedding dimensionality(embed_dim)
         B, T, C = query.size()
-        # 计算 Q、K、V，输入通过参数矩阵层，维度为 (B, T, n_embd)×(n_embd, n_embd)->(B, T, n_embd)
+        # 计算 Q、K、V，输入通过参数矩阵层，维度为 (B, T, embed_dim)×(embed_dim, embed_dim)->(B, T, embed_dim)
         q, k, v = [self.c_attns[i](x) for i, x in zip(range(3), (query, key, value))]
         # 将 Q、K、V 拆分成多头，维度为 (B, T, n_head, C//n_head)，然后交换维度，变成 (B, n_head, T, C//n_head)
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
@@ -228,9 +228,9 @@ class FeedForward(nn.Module):
         Transformer 的全连接模块有两个线性层，中间加了一个 RELU 激活函数
         """
         super().__init__() 
-        self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd, bias = config.bias)
+        self.c_fc = nn.Linear(config.embed_dim, 4 * config.embed_dim, bias = config.bias)
         self.relu = nn.ReLU()
-        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias = config.bias)
+        self.c_proj = nn.Linear(4 * config.embed_dim, config.embed_dim, bias = config.bias)
         # self.dropout = nn.Dropout(config.dropout)
         self.dropout = Dropout(config)
     
@@ -287,9 +287,9 @@ class EncoderLayer(nn.Module):
         一个 Encoder Layer 中有两个 LayerNorm，分别在 Attention 之前和 FeedForward 之前
         """
         super().__init__() 
-        self.ln_1 = LayerNorm(config.n_embd, bias = config.bias) 
+        self.ln_1 = LayerNorm(config.embed_dim, bias = config.bias) 
         self.attn = MultiHeadAttention(config, is_causal = False)
-        self.ln_2 = LayerNorm(config.n_embd, bias = config.bias)
+        self.ln_2 = LayerNorm(config.embed_dim, bias = config.bias)
         self.mlp = FeedForward(config)
     
     def forward(self, x):
@@ -317,7 +317,7 @@ class Encoder(nn.Module):
         self.layers = nn.ModuleList([
             EncoderLayer(config) for _ in range(config.n_layer)
         ])
-        self.norm = LayerNorm(config.n_embd, bias = config.bias)
+        self.norm = LayerNorm(config.embed_dim, bias = config.bias)
     
     def forward(self, x):
         """
@@ -343,11 +343,11 @@ class DecoderLayer(nn.Module):
         一个 Decoder Layer 中有三个 LayerNorm，分别在 Mask Attention 之前、Self-Attention 之前和 FeedForward 之前
         """
         super().__init__()
-        self.ln_1 = LayerNorm(config.n_embd, bias = config.bias) 
+        self.ln_1 = LayerNorm(config.embed_dim, bias = config.bias) 
         self.m_attn = MultiHeadAttention(config, is_causal = True)
-        self.ln_2 = LayerNorm(config.n_embd, bias = config.bias) 
+        self.ln_2 = LayerNorm(config.embed_dim, bias = config.bias) 
         self.attn = MultiHeadAttention(config, is_causal = False)
-        self.ln_3 = LayerNorm(config.n_embd, bias = config.bias) 
+        self.ln_3 = LayerNorm(config.embed_dim, bias = config.bias) 
         self.mlp = FeedForward(config)
 
     def forward(self, x, enc_out):
@@ -380,7 +380,7 @@ class Decoder(nn.Module):
         self.layers = nn.ModuleList([
             DecoderLayer(config) for _ in range(config.n_layer)
         ])
-        self.norm = LayerNorm(config.n_embd, bias = config.bias)
+        self.norm = LayerNorm(config.embed_dim, bias = config.bias)
     
     def forward(self, x, enc_out):
         """
@@ -400,7 +400,7 @@ class Linear(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.linear = nn.Linear(config.n_embd, config.vocab_size, bias = False)
+        self.linear = nn.Linear(config.embed_dim, config.vocab_size, bias = False)
 
     def forward(self, x):
         x = self.linear(x)
@@ -440,7 +440,7 @@ class Transformer(nn.Module):
         # Transformer
         # ------------------------------
         self.transformer = nn.ModuleDict(dict(
-            # wte = nn.Embedding(config.vocab_size, config.n_embd),
+            # wte = nn.Embedding(config.vocab_size, config.embed_dim),
             wte = Embedding(config),
             wpe = PositionalEncoding(config),
             # drop = nn.Dropout(config.dropout),
@@ -451,7 +451,7 @@ class Transformer(nn.Module):
         # ------------------------------
         # 最后的线性层：输入是 n_embd，输出是词表大小(vocab_size)
         # ------------------------------
-        # self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias = False)
+        # self.lm_head = nn.Linear(config.embed_dim, config.vocab_size, bias = False)
         self.lm_head = Linear(config)
         # ------------------------------
         # 初始化所有的权重 
@@ -509,11 +509,11 @@ class Transformer(nn.Module):
         # ------------------------------
         # 通过 self.transformer
         # ------------------------------
-        ## 通过：Embedding Layer (得到的维度是 (batch size, sequence length, vocab_size, n_embd))
+        ## 通过：Embedding Layer (得到的维度是 (batch size, sequence length, vocab_size, embed_dim))
         print(f"x size: {idx.size()}")
         tok_emb = self.transformer.wte(idx)
         print(f"x after wte: {tok_emb.size()}")
-        ## 通过：Positional Encoding (得到的维度是 (batch size, sequence length, vocab_size, n_embd))
+        ## 通过：Positional Encoding (得到的维度是 (batch size, sequence length, vocab_size, embed_dim))
         pos_emb = self.transformer.wpe(tok_emb)   
         x = self.transformer.drop(pos_emb)  # 进行：dropout
         print(f"x after wpe: {x.size()}")
@@ -644,7 +644,7 @@ def main():
         vocab_size: int = 50304  # 词表大小
         n_layer: int = 4  # Encoder, Deocder 层数
         n_head: int = 4  # 注意力头数量
-        n_embd: int = 768  # Embedding 维度(d_model)
+        embed_dim: int = 768  # Embedding 维度(d_model)
         dropout: float = 0.0
         bias: bool = True
 
@@ -653,7 +653,7 @@ def main():
         vocab_size = 10,
         n_layer = 2,
         n_head = 4,
-        n_embd = 16,
+        embed_dim = 16,
         dropout = 0.0,
         bias = True,
     )

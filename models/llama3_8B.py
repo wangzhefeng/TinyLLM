@@ -34,15 +34,15 @@ class Model(nn.Module):
         super().__init__()
 
         # embedding
-        self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.emb_dim, dtype=cfg.dtype)
+        self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.embed_dim, dtype=cfg.dtype)
         # transformer block
         self.trf_blocks = nn.Sequential(
             *[TransformerBlockLlama3(cfg) for _ in range(cfg.n_layers)]
         )
         # RMSNorm
-        self.final_norm = RMSNorm(cfg.emb_dim)
+        self.final_norm = RMSNorm(cfg.embed_dim)
         # output head linear
-        self.out_head = nn.Linear(cfg.emb_dim, cfg.vocab_size, bias = False, dtype=cfg.dtype)
+        self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias = False, dtype=cfg.dtype)
     
     def forward(self, in_idx):
         # TODO in_idx size
@@ -66,7 +66,7 @@ class Model(nn.Module):
 def main():
     import torch
     from utils.args_tools import DotDict
-    from utils.llm.gpt_generate import generate
+    from layers.gpt_generate import generate
     from layers.tokenizers.tokenization import (
         text_to_token_ids,
         token_ids_to_text,

@@ -54,7 +54,7 @@ def load_pretrained_model(cfgs, model_configs, model_cls, device: str = "cpu", t
     model = model_cls(base_config)
     if task == "binary_classification":
         model.out_head = nn.Linear(
-            in_features=cfgs.emb_dim, 
+            in_features=cfgs.embed_dim, 
             out_features=cfgs.num_classes
         )
     model.load_state_dict(torch.load(

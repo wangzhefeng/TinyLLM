@@ -79,8 +79,8 @@ def load_weights_hf(gpt, gpt_hf, CONFIG):
 def main(): 
     from transformers import GPT2Model
 
-    from models.gpt2 import Model
-    from utils.llm.gpt_generate import generate
+    from models.gpt2_124M import Model
+    from layers.gpt_generate import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.args_tools import DotDict

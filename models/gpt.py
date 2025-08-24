@@ -49,7 +49,7 @@ class GPTConfig:
     # model config
     n_layer: int = 2
     n_heads: int = 3
-    n_embd: int = 6
+    embed_dim: int = 6
 
 
 
@@ -62,12 +62,10 @@ def main():
 
     # config
     gpt_config = GPTConfig()
-    logger.info(gpt_config)
+    logger.info(f"gpt_config: \n{gpt_config}")
 
     # token embedding
-    token_embedding = nn.Embedding(gpt_config.vocab_size, gpt_config.n_embd)
-    
-    
+    token_embedding = nn.Embedding(gpt_config.vocab_size, gpt_config.embed_dim)
 
 if __name__ == "__main__":
     main()

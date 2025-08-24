@@ -25,8 +25,8 @@ import torch.nn as nn
 
 from data_provider.pretrain.data_load import data_load
 from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
-from models.gpt2 import Model
-from utils.llm.gpt_generate import generate_text_simple
+from models.gpt2_124M import Model
+from layers.gpt_generate import generate_text_simple
 from utils.device import device_setting
 from utils.args_tools import DotDict
 from utils.log_util import logger
@@ -47,7 +47,7 @@ def main():
     GPT_CONFIG_124M = {
         "vocab_size": 50257,   # Vocabulary size
         "context_length": 256, # Shortened context length (orig: 1024)
-        "emb_dim": 768,        # Embedding dimension
+        "embed_dim": 768,        # Embedding dimension
         "n_heads": 12,         # Number of attention heads
         "n_layers": 12,        # Number of layers
         "dropout": 0.1,      # Dropout rate

@@ -148,7 +148,7 @@ def main():
     C.model_type = "gpt"
     C.n_layer = None
     C.n_head = None
-    C.n_embd = None
+    C.embed_dim = None
     C.vocab_size = None
     C.block_size = None
     C.embd_pdrop = 0.1

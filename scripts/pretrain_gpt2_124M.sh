@@ -1,15 +1,12 @@
 export CUDA_VISIBLE_DEVICES=0
-export LOG_NAME=gpt
+export LOG_NAME=gpt2_124M
 
-tk_model_name=gpt2
-lm_model_name=gpt2
+tk_model_name=gpt2_124M
+lm_model_name=gpt2_124M
 
-# --context_length 256
-# --context_length 1024
-
-python -u ./exp/exp_pretrain_gpt.py \
-    --task_name tiny_gpt_pretrain \
-    --des 'Tiny GPT Pretrain' \
+python -u ./exp/exp_pretrain_gpt2_124M.py \
+    --task_name tiny_gpt2_124M_pretrain \
+    --des 'Tiny GPT2-124M Pretrain' \
     --is_train 1 \
     --is_test 0 \
     --is_inference 0 \
@@ -17,15 +14,15 @@ python -u ./exp/exp_pretrain_gpt.py \
     --data_file the-verdict.txt \
     --data_name the-verdict \
     --tokenizer_model $tk_model_name \
-    --model_name $model_name \
+    --model_name $lm_model_name \
     --train_ratio 0.95 \
     --vocab_size 50257 \
     --context_length 1024 \
-    --emb_dim 768 \
+    --embed_dim 768 \
     --n_heads 12 \
     --n_layers 12 \
     --dropout 0.1 \
-    --qkv_bias 0 \
+    --qkv_bias \
     --dtype float32 \
     --use_amp 0 \
     --max_new_tokens 50 \

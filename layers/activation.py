@@ -12,6 +12,8 @@
 # ***************************************************
 
 __all__ = [
+    "ReLU",
+    "ReLUPyTorch",
     "GELU",
     "SiLU",
 ]
@@ -30,6 +32,24 @@ import torch.nn as nn
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
+class ReLU(nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return torch.maximum(torch.tensor(0.0), x)
+
+
+class ReLUPyTorch(nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return torch.nn.functional.relu(x)
+
+
 class GELU(nn.Module):
     
     def __init__(self):
@@ -40,25 +60,6 @@ class GELU(nn.Module):
             torch.sqrt(torch.tensor(2.0 / torch.pi)) * 
             (x + 0.044715 * torch.pow(x, 3))
         ))
-
-
-class ReLU(nn.Module):
-    
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x):
-        return torch.maximum(torch.tensor(0.0), x)
-
-
-# TODO
-# class ReLU(nn.Module):
-    
-#     def __init__(self):
-#         super().__init__()
-
-#     def forward(self, x):
-#         return torch.nn.functional.relu(x)
 
 
 class SiLU(nn.Module):

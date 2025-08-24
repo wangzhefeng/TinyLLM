@@ -64,7 +64,7 @@ ctx = torch.autocast(train_config.device, dtype=torch.bfloat16)
 model_args = dict(
     n_layer = ModelConfig.n_layer,
     n_head = ModelConfig.n_head,
-    n_embed = ModelConfig.n_embed,
+    embed_dim = ModelConfig.embed_dim,
     block_size = ModelConfig.block_size,
     bias = ModelConfig.bias,
     vocab_size = ModelConfig.vocab_size,

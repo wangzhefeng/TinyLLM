@@ -71,11 +71,11 @@ class CausalSelfAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
         
-        assert config.n_embd % config.n_head == 0
+        assert config.embed_dim % config.n_head == 0
         # key, query, value projections for all heads, but in a batch
-        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd)
+        self.c_attn = nn.Linear(config.embed_dim, 3 * config.embed_dim)
         # output projection
-        self.c_proj = nn.Linear(config.n_embd, config.n_embd)
+        self.c_proj = nn.Linear(config.embed_dim, config.embed_dim)
         # regularization
         self.attn_dropout = nn.Dropout(config.attn_pdrop)
         self.resid_dropout = nn.Dropout(config.resid_pdrop)
@@ -83,13 +83,13 @@ class CausalSelfAttention(nn.Module):
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
                                      .view(1, 1, config.block_size, config.block_size))
         self.n_head = config.n_head
-        self.n_embd = config.n_embd
+        self.embed_dim = config.embed_dim
 
     def forward(self, x):
-        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
+        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (embed_dim)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
+        q, k, v = self.c_attn(x).split(self.embed_dim, dim=2)
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
@@ -116,13 +116,13 @@ class TransformerBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
         
-        self.ln_1 = nn.LayerNorm(config.n_embd)
+        self.ln_1 = nn.LayerNorm(config.embed_dim)
         self.attn = CausalSelfAttention(config)
-        self.ln_2 = nn.LayerNorm(config.n_embd)
+        self.ln_2 = nn.LayerNorm(config.embed_dim)
         self.mlp = nn.ModuleDict(dict(
-            c_fc = nn.Linear(config.n_embd, 4 * config.n_embd),
+            c_fc = nn.Linear(config.embed_dim, 4 * config.embed_dim),
             act = NewGELU(),
-            c_proj = nn.Linear(4 * config.n_embd, config.n_embd),
+            c_proj = nn.Linear(4 * config.embed_dim, config.embed_dim),
             dropout = nn.Dropout(config.resid_pdrop),
         ))
         m = self.mlp
@@ -142,11 +142,11 @@ class GPT(nn.Module):
     @staticmethod
     def get_default_config():
         C = CN()
-        # either model_type or (n_layer, n_head, n_embd) must be given in the config
+        # either model_type or (n_layer, n_head, embed_dim) must be given in the config
         C.model_type = "gpt"
         C.n_layer = None
         C.n_head = None
-        C.n_embd = None
+        C.embed_dim = None
         # these options must be filled in externally
         C.vocab_size = None
         C.block_size = None
@@ -169,7 +169,7 @@ class GPT(nn.Module):
         params_given = all([
             config.n_layer is not None, 
             config.n_head is not None, 
-            config.n_embd is not None
+            config.embed_dim is not None
         ])
         assert type_given ^ params_given # exactly one of these (XOR)
         if type_given:
@@ -194,14 +194,14 @@ class GPT(nn.Module):
 
         # input embedding stem and transformer
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(config.vocab_size, config.n_embd),
-            wpe = nn.Embedding(config.block_size, config.n_embd),
+            wte = nn.Embedding(config.vocab_size, config.embed_dim),
+            wpe = nn.Embedding(config.block_size, config.embed_dim),
             dropout = nn.Dropout(config.embd_pdrop),
             h = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layer)]),
-            ln_f = nn.LayerNorm(config.n_embd),
+            ln_f = nn.LayerNorm(config.embed_dim),
         ))
         # decoder head
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.lm_head = nn.Linear(config.embed_dim, config.vocab_size, bias=False)
 
         # init all weights, and apply a special scaled init to the residual projections, per GPT-2 paper
         self.apply(self._init_weights)
@@ -316,8 +316,8 @@ class GPT(nn.Module):
         pos = torch.arange(0, t, dtype=torch.long, device=device).unsqueeze(0) # shape (1, t)
 
         # forward the GPT model itself
-        tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer.wpe(pos) # position embeddings of shape (1, t, n_embd)
+        tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, embed_dim)
+        pos_emb = self.transformer.wpe(pos) # position embeddings of shape (1, t, embed_dim)
         x = self.transformer.dropout(tok_emb + pos_emb)
         for block in self.transformer.h:
             x = block(x)

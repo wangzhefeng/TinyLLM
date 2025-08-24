@@ -267,9 +267,9 @@ def load_weights_download(gpt, params):
 
 # 测试代码 main 函数
 def main():
-    from models.gpt2 import Model
+    from models.gpt2_124M import Model
     from layers.tokenizers.tokenization import token_ids_to_text, text_to_token_ids
-    from utils.llm.gpt_generate import generate
+    from layers.gpt_generate import generate
     from utils.device import device_setting
     from utils.args_tools import DotDict
     from utils.log_util import logger
@@ -295,16 +295,16 @@ def main():
     # ------------------------------
     # define model config in a dictionary for compactness
     pretrained_model_configs = {
-        "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
-        "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
-        "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
-        "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
+        "gpt2-small (124M)": {"embed_dim": 768, "n_layers": 12, "n_heads": 12},
+        "gpt2-medium (355M)": {"embed_dim": 1024, "n_layers": 24, "n_heads": 16},
+        "gpt2-large (774M)": {"embed_dim": 1280, "n_layers": 36, "n_heads": 20},
+        "gpt2-xl (1558M)": {"embed_dim": 1600, "n_layers": 48, "n_heads": 25},
     }
     # copy the base config and update with speicfic model settings
     GPT_CONFIG_124M = {
         "vocab_size": 50257,
         "context_length": 256,
-        "emb_dim": 768,
+        "embed_dim": 768,
         "n_heads": 12,
         "n_layers": 12,
         "dropout": 0.1,

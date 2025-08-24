@@ -6,7 +6,7 @@ data_config:
 gpt_config:
   n_layer: 8
   n_head: 8
-  n_embd: 512
+  embed_dim: 512
 trainer_config:
   max_epochs: 10
   batch_size: 216

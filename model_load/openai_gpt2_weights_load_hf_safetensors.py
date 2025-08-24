@@ -137,8 +137,8 @@ def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
 
 # 测试代码 main 函数
 def main():
-    from models.gpt2 import Model
-    from utils.llm.gpt_generate import generate
+    from models.gpt2_124M import Model
+    from layers.gpt_generate import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.args_tools import DotDict
@@ -155,10 +155,10 @@ def main():
         "gpt2-xl (1558M)": "gpt2-xl"         # works ok
     }
     model_configs = {
-        "gpt2-small (124M)": {"emb_dim": 768, "n_layers": 12, "n_heads": 12},
-        "gpt2-medium (355M)": {"emb_dim": 1024, "n_layers": 24, "n_heads": 16},
-        "gpt2-large (774M)": {"emb_dim": 1280, "n_layers": 36, "n_heads": 20},
-        "gpt2-xl (1558M)": {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
+        "gpt2-small (124M)": {"embed_dim": 768, "n_layers": 12, "n_heads": 12},
+        "gpt2-medium (355M)": {"embed_dim": 1024, "n_layers": 24, "n_heads": 16},
+        "gpt2-large (774M)": {"embed_dim": 1280, "n_layers": 36, "n_heads": 20},
+        "gpt2-xl (1558M)": {"embed_dim": 1600, "n_layers": 48, "n_heads": 25},
     }
 
     # huggingface gpt2 model

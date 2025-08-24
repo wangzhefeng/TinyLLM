@@ -14,58 +14,114 @@
 __all__ = []
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import tiktoken
 import torch
 import matplotlib.pyplot as plt
 
+from layers.tokenizers.tokenization import (
+    text_to_token_ids, 
+    token_ids_to_text,
+)
+from models.gpt2_124M import Model
+from layers.gpt_generate import generate_simple, generate
+from utils.args_tools import DotDict
+from utils.device import device_setting
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
+# device
+device = device_setting()
 
-# 测试代码 main 函数
-def main():
-    from models.gpt2 import Model
-    from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
-    from utils.llm.gpt_generate import generate_text_simple, generate
-    from utils.args_tools import DotDict
-    from utils.device import device_setting
-    
+# model random seed
+torch.manual_seed(123)
+
+# model params
+GPT_CONFIG_124M = {
+    "vocab_size": 50257,     # Vocabular size
+    "context_length": 1024,  # Context length
+    "max_new_toknes": 10,    # Maximum new tokens to generate
+    "embed_dim": 768,        # Embedding dimension
+    "n_heads": 12,           # Number of attention heads
+    "n_layers": 12,          # Number of transformer layers
+    "dropout": 0.1,          # Dropout rate
+    "qkv_bias": False,       # Query-Key-Value bias
+    "dtype": torch.float32,
+}
+GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
+
+# tokenizer
+tokenizer = tiktoken.get_encoding("gpt2")
+
+# model
+model = Model(GPT_CONFIG_124M).to(device)
+
+
+def gpt2_124M_model():
     # device
     device = device_setting()
 
-    # ------------------------------
-    # model params
-    # ------------------------------
-    # model params
-    GPT_CONFIG_124M = {
-        "vocab_size": 50257,     # Vocabular size
-        "context_length": 1024,  # Context length
-        "emb_dim": 768,          # Embedding dimension
-        "n_heads": 12,           # Number of attention heads
-        "n_layers": 12,          # Number of transformer layers
-        "dropout": 0.1,          # Dropout rate
-        "qkv_bias": False,       # Query-Key-Value bias
-    }
-    GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
+    # input data
+    start_context = "Hello, I am"
 
-    # ------------------------------
-    # model
-    # ------------------------------
-    # model
-    torch.manual_seed(123)
-    model = Model(GPT_CONFIG_124M).to(device)
+    # input tokenization
+    token_ids = tokenizer.encode(start_context)
+    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0)
+    logger.info(f"\n{50 * '='}\n{22 * ' '}IN\n{50 * '='}")
+    logger.info(f"Input text: {start_context}")
+    logger.info(f"Encoded input text: \n{token_ids_tensor} \nEncoded input shape: {token_ids_tensor.shape}")
+
+    # input token id
+    token_ids_tensor = token_ids_tensor.to(device)
+
+    # disable dropout
+    model.eval()
+
+    # generate text
+    out = generate(
+        model = model,
+        token_idx = token_ids_tensor,
+        max_new_tokens = GPT_CONFIG_124M["max_new_toknes"],
+        context_size = GPT_CONFIG_124M["context_length"],
+    )
+    logger.info(f"\n{50 * '='}\n{22 * ' '}Output\n{50 * '='}")
+    logger.info(f"Output: \n{out} \nOutout shape: {out.shape}")
+
+    decoded_text = tokenizer.decode(out.squeeze(0).tolist())
+    logger.info(f"\n{50 * '='}\n{22 * ' '}Output text\n{50 * '='}")
+    logger.info(f"Output text: \n{decoded_text}")
+
+
+def gpt2_124M_model_inference_test(): 
+    # input text
+    txt1 = "Every effort moves you"
+    txt2 = "Every day holds a"
     
+    # input batch
+    batch = []
+    batch.append(torch.tensor(tokenizer.encode(txt1)))
+    batch.append(torch.tensor(tokenizer.encode(txt2)))
+    logger.info(f"batch: \n{batch}")
+    batch = torch.stack(batch, dim=0)
+    batch = batch.to(device)
+    logger.info(f"batch: \n{batch}")
+    logger.info(f"batch.shape: \n{batch.shape}")
+    
+    # model
+    logits = model(batch)
+    logger.info(f"logits: \n{logits}")
+    logger.info(f"logits.shape: \n{logits.shape}")
+
+
+def test_todo():
     # ------------------------------
     # model simple inference
     # ------------------------------
@@ -75,13 +131,14 @@ def main():
     # generate_text simple
     model.to("cpu")
     model.eval()
-    token_ids = generate_text_simple(
+    token_ids = generate_simple(
         model = model,
         token_idx = text_to_token_ids("Every effort moves you"),
         max_new_tokens = 25,
         context_size = GPT_CONFIG_124M.context_length,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
+    
     # ------------------------------
     # temperature scaling and top-k decoding strategies
     # ------------------------------
@@ -236,23 +293,6 @@ def main():
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
 
-    
-    """
-    # model params
-    GPT_CONFIG_124M = {
-        "vocab_size": 50257,     # Vocabular size
-        "context_length": 1024,  # Context length
-        "emb_dim": 768,          # Embedding dimension
-        "n_heads": 12,           # Number of attention heads
-        "n_layers": 12,          # Number of transformer layers
-        "dropout": 0.1,          # Dropout rate
-        "qkv_bias": False,       # Query-Key-Value bias
-    }
-    GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
-    
-    # tokenizer
-    tokenizer = tiktoken.get_encoding("gpt2")
-    
     # input data
     batch = []
     text1 = "Every effort moves you"
@@ -264,15 +304,9 @@ def main():
     batch = torch.stack(batch, dim=0)
     logger.info(f"batch: \n{batch}")
     logger.info(f"batch.shape: {batch.shape}")
-    
     # ------------------------------
     # GPT model
     # ------------------------------
-    torch.manual_seed(123)
-    # model
-    model = Model(GPT_CONFIG_124M)
-    model.to(device)
-    
     # model forward
     logits = model(batch)
     logger.info(f"Input: \n{batch}")
@@ -294,7 +328,6 @@ def main():
     # convert to megabytes
     total_size_mb = total_size_bytes / (1024 * 1024)
     logger.info(f"Total size of the model: {total_size_mb:.2f} MB")
-
     # ------------------------------
     # generating text: v1
     # ------------------------------
@@ -308,7 +341,7 @@ def main():
     # disable dropout
     model.eval()
 
-    out = generate_text_simple(
+    out = generate_simple(
         model = model,
         token_idx = encoded_tensor,
         max_new_tokens = 6,
@@ -319,7 +352,6 @@ def main():
     
     decoded_text = tokenizer.decode(out.squeeze(0).tolist())
     logger.info(decoded_text)
-    
     # ------------------------------
     # generating text: v2
     # ------------------------------
@@ -332,7 +364,15 @@ def main():
         temperature = 1.4,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
-    """
+
+
+
+
+# 测试代码 main 函数
+def main():
+    # gpt2_124M_model()
+    
+    gpt2_124M_model_inference_test()
 
 if __name__ == "__main__":
     main()

@@ -83,12 +83,12 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(p = config.dropout)
         
         # Position Embeding 层
-        pe = torch.zeros(config.block_size, config.n_embd).float()
+        pe = torch.zeros(config.block_size, config.embed_dim).float()
         pe.requires_grad = False
         # pos
         position = torch.arange(0, config.block_size, dtype=torch.float32).unsqueeze(1)
         # 1 / 10000^{2i/d_model}
-        div_term = torch.exp(torch.arange(0, config.n_embd, 2).float() * -(math.log(10000.0) / config.n_embd))
+        div_term = torch.exp(torch.arange(0, config.embed_dim, 2).float() * -(math.log(10000.0) / config.embed_dim))
         
         # apply sine to even indices: pe(pos, 2i) = sin(pos / 10000^{2i/d_model})
         pe[:, 0::2] = torch.sin(position * div_term)

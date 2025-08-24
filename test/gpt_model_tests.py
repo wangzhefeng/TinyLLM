@@ -12,15 +12,13 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
-from models.gpt2 import main
+from models.gpt2_124M import main
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -47,6 +45,8 @@ Output text: Hello, I am Featureiman Byeswickattribute argue logger Normandy Com
 """
 
 
+
+
 # 测试代码 main 函数
 def test_main(capsys):
     main()
@@ -60,4 +60,4 @@ def test_main(capsys):
     assert normalized_output == normalized_expected
 
 if __name__ == "__main__":
-    main()
+    test_main()

@@ -60,6 +60,9 @@ class LabelSmoothing(nn.Module):
         return self.criterion(x, true_dist.clone().detach())
 
 
+# ------------------------------
+# test
+# ------------------------------
 def example_label_smoothing():
     import pandas as pd
     import altair as alt
