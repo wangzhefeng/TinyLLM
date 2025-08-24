@@ -24,16 +24,14 @@ import torch.nn as nn
 from layers.attention import (
     CasualAttention, MultiHeadAttentionWrapper, 
     MultiHeadAttention, 
-    MultiHeadAttentionRoPE, 
-    GroupedQueryAttention, 
     MultiHeadAttentionCombinedQKV, 
-    MHAPyTorchClass, 
     MHAEinsum, 
-    MHAPyTorchFlexAttention, 
     MHAPyTorchScaledDotProduct, 
     MHAPyTorchSDPAWithoutFlash, 
-    current_version, 
-    required_version,
+    MHAPyTorchClass, 
+    MHAPyTorchFlexAttention, 
+    MultiHeadAttentionRoPE, 
+    GroupedQueryAttention, 
 )
 from utils.device import device_setting
 from utils.log_util import logger
@@ -300,62 +298,52 @@ def causal_self_attention_test(inputs_embed):
     # attention weights
     queries = inputs_embed @ sa_v1.W_query
     keys = inputs_embed @ sa_v1.W_key
+    values = inputs_embed @ sa_v1.W_value
     attn_scores = queries @ keys.T
     logger.info(f"attn_scores: \n{attn_scores}")
     attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
     logger.info(f"attn_weights: \n{attn_weights}")
-
     # masked attention weights
     context_length = attn_scores.shape[0]
     logger.info(f"context_length: {context_length}")
+    mask = torch.tril(torch.ones(context_length, context_length), diagonal=0)
+    logger.info(f"mask: \n{mask}")
+    masked_attn_weights = attn_weights * mask
+    logger.info(f"masked_attn_weights: \n{masked_attn_weights}")
+    # normalization masked attention weights
+    row_sums = masked_attn_weights.sum(dim=-1, keepdim=True)
+    masked_attn_weights_norm = masked_attn_weights / row_sums
+    logger.info(f"masked_attn_weights_norm: \n{masked_attn_weights_norm}")
     
-    mask_simple = torch.tril(torch.ones(context_length, context_length), diagonal=0)
-    logger.info(f"mask_simple: \n{mask_simple}")
-    
-    masked_simple = attn_weights * mask_simple
-    logger.info(f"masked_simple: \n{masked_simple}")
-
-    # normalization
-    row_sums = masked_simple.sum(dim=-1, keepdim=True)
-    mask_simple_norm = masked_simple / row_sums
-    logger.info(f"mask_simple_norm: \n{mask_simple_norm}")
-
     # efficient approach
     # --------------
     # attention weights
     queries = inputs_embed @ sa_v1.W_query
     keys = inputs_embed @ sa_v1.W_key
+    values = inputs_embed @ sa_v1.W_value
     attn_scores = queries @ keys.T
     logger.info(f"attn_scores: \n{attn_scores}")
-    
     # masked attention scores
     context_length = attn_scores.shape[0]
     logger.info(f"context_length: {context_length}")
-    
-    # mask = torch.tril(torch.ones(context_length, context_length), diagonal=0)
-    # logger.info(f"mask: \n{mask.bool()}")
-    
-    mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
-    logger.info(f"mask: \n{mask.bool()}")
-    
-    masked = attn_scores.masked_fill(mask.bool(), -torch.inf)
-    logger.info(f"masked: \n{masked}")
-    
-    # normalization
-    attn_weights = torch.softmax(masked / keys.shape[-1] ** 0.5, dim=-1)
-    logger.info(f"attn_weights: \n{attn_weights}")
-
-
-    # ------------------------------
+    mask = torch.triu(torch.ones(context_length, context_length), diagonal=1).bool()
+    logger.info(f"mask: \n{mask}")
+    masked_attn_scores = attn_scores.masked_fill(mask, -torch.inf)
+    logger.info(f"masked_attn_scores: \n{masked_attn_scores}")
+    # normalization masked attention weights
+    masked_attn_weights_norm = torch.softmax(masked_attn_scores / keys.shape[-1] ** 0.5, dim=-1)
+    logger.info(f"masked_attn_weights_norm: \n{masked_attn_weights_norm}")
     # attention mask with dropout
-    # ------------------------------
     torch.manual_seed(123)
     dropout = torch.nn.Dropout(0.5)
-    # example = torch.ones(6, 6)
-    # logger.info(f"dropout(example): \n{dropout(example)}")
+    masked_attn_weights_norm_dropout = dropout(masked_attn_weights_norm)
+    logger.info(f"masked_attn_weights_norm_dropout: \n{masked_attn_weights_norm_dropout}")
     
-    torch.manual_seed(123)
-    logger.info(f"dropout(attn_weights): \n{dropout(attn_weights)}")
+    # ------------------------------
+    # context vector
+    # ------------------------------
+    context_vec = masked_attn_weights_norm @ values
+    logger.info(f"context_vec: \n{context_vec}")
 
 
 # ------------------------------
@@ -420,7 +408,6 @@ def main():
     # ------------------------------
     device = device_setting(verbose=True)
     
-    """
     # ------------------------------
     # input text -> tokenization -> token IDs embedding
     # ------------------------------
@@ -479,90 +466,185 @@ def main():
     # Causal Self-attention test
     # ------------------------------
     causal_self_attention_test(inputs_embed)
-    
-    # ------------------------------
-    # Causal Multi-Head Self-attention
-    # ------------------------------
-    causal_self_attention_class_test(inputs_embed)
 
     # ------------------------------
     # Causal Multi-Head Self-attention
     # ------------------------------
+    causal_self_attention_class_test(inputs_embed)
+    
+    # ------------------------------
+    # Causal Multi-Head Self-attention
+    # ------------------------------
     causal_multi_head_self_attention_class_test(inputs_embed)
-    """
     
     # ------------------------------
     # Multi-Head Self-attention test input
     # ------------------------------
     # params
-    batch_size = 4  # 1
-    context_len = 6  # 3000
-    embed_dim = 24  # 4096
-    n_heads = 2
-    d_out = embed_dim // 12
+    batch_size = 8
+    context_len = 1024
+    embed_dim = 768
+    n_heads = 12
     llama3_context_len = 8129
     llama3_theta_base = 500_000
-    # embedding
+    
+    # input embedding
     embeddings = torch.randn((batch_size, context_len, embed_dim), device=device)
-    logger.info(f"embeddings: \n{embeddings}")
+    # logger.info(f"embeddings: \n{embeddings}")
     logger.info(f"embeddings.shape: {embeddings.shape}")
     # ------------------------------
-    # method 1: CausalAttention MHA wrapper
+    # CausalAttention MHA wrapper
     # ------------------------------
-    mha = MultiHeadAttentionWrapper(
+    mha_wrapper = MultiHeadAttentionWrapper(
         d_model=embed_dim,
-        d_out=d_out,
-        context_length=context_len,
+        d_out=embed_dim,
         n_heads=n_heads,
+        context_length=context_len,
         dropout=0.0,
         qkv_bias=False,
         proj=True
     ).to(device)
-    context_vecs = mha(embeddings)
-    logger.info(f"context_vecs: \n{context_vecs}")
+    context_vecs = mha_wrapper(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
     logger.info(f"context_vecs.shape: {context_vecs.shape}")  # [batch_size, context_len, embed_dim // 12 * n_heads]
-    
-    """
     # ------------------------------
-    # method 2: The multi-head attention
+    # The multi-head attention
     # ------------------------------
     mha = MultiHeadAttention(
         d_model=embed_dim, 
         d_out=embed_dim, 
-        n_heads=12,
-        context_len=context_len, 
+        n_heads=n_heads,
+        context_length=context_len, 
         dropout=0.0, 
         qkv_bias=False
     ).to(device)
     context_vecs = mha(embeddings)
-    logger.info(f"context_vecs: \n{context_vecs}")
-    logger.info(f"context_vecs.shape: \n{context_vecs.shape}")
-    
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
+    # ------------------------------
+    # An alternative multi-head attention with combined weights
+    # ------------------------------  
+    mha_combined_qkv = MultiHeadAttentionCombinedQKV(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        dropout=0.0,
+        qkv_bias=False
+    ).to(device)
+    context_vecs = mha_combined_qkv(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
+    # ------------------------------
+    # Multi-head attention with Einsum
+    # ------------------------------
+    mha_einsum = MHAEinsum(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        dropout=0.0,
+        qkv_bias=False
+    ).to(device)
+    context_vecs = mha_einsum(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
+    # ------------------------------
+    # Multi-head attention with PyTorch's scaled dot product attention and FlashAttention
+    # ------------------------------
+    mha_pytorch_scaled = MHAPyTorchScaledDotProduct(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        dropout=0.0,
+        qkv_bias=False
+    ).to(device)
+    context_vecs = mha_pytorch_scaled(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
+    # ------------------------------
+    # PyTorch's scaled dot product attention without FlashAttention
+    # ------------------------------
+    mha_pytorch_sdpa_no_flash = MHAPyTorchSDPAWithoutFlash(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        dropout=0.0,
+        qkv_bias=False
+    ).to(device)
+    context_vecs = mha_pytorch_sdpa_no_flash(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
+    # ------------------------------
+    # Using PyTorch's torch.nn.MultiheadAttention
+    # ------------------------------
+    mha_pytorch_class_default = MHAPyTorchClass(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        dropout=0.0,
+        qkv_bias=False
+    ).to(device)
+    context_vecs = mha_pytorch_class_default(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
+    # ------------------------------
+    # Using PyTorch's torch.nn.MultiheadAttention with scaled_dot_product_attention
+    # ------------------------------
+    mha_pytorch_class_noweights = MHAPyTorchClass(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        dropout=0.0,
+        qkv_bias=False,
+        need_weights=False # NEW!
+    ).to(device)
+    context_vecs = mha_pytorch_class_noweights(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
+    # ------------------------------
+    # Using PyTorch's FlexAttention
+    # ------------------------------
+    mha_pytorch_flex = MHAPyTorchFlexAttention(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        dropout=0.0,
+        qkv_bias=False
+    ).to(device)
+    context_vecs = mha_pytorch_flex(embeddings)
+    # logger.info(f"context_vecs: \n{context_vecs}")
+    logger.info(f"context_vecs.shape: {context_vecs.shape}")
     # ------------------------------
     # method 3: MultiHeadAttentionRoPE
     # ------------------------------
-    mha = MultiHeadAttentionRoPE(
-        d_model = embed_dim,
-        d_out = embed_dim,
-        context_length = context_len,
-        n_heads = n_heads,
-    )
-    mha(embeddings)
-    logger.info(f"W_key: {mha.W_key.weight.shape}")
-    logger.info(f"W_value: {mha.W_value.weight.shape}")
-    logger.info(f"W_query: {mha.W_query.weight.shape}")
+    mha_rope = MultiHeadAttentionRoPE(
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+    ).to(device)
+    mha_rope(embeddings)
+    logger.info(f"W_key: {mha_rope.W_key.weight.shape}")
+    logger.info(f"W_value: {mha_rope.W_value.weight.shape}")
+    logger.info(f"W_query: {mha_rope.W_query.weight.shape}")
 
     # ------------------------------
     # method 4: GroupedQueryAttention
     # ------------------------------
     gqa = GroupedQueryAttention(
-        d_model = embed_dim,
-        d_out = embed_dim,
-        context_length = context_len,
-        n_heads = n_heads,
-        num_kv_groups = 8,
-        rope_base = llama3_theta_base,
-    )
+        d_model=embed_dim,
+        d_out=embed_dim,
+        n_heads=n_heads,
+        context_length=context_len,
+        num_kv_groups=4,
+        rope_base=llama3_theta_base,
+    ).to(device)
     gqa(embeddings)
     logger.info(f"W_key: {gqa.W_key.weight.shape}")
     logger.info(f"W_value: {gqa.W_value.weight.shape}")
@@ -579,115 +661,7 @@ def main():
     
     # free up memory
     del mha
-    del gqa
-    
-    # ------------------------------
-    # method 3: An alternative multi-head attention with combined weights
-    # ------------------------------  
-    mha_combined_qkv = MultiHeadAttentionCombinedQKV(
-        d_model=embed_dim,
-        d_out=embed_dim,
-        context_length=context_len,
-        dropout=0.0,
-        n_heads=12,
-        qkv_bias=False
-    ).to(device)
-
-    out = mha_combined_qkv(embeddings)
-    print(out.shape)
-    
-    # ------------------------------
-    # Multi-head attention with Einsum
-    # ------------------------------
-    mha_einsum = MHAEinsum(
-        d_model=embed_dim,
-        d_out=embed_dim,
-        context_length=context_len,
-        dropout=0.0,
-        n_heads=12,
-        qkv_bias=False
-    ).to(device)
-
-    out = mha_einsum(embeddings)
-    print(out.shape)
-    
-    # ------------------------------
-    # Multi-head attention with PyTorch's scaled dot product attention and FlashAttention
-    # ------------------------------
-    mha_pytorch_scaled = MHAPyTorchScaledDotProduct(
-        d_model=embed_dim,
-        d_out=embed_dim,
-        context_length=context_len,
-        dropout=0.0,
-        n_heads=12,
-        qkv_bias=False
-    ).to(device)
-
-    out = mha_pytorch_scaled(embeddings)
-    print(out.shape)
-    
-    # ------------------------------
-    # PyTorch's scaled dot product attention without FlashAttention
-    # ------------------------------
-    mha_pytorch_sdpa_no_flash = MHAPyTorchSDPAWithoutFlash(
-        d_model=embed_dim,
-        d_out=embed_dim,
-        context_length=context_len,
-        dropout=0.0,
-        n_heads=12,
-        qkv_bias=False
-    ).to(device)
-
-    out = mha_pytorch_sdpa_no_flash(embeddings)
-    print(out.shape)
-    
-    # ------------------------------
-    # Using PyTorch's torch.nn.MultiheadAttention
-    # ------------------------------
-    mha_pytorch_class_default = MHAPyTorchClass(
-        d_model=embed_dim,
-        d_out=embed_dim,
-        context_length=context_len,
-        dropout=0.0,
-        n_heads=12,
-        qkv_bias=False
-    ).to(device)
-
-    out = mha_pytorch_class_default(embeddings)
-    print(out.shape)
-    
-    # ------------------------------
-    # Using PyTorch's torch.nn.MultiheadAttention with scaled_dot_product_attention
-    # ------------------------------
-    mha_pytorch_class_noweights = MHAPyTorchClass(
-        d_model=embed_dim,
-        d_out=embed_dim,
-        context_length=context_len,
-        dropout=0.0,
-        n_heads=12,
-        qkv_bias=False,
-        need_weights=False # NEW!
-    ).to(device)
-
-    out = mha_pytorch_class_noweights(embeddings)
-    print(out.shape)
-    
-    # ------------------------------
-    # Using PyTorch's FlexAttention
-    # ------------------------------
-    if current_version >= required_version and torch.cuda.is_available():
-        mha_pytorch_flex = MHAPyTorchFlexAttention(
-            d_model=embed_dim,
-            d_out=embed_dim,
-            context_length=context_len,
-            dropout=0.0,
-            n_heads=12,
-            qkv_bias=False
-        ).to(device)
-
-        out = mha_pytorch_flex(embeddings)
-        print(out.shape)
-    """
+    del gqa 
 
 if __name__ == "__main__":
     main()
