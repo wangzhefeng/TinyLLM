@@ -41,7 +41,7 @@ from exp.exp_basic import Exp_Basic
 from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.llm.train_funcs import select_optimizer
 from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
-from layers.gpt_generate import generate
+from layers.generator import generate
 from utils.plot_losses import plot_losses
 # utils
 from utils.model_memory import model_memory_size
@@ -399,7 +399,7 @@ class Model_Pretrain(Exp_Basic):
                 model = self.model, 
                 token_idx = start_context_encoded,
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = context_size,
+                context_length = context_size,
             )
             completion = token_ids_to_text(completion_id).replace("\n", " ")
             logger.info(f"\t\tEpoch {epoch}: Model inference [start context]: {start_context}, [completion]: {completion}")

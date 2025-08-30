@@ -30,13 +30,13 @@ import torch
 import torch.nn as nn
 
 # data
-from data_provider.pretrain.data_load import data_load
+from data_provider.data_loader import data_load
 from data_provider.data_loader import create_dataloader
 # tokenizer
 from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from exp.exp_basic import Exp_Basic
-from layers.gpt_generate import generate
+from layers.generator import generate
 from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
 # utils
 from utils.log_util import logger
@@ -190,7 +190,7 @@ class Model_Pretrain(Exp_Basic):
         # Aesthetic settings
         fig.tight_layout()
         # Fig save
-        plt.savefig(Path(results_path).joinpath(loss_plot.pdf))
+        plt.savefig(Path(results_path).joinpath("loss_plot.pdf"))
         # Fig show
         plt.show()
 
@@ -386,7 +386,7 @@ class Model_Pretrain(Exp_Basic):
                 model = self.model, 
                 token_idx = encoded,
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = context_size,
+                context_length = context_size,
             )
             decoded_text = token_ids_to_text(token_ids).replace("\n", " ")
             logger.info(f"\t\tEpoch {epoch} \t\tdeocde_text: {decoded_text}")

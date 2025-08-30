@@ -269,7 +269,7 @@ def load_weights_download(gpt, params):
 def main():
     from models.gpt2_124M import Model
     from layers.tokenizers.tokenization import token_ids_to_text, text_to_token_ids
-    from layers.gpt_generate import generate
+    from layers.generator import generate
     from utils.device import device_setting
     from utils.args_tools import DotDict
     from utils.log_util import logger
@@ -301,7 +301,7 @@ def main():
         "gpt2-xl (1558M)": {"embed_dim": 1600, "n_layers": 48, "n_heads": 25},
     }
     # copy the base config and update with speicfic model settings
-    GPT_CONFIG_124M = {
+    GPT2_124M_CONFIG = {
         "vocab_size": 50257,
         "context_length": 256,
         "embed_dim": 768,
@@ -310,7 +310,7 @@ def main():
         "dropout": 0.1,
         "qkv_bias": False,
     }
-    base_config = GPT_CONFIG_124M.copy()
+    base_config = GPT2_124M_CONFIG.copy()
     base_config.update(pretrained_model_configs[choose_model])
     base_config.update({"context_length": 1024, "qkv_bias": True})
     base_config = DotDict(base_config)
@@ -335,7 +335,7 @@ def main():
         model=gpt,
         token_idx=text_to_token_ids("Every effort moves you").to(device),
         max_new_tokens=25,
-        context_size=base_config.context_length,
+        context_length=base_config.context_length,
         top_k=50,
         temperature=1.5,
         eos_id=50256,

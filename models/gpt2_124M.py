@@ -11,7 +11,9 @@
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
-__all__ = []
+__all__ = [
+    "Model",
+]
 
 # python libraries
 import sys
@@ -49,23 +51,25 @@ class Model(nn.Module):
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False)
 
     def forward(self, x):
-        # [batch_size, num_tokens(seq_len), embed_dim]
-        # TODO batch_size, seq_len, embed_dim = x.shape
-        batch_size, seq_len = x.shape
-        # token embedding, shape: [batch_size, num_tokens, embed_dim]
-        tok_embeds = self.tok_embed(x)
-        # position embedding, shape: [batch_size, num_tokens, embed_dim]
-        pos_embeds = self.pos_embed(torch.arange(seq_len, device=x.device))
-        # embedding, shape: [batch_size, num_tokens, embed_dim]
-        x = tok_embeds + pos_embeds
-        # dropout, shape: [batch_size, num_tokens, embed_dim]
-        x = self.drop_embed(x)
-        # transformer blocks, shape: [batch_size, num_tokens, embed_dim]
-        x = self.trf_blocks(x)
-        # final layer norm, shape: [batch_size, num_tokens, embed_dim]
-        x = self.final_norm(x)
-        # output head, shape: [batch_size, num_tokens, vocab_size]
-        logits = self.out_head(x)
+        # tokenized text shape
+        # TODO batch_size, seq_len, embed_dim = x.shape  # shape: [batch_size, num_tokens(seq_len), embed_dim]
+        batch_size, seq_len = x.shape                    # shape: [batch_size, num_tokens(seq_len), embed_dim]
+        # token embedding layer
+        tok_embeds = self.tok_embed(x)                   # shape: [batch_size, num_tokens, embed_dim]
+        # positional embedding layer
+        pos_embeds = self.pos_embed(
+            torch.arange(seq_len, device=x.device)
+        )                                                # shape: [batch_size, num_tokens, embed_dim]
+        # embedding
+        x = tok_embeds + pos_embeds                      # shape: [batch_size, num_tokens, embed_dim]
+        # dropout
+        x = self.drop_embed(x)                           # shape: [batch_size, num_tokens, embed_dim]
+        # transformer blocks
+        x = self.trf_blocks(x)                           # shape: [batch_size, num_tokens, embed_dim]
+        # final layer norm
+        x = self.final_norm(x)                           # shape: [batch_size, num_tokens, embed_dim]
+        # linear output layer(head)
+        logits = self.out_head(x)                        # shape: [batch_size, num_tokens, vocab_size]
 
         return logits
 

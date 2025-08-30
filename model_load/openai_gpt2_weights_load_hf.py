@@ -80,7 +80,7 @@ def main():
     from transformers import GPT2Model
 
     from models.gpt2_124M import Model
-    from layers.gpt_generate import generate
+    from layers.generator import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.args_tools import DotDict
@@ -120,7 +120,7 @@ def main():
         model=gpt,
         token_idx=text_to_token_ids("Every effort moves").to(device),
         max_new_tokens=30,
-        context_size=base_config.context_length,
+        context_length=base_config.context_length,
         temperature=1.0,
         top_k=1,
         eos_id=50256,

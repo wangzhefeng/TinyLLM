@@ -58,7 +58,7 @@ def main():
         download_llama2_model, 
         download_llama2_chat_model
     )
-    from layers.gpt_generate import generate
+    from layers.generator import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.log_util import logger
@@ -76,7 +76,7 @@ def main():
         model=model,
         token_idx=text_to_token_ids("Every effort moves", tokenizer_model="llama2").to(device),
         max_new_tokens=30,
-        context_size=LLAMA2_CONFIG_7B.context_length,
+        context_length=LLAMA2_CONFIG_7B.context_length,
         temperature=1.0,
         top_k=1,
         eos_id=50256,  # TODO
@@ -92,7 +92,7 @@ def main():
         model=model,
         token_idx=text_to_token_ids("What do llamas eat?", tokenizer_model="llama2").to(device),
         max_new_tokens=30,
-        context_size=LLAMA2_CONFIG_7B.context_length,
+        context_length=LLAMA2_CONFIG_7B.context_length,
         temperature=1.0,
         top_k=1,
         eos_id=50256,  # TODO

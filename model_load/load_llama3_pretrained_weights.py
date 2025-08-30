@@ -58,7 +58,7 @@ def main():
         download_llama3_model, 
         download_llama3_instruct_model
     )
-    from layers.gpt_generate import generate
+    from layers.generator import generate
     from layers.tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
     from layers.tokenizers.chat_format_tokenizer import ChatFormat
     from utils.device import device_setting, torch_gc
@@ -80,7 +80,7 @@ def main():
         model=model,
         token_idx=text_to_token_ids("Every effort", tokenizer_model="llama3-8B").to(device),
         max_new_tokens=25,
-        context_size=LLAMA3_CONFIG_8B.context_length,
+        context_length=LLAMA3_CONFIG_8B.context_length,
         temperature=0.0,
         top_k=1,
         eos_id=50256,  # TODO
@@ -106,7 +106,7 @@ def main():
         model=model,
         token_idx=text_to_token_ids("What do llamas eat?", tokenizer_model=chat_prompt).to(device),
         max_new_tokens=25,
-        context_size=LLAMA3_CONFIG_8B.context_length,
+        context_length=LLAMA3_CONFIG_8B.context_length,
         temperature=0.0,
         top_k=1,
         eos_id=50256,  # TODO

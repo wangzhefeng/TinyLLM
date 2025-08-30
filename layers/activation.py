@@ -33,7 +33,9 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class ReLU(nn.Module):
-    
+    """
+    ReLU (Rectified Linear Unit, 整流线性单元)
+    """
     def __init__(self):
         super().__init__()
 
@@ -42,16 +44,20 @@ class ReLU(nn.Module):
 
 
 class ReLUPyTorch(nn.Module):
-    
+    """
+    ReLU (Rectified Linear Unit, 整流线性单元)
+    """
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
-        return torch.nn.functional.relu(x)
+        return nn.functional.relu(x)
 
 
 class GELU(nn.Module):
-    
+    """
+    GELU(Gaussian Error Linear Unit, 高斯误差线性单元): https://arxiv.org/abs/1606.08415
+    """
     def __init__(self):
         super().__init__()
 
@@ -66,12 +72,23 @@ class SiLU(nn.Module):
     """
     SiLU: https://arxiv.org/abs/1702.03118
     """
-
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
         return x * torch.sigmoid(x)
+
+
+# TODO
+class SwiGLU(nn.Module):
+    """
+    SwiGLU(Swish-Gated Linear Unit, Swish 门控线性单元):  
+    """
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        pass
 
 
 
@@ -81,22 +98,27 @@ def main():
     import matplotlib.pyplot as plt
 
     # func
-    gelu = GELU()
-    # gelu = nn.GELU() 
     relu = ReLU()
     # relu = nn.ReLU() 
+
+    relu_torch = ReLUPyTorch()
+    # relu_torch = nn.functional.relu()
+
+    gelu = GELU()
+    # gelu = nn.GELU() 
+    
     silu = SiLU()
     # silu = nn.SiLU()
     # silu = nn.functional.silu()
 
     # data
     x = torch.linspace(-3, 3, 100)
-    y_gelu, y_relu, y_silu = gelu(x), relu(x), silu(x)
-
+    y_relu, y_relu_torch, y_gelu, y_silu = relu(x), relu_torch(x), gelu(x), silu(x)
+    
     # plot
     plt.figure(figsize=(12, 3))
-    for i, (y, label) in enumerate(zip([y_gelu, y_relu, y_silu], ["GELU", "ReLU", "SiLU"]), 1):
-        plt.subplot(1, 3, i)
+    for i, (y, label) in enumerate(zip([y_relu, y_relu_torch, y_gelu, y_silu], ["ReLU", "ReLU_torch", "GELU", "SiLU"]), 1):
+        plt.subplot(1, 4, i)
         plt.plot(x, y)
         plt.title(f"{label} activation function")
         plt.xlabel("x")

@@ -12,20 +12,18 @@
 # ***************************************************
 
 __all__ = [
-    "GPT_CONFIG_124M",
+    "GPT2_124M_CONFIG",
     "GPT_CONFIG_1558M",
     "LLAMA2_CONFIG_7B",
     "LLAMA3_CONFIG_8B",
 ]
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-
 
 import torch
 
@@ -34,7 +32,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 # 124M GPT
-GPT_CONFIG_124M = {
+GPT2_124M_CONFIG = {
     "vocab_size": 50257,     # Vocabulary size
     "context_length": 1024,  # Context length
     "embed_dim": 768,          # Embedding dimension

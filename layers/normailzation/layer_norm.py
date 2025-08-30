@@ -7,7 +7,7 @@
 # * Date        : 2025-02-12
 # * Version     : 1.0.021221
 # * Description : description
-# * Link        : link
+# * Link        : paper: https://arxiv.org/abs/1607.06450
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
@@ -39,9 +39,9 @@ class LayerNorm(nn.Module):
     def __init__(self, embed_dim: int, eps: float = 1e-5):
         super().__init__()
  
-        # gamma
+        # gamma(trainable parameters)
         self.scale = nn.Parameter(torch.ones(embed_dim))
-        # beta
+        # beta(trainable parameters)
         self.shift = nn.Parameter(torch.zeros(embed_dim))
         # a small constant for numerical stability(typically 1e-6)
         self.eps = eps
@@ -79,38 +79,7 @@ class LayerNormPyTorch(nn.Module):
 
 # 测试代码 main 函数
 def main():
-    torch.set_printoptions(sci_mode=False)
-    
-    from utils.log_util import logger
-    # ------------------------------
-    # Layer Norm test
-    # ------------------------------
-    # data
-    torch.manual_seed(123)
-    batch_example = torch.randn(2, 5)
-    logger.info(f"batch_example: \n{batch_example}")
-    
-    # layer norm
-    ln = LayerNorm(embed_dim=5)
-    out_ln = ln(batch_example)
-    logger.info(f"out_ln: \n{out_ln}")
-    
-    mean = out_ln.mean(dim=-1, keepdim=True)
-    var = out_ln.var(dim=-1, unbiased=False, keepdim=True)
-    logger.info(f"Mean: \n{mean}")
-    logger.info(f"Variance: \n{var}")
-    # ------------------------------
-    # PyTorch Layer Norm test
-    # ------------------------------
-    # pytorch layer norm
-    ln = LayerNormPyTorch(embed_dim=5)
-    out_ln = ln(batch_example)
-    logger.info(f"out_ln: \n{out_ln}")
-    
-    mean = out_ln.mean(dim=-1, keepdim=True)
-    var = out_ln.var(dim=-1, unbiased=False, keepdim=True)
-    logger.info(f"Mean: \n{mean}")
-    logger.info(f"Variance: \n{var}")
+    pass
 
 if __name__ == "__main__":
     main()

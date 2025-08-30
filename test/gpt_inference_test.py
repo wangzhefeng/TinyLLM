@@ -14,131 +14,72 @@
 __all__ = []
 
 # python libraries
+import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-import tiktoken
 import torch
-import matplotlib.pyplot as plt
 
+from models.gpt2_124M import Model
 from layers.tokenizers.tokenization import (
     text_to_token_ids, 
     token_ids_to_text,
 )
-from models.gpt2_124M import Model
-from layers.gpt_generate import generate_simple, generate
-from utils.args_tools import DotDict
-from utils.device import device_setting
-from utils.log_util import logger
+from layers.generator import generate_simple, generate
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+os.environ['LOG_NAME'] = LOGGING_LABEL
+from utils.log_util import logger
 
 
-# device
-device = device_setting()
-
-# model random seed
-torch.manual_seed(123)
-
-# model params
-GPT_CONFIG_124M = {
-    "vocab_size": 50257,     # Vocabular size
-    "context_length": 1024,  # Context length
-    "max_new_toknes": 10,    # Maximum new tokens to generate
-    "embed_dim": 768,        # Embedding dimension
-    "n_heads": 12,           # Number of attention heads
-    "n_layers": 12,          # Number of transformer layers
-    "dropout": 0.1,          # Dropout rate
-    "qkv_bias": False,       # Query-Key-Value bias
-    "dtype": torch.float32,
-}
-GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
-
-# tokenizer
-tokenizer = tiktoken.get_encoding("gpt2")
-
-# model
-model = Model(GPT_CONFIG_124M).to(device)
-
-
-def gpt2_124M_model():
-    # device
-    device = device_setting()
-
+def gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device, temperature: float=None, top_k: float=None, eos_id: int=None):
     # input data
     start_context = "Hello, I am"
+    logger.info(f"Input text: {start_context}")
 
     # input tokenization
     token_ids = tokenizer.encode(start_context)
-    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0)
-    logger.info(f"\n{50 * '='}\n{22 * ' '}IN\n{50 * '='}")
-    logger.info(f"Input text: {start_context}")
-    logger.info(f"Encoded input text: \n{token_ids_tensor} \nEncoded input shape: {token_ids_tensor.shape}")
+    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0).to(device)
+    logger.info(f"Encoded input text: {token_ids_tensor}")
+    logger.info(f"Encoded input shape: {token_ids_tensor.shape}")
 
-    # input token id
-    token_ids_tensor = token_ids_tensor.to(device)
+    # model
+    model = Model(GPT2_124M_CONFIG).to(device)
 
     # disable dropout
     model.eval()
 
     # generate text
-    out = generate(
-        model = model,
-        token_idx = token_ids_tensor,
-        max_new_tokens = GPT_CONFIG_124M["max_new_toknes"],
-        context_size = GPT_CONFIG_124M["context_length"],
-    )
-    logger.info(f"\n{50 * '='}\n{22 * ' '}Output\n{50 * '='}")
-    logger.info(f"Output: \n{out} \nOutout shape: {out.shape}")
+    if temperature and top_k and eos_id:
+        out = generate(
+            model = model,
+            token_idx = token_ids_tensor,
+            max_new_tokens = GPT2_124M_CONFIG.max_new_toknes,
+            context_length = GPT2_124M_CONFIG.context_length,
+            temperature = temperature,
+            top_k = top_k,
+            eos_id = eos_id,
+        )
+    else:
+        out = generate_simple(
+            model = model,
+            token_idx = token_ids_tensor,
+            max_new_tokens = GPT2_124M_CONFIG.max_new_toknes,
+            context_length = GPT2_124M_CONFIG.context_length,
+        )
+    logger.info(f"Output: {out}")
+    logger.info(f"Outout shape: {out.shape}")
 
+    # remove batch dimension and convert back into text
     decoded_text = tokenizer.decode(out.squeeze(0).tolist())
-    logger.info(f"\n{50 * '='}\n{22 * ' '}Output text\n{50 * '='}")
-    logger.info(f"Output text: \n{decoded_text}")
+    logger.info(f"Output text: {decoded_text}")
 
 
-def gpt2_124M_model_inference_test(): 
-    # input text
-    txt1 = "Every effort moves you"
-    txt2 = "Every day holds a"
-    
-    # input batch
-    batch = []
-    batch.append(torch.tensor(tokenizer.encode(txt1)))
-    batch.append(torch.tensor(tokenizer.encode(txt2)))
-    logger.info(f"batch: \n{batch}")
-    batch = torch.stack(batch, dim=0)
-    batch = batch.to(device)
-    logger.info(f"batch: \n{batch}")
-    logger.info(f"batch.shape: \n{batch.shape}")
-    
-    # model
-    logits = model(batch)
-    logger.info(f"logits: \n{logits}")
-    logger.info(f"logits.shape: \n{logits.shape}")
-
-
-def test_todo():
-    # ------------------------------
-    # model simple inference
-    # ------------------------------
-    logger.info(f"{50 * '='}")
-    logger.info(f"Model simple inference")
-    logger.info(f"{50 * '='}")
-    # generate_text simple
-    model.to("cpu")
-    model.eval()
-    token_ids = generate_simple(
-        model = model,
-        token_idx = text_to_token_ids("Every effort moves you"),
-        max_new_tokens = 25,
-        context_size = GPT_CONFIG_124M.context_length,
-    )
-    logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
-    
+def test_todo(model, tokenizer, GPT2_124M_CONFIG):
     # ------------------------------
     # temperature scaling and top-k decoding strategies
     # ------------------------------
@@ -289,7 +230,7 @@ def test_todo():
         model = model,
         token_idx = text_to_token_ids("Every effort moves you"),
         max_new_tokens = 25,
-        context_size = GPT_CONFIG_124M.context_length,
+        context_length = GPT2_124M_CONFIG.context_length,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
 
@@ -304,62 +245,19 @@ def test_todo():
     batch = torch.stack(batch, dim=0)
     logger.info(f"batch: \n{batch}")
     logger.info(f"batch.shape: {batch.shape}")
-    # ------------------------------
-    # GPT model
-    # ------------------------------
+    
     # model forward
     logits = model(batch)
     logger.info(f"Input: \n{batch}")
     logger.info(f"Output: \n{logits}")
     logger.info(f"Output shape: {logits.shape}")
     
-    # model params
-    total_params = sum(p.numel() for p in model.parameters())
-    logger.info(f"Total number of parameters: {total_params:,}")
-    # logger.info(f"Token embedding layer shape: {model.tok_emb.weight.shape}")
-    # logger.info(f"Output layer shape: {model.out_head.weight.shape}")
-    
-    total_params_gpt2 = total_params - sum(p.numel() for p in model.out_head.parameters())
-    logger.info(f"Number of trainable parameters considering weight tying: {total_params_gpt2:,}")
-    
-    # compute memory demand of the model
-    total_size_bytes = total_params * 4  # total size in bytes(assuming float32, 4 bytes per parameter)
-    
-    # convert to megabytes
-    total_size_mb = total_size_bytes / (1024 * 1024)
-    logger.info(f"Total size of the model: {total_size_mb:.2f} MB")
-    # ------------------------------
-    # generating text: v1
-    # ------------------------------
-    start_context = "Hello, I am"
-    encoded = tokenizer.encode(start_context)
-    logger.info(f"encoded: {encoded}")
-    
-    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-    logger.info(f"encoded_tensor.shape: {encoded_tensor.shape}")
-
-    # disable dropout
-    model.eval()
-
-    out = generate_simple(
-        model = model,
-        token_idx = encoded_tensor,
-        max_new_tokens = 6,
-        context_size=GPT_CONFIG_124M.context_length,
-    )
-    logger.info(f"Output: {out}")
-    logger.info(f"Output length: {len(out[0])}") 
-    
-    decoded_text = tokenizer.decode(out.squeeze(0).tolist())
-    logger.info(decoded_text)
-    # ------------------------------
     # generating text: v2
-    # ------------------------------
     token_ids = generate(
         model = model,
         token_idx = text_to_token_ids("Every effort moves you"),
         max_new_toknes = 15,
-        context_size = GPT_CONFIG_124M.context_length,
+        context_length = GPT2_124M_CONFIG.context_length,
         top_k = 25,
         temperature = 1.4,
     )
@@ -370,9 +268,9 @@ def test_todo():
 
 # 测试代码 main 函数
 def main():
-    # gpt2_124M_model()
+    from test.model_config import device, tokenizer, GPT2_124M_CONFIG
     
-    gpt2_124M_model_inference_test()
+    gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device)
 
 if __name__ == "__main__":
     main()

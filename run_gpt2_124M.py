@@ -57,6 +57,7 @@ def args_parse():
     parser.add_argument("--context_length", type=int, required=True, default=1024, help="context length")
     parser.add_argument("--vocab_size", type=int, required=True, default=50257, help="vocab size")
     parser.add_argument("--embed_dim", type=int, required=True, default=768, help="embedding dimension")
+    parser.add_argument("--d_ff", type=int, required=True, default=4*768, help="embedding dimension")
     parser.add_argument("--n_heads", type=int, required=True, default=12, help="number of heads")
     parser.add_argument("--n_layers", type=int, required=True, default=12, help="number of layers")
     parser.add_argument("--dropout", type=float, required=True, default=0.1, help="dropout rate")

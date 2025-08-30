@@ -14,18 +14,17 @@
 __all__ = []
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import torch
 import torch.nn as nn
 
 from layers.activation import GELU
+from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -86,7 +85,7 @@ def print_gradients(model, x):
     for name, param in model.named_parameters():
         if "weight" in name:
             # print the mean absolute gradient of the weights
-            print(f"{name} has gradient mean of {param.grad.abs().mean().item()}")
+            logger.info(f"{name} has gradient mean of {param.grad.abs().mean().item()}")
 
 
 
@@ -101,12 +100,12 @@ def main():
     torch.manual_seed(123)
     model_without_shortcut = DeepNeuralNetwork(layer_sizes, use_shortcut=False)
     print_gradients(model_without_shortcut, sample_input)
-    print()
     # ------------------------------
     # gradient values with shortcut connections
     # ------------------------------
     torch.manual_seed(123)
     model_with_shortcut = DeepNeuralNetwork(layer_sizes, use_shortcut=True)
+    logger.info(f"{'-' * 20}")
     print_gradients(model_with_shortcut, sample_input)
 
 if __name__ == "__main__":

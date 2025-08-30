@@ -58,16 +58,24 @@ class TransformerBlockGPT2_124M(nn.Module):
     def forward(self, x):
         # shortcut connection for attention block
         shortcut = x
-        x = self.norm1(x)  # shape: [batch_size, num_tokens, embed_dim]
-        x = self.attn(x)  # shape: [batch_size, num_tokens, embed_dim]
+        # LayerNorm 1
+        x = self.norm1(x)          # shape: [batch_size, num_tokens, embed_dim]
+        # Masked multi-head attention
+        x = self.attn(x)           # shape: [batch_size, num_tokens, embed_dim]
+        # Dropout
         x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
-        x = shortcut + x  # shape: [batch_size, num_tokens, embed_dim]
+        # Residual connection
+        x = shortcut + x           # shape: [batch_size, num_tokens, embed_dim]
         # shortcut connection for feed forward block
         shortcut = x
-        x = self.norm2(x)  # shape: [batch_size, num_tokens, embed_dim]
-        x = self.ff(x)  # shape: [batch_size, num_tokens, embed_dim]
+        # LayerNorm 2
+        x = self.norm2(x)          # shape: [batch_size, num_tokens, embed_dim]
+        # Feed Forward
+        x = self.ff(x)             # shape: [batch_size, num_tokens, embed_dim]
+        # Dropout
         x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
-        x = shortcut + x  # shape: [batch_size, num_tokens, embed_dim]
+        # Residual connection
+        x = shortcut + x           # shape: [batch_size, num_tokens, embed_dim]
         
         return x
 
@@ -180,35 +188,7 @@ class TransformerBlockLlama3(nn.Module):
 
 # 测试代码 main 函数
 def main():
-    import torch
-    from utils.args_tools import DotDict
-    from utils.log_util import logger
-
-    # ------------------------------
-    # Transformer Block test
-    # ------------------------------
-    # shape: [batch_size, num_tokens, embed_dim]
-    GPT2_124M_CONFIG = {
-        "vocab_size": 50257,
-        "context_length": 1024,
-        "embed_dim": 768,
-        "n_heads": 12,
-        "n_layers": 12,
-        "dropout": 0.1,
-        "qkv_bias": False,
-        "dtype": torch.float32,
-    }
-    GPT2_124M_CONFIG = DotDict(GPT2_124M_CONFIG)
-
-    # input
-    torch.manual_seed(123)
-    x = torch.rand(2, 4, 768)
-
-    # transformer
-    block = TransformerBlockGPT2_124M(GPT2_124M_CONFIG)
-    output = block(x)
-    logger.info(f"Input shape: {x.shape}")
-    logger.info(f"Output shape: {output.shape}")
+    pass
 
 if __name__ == "__main__":
     main()

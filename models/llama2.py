@@ -65,7 +65,7 @@ class Model(nn.Module):
 def main():
     import torch
     from utils.args_tools import DotDict
-    from layers.gpt_generate import generate
+    from layers.generator import generate
     from layers.tokenizers.tokenization import (
         text_to_token_ids,
         token_ids_to_text,
@@ -99,7 +99,7 @@ def main():
         model = model.to(device),
         token_idx = text_to_token_ids(input_text, tokenizer_model="llama2").to(device),
         max_new_tokens = 30,
-        context_size = LLAMA2_CONFIG_7B.context_length,
+        context_length = LLAMA2_CONFIG_7B.context_length,
         eos_id = 50256,  # TODO
     )
     generated_text = token_ids_to_text(token_ids, tokenizer_model="llama2")

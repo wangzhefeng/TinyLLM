@@ -14,7 +14,6 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
@@ -35,9 +34,9 @@ class _Expert(nn.Module):
         super().__init__()
 
         self.layers = nn.Sequential(
-            nn.Linear(cfgs.embed_dim, 4 * cfgs.embed_dim),
+            nn.Linear(cfgs.embed_dim, cfgs.d_ff),
             nn.ReLU(),
-            nn.Linear(4 * cfgs.embed_dim, cfgs.embed_dim),
+            nn.Linear(cfgs.d_ff, cfgs.embed_dim),
             nn.Dropout(cfgs.dropout),
         )
 
@@ -149,19 +148,25 @@ def main():
     from utils.args_tools import DotDict
     from utils.log_util import logger
 
+    # random seed
     torch.manual_seed(2025)
     
+    # input tensor
     input = torch.randn(2, 3, 6)
     logger.info(f"input: \n{input}")
 
+    # config
     cfgs = {
         "embed_dim": 6,
+        "d_ff": 24,
         "dropout": 0.1,
         "top_k": 2,
         "num_experts": 4,
         "capacity_factor": 1.0
     }
     cfgs = DotDict(cfgs)
+
+    # layer
     sparse_moe = SparseMoE(cfgs)
     output = sparse_moe(input)
     logger.info(f"output: \n{output}")

@@ -21,11 +21,14 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch.nn as nn
+
 from layers.activation import (
     ReLU, 
+    ReLUPyTorch,
     GELU, 
     SiLU,
 )
+from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -33,12 +36,12 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 class FeedForwardReLU(nn.Module):
     
-    def __init__(self, cfgs):
+    def __init__(self, cfg):
         super().__init__()
 
-        self.fc1 = nn.Linear(cfgs.d_model, cfgs.d_ff, dtype=cfgs.dtype, bias=True)
-        self.fc2 = nn.Linear(cfgs.d_ff, cfgs.d_model, dtype=cfgs.dtype, bias=True)
+        self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=True)
         self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=True)
     
     def forward(self, x):
         x = self.fc1(x)
@@ -53,14 +56,18 @@ class FeedForwardGELU(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
-        self.fc1 = nn.Linear(cfg.embed_dim,   4*cfg.embed_dim, dtype=cfg.dtype, bias=True)
-        self.fc2 = nn.Linear(4*cfg.embed_dim, cfg.embed_dim, dtype=cfg.dtype, bias=True)
-        self.silu = GELU()
+        self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=True)
+        self.gelu = GELU()
+        self.fc2 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=True)
     
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.silu(x)
-        out = self.fc2(x)
+        # input tensor x.shape: [batch_size, num_tokens, embed_dim]
+        # Linear layer
+        x = self.fc1(x)  # [batch_size, num_tokens, 4*embed_dim]
+        # GELU activation
+        x = self.gelu(x)  # [batch_size, num_tokens, 4*embed_dim]
+        # Linear layer
+        out = self.fc2(x)  # [batch_size, num_tokens, embed_dim]
 
         return out
 
@@ -69,14 +76,13 @@ class FeedForwardSiLU(nn.Module):
     """
     SwiGLU: GLU Variants Improve Transformer (2020): https://arxiv.org/abs/2002.05202
     """
-    
-    def __init__(self, cfgs):
+    def __init__(self, cfg):
         super().__init__()
 
-        self.fc1 = nn.Linear(cfgs.embed_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)
-        self.fc2 = nn.Linear(cfgs.embed_dim, cfgs.hidden_dim, dtype=cfgs.dtype, bias=False)
-        self.fc3 = nn.Linear(cfgs.hidden_dim, cfgs.embed_dim, dtype=cfgs.dtype, bias=False)
+        self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
+        self.fc2 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
         self.silu = SiLU()
+        self.fc3 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=False)
 
     def forward(self, x):
         x_fc1 = self.fc1(x)
@@ -91,40 +97,7 @@ class FeedForwardSiLU(nn.Module):
 
 # 测试代码 main 函数
 def main():
-    import torch
-    from utils.args_tools import DotDict
-    from utils.log_util import logger
-    # ------------------------------
-    # Feed Forward test
-    # ------------------------------
-    # params
-    GPT_CONFIG_124M = {
-        "vocab_size": 50257,
-        "context_length": 1024,
-        "embed_dim": 768,
-        "n_heads": 12,
-        "n_layers": 12,
-        "hidden_dim": 100,
-        "dtype": torch.float32,
-        "dropout": 0.1,
-        "qkv_bias": False,
-    }
-    GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
-    print(type(GPT_CONFIG_124M.dtype))
-
-    # feed forward
-    ffn = FeedForwardGELU(GPT_CONFIG_124M)
-    ffn_silu = FeedForwardSiLU(GPT_CONFIG_124M)
-    
-    # forward
-    x = torch.rand(2, 3, 768)
-    out = ffn(x)
-    out_silu = ffn_silu(x)
-    
-    logger.info(f"out: {out}")
-    logger.info(f"out_silu: {out_silu}")
-    logger.info(f"out.shape: {out.shape}")
-    logger.info(f"out_silu.shape: {out_silu.shape}")
+    pass
 
 if __name__ == "__main__":
     main()

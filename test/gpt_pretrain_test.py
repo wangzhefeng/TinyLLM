@@ -19,23 +19,20 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 import torch
 import torch.nn as nn
 
-from data_provider.pretrain.data_load import data_load
+from data_provider.data_loader import data_load
 from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 from models.gpt2_124M import Model
-from layers.gpt_generate import generate_text_simple
-from utils.device import device_setting
-from utils.args_tools import DotDict
-from utils.log_util import logger
+from layers.generator import generate_text_simple
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+os.environ['LOG_NAME'] = LOGGING_LABEL
+from utils.log_util import logger
 
-# device
-device = device_setting()
+
 
 
 # 测试代码 main 函数
@@ -43,31 +40,13 @@ def main():
     # ------------------------------
     # model
     # ------------------------------
-    # params
-    GPT_CONFIG_124M = {
-        "vocab_size": 50257,   # Vocabulary size
-        "context_length": 256, # Shortened context length (orig: 1024)
-        "embed_dim": 768,        # Embedding dimension
-        "n_heads": 12,         # Number of attention heads
-        "n_layers": 12,        # Number of layers
-        "dropout": 0.1,      # Dropout rate
-        "qkv_bias": False      # Query-key-value bias
-    }
-    GPT_CONFIG_124M = DotDict(GPT_CONFIG_124M)
     train_cfgs = {
         "train_epochs": 10,
         "max_new_tokens": 10,
     }
 
-    # seed
-    torch.manual_seed(123)
-
-    # model 
-    model = Model(GPT_CONFIG_124M)
-
     # disable dropout durning inference
     model.eval()
-    
     # ------------------------------
     # text generation
     # ------------------------------
@@ -79,9 +58,10 @@ def main():
         model = model,
         token_idx = text_to_token_ids(start_context),
         max_new_tokens = 10,
-        context_size = GPT_CONFIG_124M.context_length,
+        context_size = GPT2_124M_CONFIG.context_length,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
+    
     
     # ------------------------------
     # text generation loss: cross-entropy and perplexity
@@ -150,6 +130,7 @@ def main():
     perplexity = torch.exp(loss)
     logger.info(f"perplexity: {perplexity}")
 
+
     # ------------------------------
     # model training
     # ------------------------------
@@ -174,21 +155,21 @@ def main():
     split_idx = int(train_ratio * len(raw_text))
     train_data = raw_text[:split_idx]
     val_data = raw_text[split_idx:]
-    if total_tokens * (train_ratio) < GPT_CONFIG_124M.context_length:
+    if total_tokens * (train_ratio) < GPT2_124M_CONFIG.context_length:
         print("Not enough tokens for the training loader. "
-            "Try to lower the `GPT_CONFIG_124M['context_length']` or "
+            "Try to lower the `GPT2_124M_CONFIG['context_length']` or "
             "increase the `training_ratio`")
 
-    if total_tokens * (1-train_ratio) < GPT_CONFIG_124M.context_length:
+    if total_tokens * (1-train_ratio) < GPT2_124M_CONFIG.context_length:
         print("Not enough tokens for the validation loader. "
-            "Try to lower the `GPT_CONFIG_124M['context_length']` or "
+            "Try to lower the `GPT2_124M_CONFIG['context_length']` or "
             "decrease the `training_ratio`")
     
     train_loader = create_dataloader(
         train_data,
         batch_size=2,
-        max_len=GPT_CONFIG_124M.context_length,
-        stride=GPT_CONFIG_124M.context_length,
+        max_len=GPT2_124M_CONFIG.context_length,
+        stride=GPT2_124M_CONFIG.context_length,
         drop_last=True,
         shuffle=True,
         num_workers=0,
@@ -196,8 +177,8 @@ def main():
     val_loader = create_dataloader(
         val_data,
         batch_size=2,
-        max_len=GPT_CONFIG_124M.context_length,
-        stride=GPT_CONFIG_124M.context_length,
+        max_len=GPT2_124M_CONFIG.context_length,
+        stride=GPT2_124M_CONFIG.context_length,
         drop_last=False,
         shuffle=False,
         num_workers=0,
@@ -255,7 +236,7 @@ def main():
     # seed
     torch.manual_seed(123)
     # model
-    model = Model(GPT_CONFIG_124M).to(device)
+    model = Model(GPT2_124M_CONFIG).to(device)
     # loss
     with torch.no_grad():
         train_loss = _calc_loss_loader(train_loader, model, device)
