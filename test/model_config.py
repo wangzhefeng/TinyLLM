@@ -42,7 +42,7 @@ torch.manual_seed(123)
 GPT2_124M_CONFIG = {
     "vocab_size": 50257,     # Vocabular size
     "context_length": 1024,  # Context length
-    "max_new_toknes": 10,    # Maximum new tokens to generate
+    "max_new_toknes": 200,    # Maximum new tokens to generate
     "embed_dim": 768,        # Embedding dimension
     "d_ff": 4 * 768,         # Hidden dimension
     "n_heads": 12,           # Number of attention heads
@@ -50,6 +50,7 @@ GPT2_124M_CONFIG = {
     "dropout": 0.1,          # Dropout rate
     "qkv_bias": False,       # Query-Key-Value bias
     "dtype": torch.float32,
+    "kv_window_size": 1024,  # KV cache window size
 }
 GPT2_124M_CONFIG= DotDict(GPT2_124M_CONFIG)
 
@@ -65,6 +66,7 @@ GPT2_MEDIUM_CONFIG = {
     "dropout": 0.1,          # Dropout rate
     "qkv_bias": False,       # Query-Key-Value bias
     "dtype": torch.float32,
+    "kv_window_size": 1024,  # KV cache window size
 }
 GPT2_MEDIUM_CONFIG= DotDict(GPT2_MEDIUM_CONFIG)
 
@@ -80,6 +82,7 @@ GPT2_LARGE_CONFIG = {
     "dropout": 0.1,          # Dropout rate
     "qkv_bias": False,       # Query-Key-Value bias
     "dtype": torch.float32,
+    "kv_window_size": 1024,  # KV cache window size
 }
 GPT2_LARGE_CONFIG= DotDict(GPT2_LARGE_CONFIG)
 
@@ -95,6 +98,7 @@ GPT2_XL_CONFIG = {
     "dropout": 0.1,          # Dropout rate
     "qkv_bias": False,       # Query-Key-Value bias
     "dtype": torch.float32,
+    "kv_window_size": 1024,  # KV cache window size
 }
 GPT2_XL_CONFIG= DotDict(GPT2_XL_CONFIG)
 

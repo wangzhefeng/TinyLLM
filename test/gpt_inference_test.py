@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+import time
 
 import torch
 
@@ -28,7 +29,7 @@ from layers.tokenizers.tokenization import (
     text_to_token_ids, 
     token_ids_to_text,
 )
-from layers.generator import generate_simple, generate
+from layers.generator import generate_simple, generate_simple_cached, generate
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -49,9 +50,15 @@ def gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device, temperat
 
     # model
     model = Model(GPT2_124M_CONFIG).to(device)
-
     # disable dropout
     model.eval()
+    # ------------------------------
+    # inference
+    # ------------------------------
+    # inference start
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    start_time =time.time()
 
     # generate text
     if temperature and top_k and eos_id:
@@ -63,20 +70,40 @@ def gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device, temperat
             temperature = temperature,
             top_k = top_k,
             eos_id = eos_id,
+            use_cache=True,
         )
     else:
-        out = generate_simple(
+        # out = generate_simple(
+        #     model = model,
+        #     token_idx = token_ids_tensor,
+        #     max_new_tokens = GPT2_124M_CONFIG.max_new_toknes,
+        #     context_length = GPT2_124M_CONFIG.context_length,
+        # )
+        out = generate_simple_cached(
             model = model,
             token_idx = token_ids_tensor,
             max_new_tokens = GPT2_124M_CONFIG.max_new_toknes,
             context_length = GPT2_124M_CONFIG.context_length,
+            use_cache=True,
         )
     logger.info(f"Output: {out}")
     logger.info(f"Outout shape: {out.shape}")
+    # inference end
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    total_time = time.time() - start_time
 
     # remove batch dimension and convert back into text
     decoded_text = tokenizer.decode(out.squeeze(0).tolist())
     logger.info(f"Output text: {decoded_text}")
+
+    # inference performance
+    logger.info(f"Time: {total_time:.2f} sec")
+    logger.info(f"{int(len(out[0]) / total_time)} tokens/sec")
+    if torch.cuda.is_available():
+        max_memory_bytes = torch.cuda.max_memory_allocated()
+        max_memory_gb = max_memory_bytes / (1024 ** 3)
+        logger.info(f"Max memory allocated: {max_memory_gb:.2f} GB")
 
 
 def test_todo(model, tokenizer, GPT2_124M_CONFIG):
@@ -265,7 +292,7 @@ def test_todo(model, tokenizer, GPT2_124M_CONFIG):
 
 
 
-
+ 
 # 测试代码 main 函数
 def main():
     from test.model_config import device, tokenizer, GPT2_124M_CONFIG

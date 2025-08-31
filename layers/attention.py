@@ -88,10 +88,13 @@ class MultiHeadAttentionWrapper(nn.Module):
         return x
 
 
-# GPT2_124M
 class MultiHeadAttention(nn.Module):
-    
-    def __init__(self, d_model: int, d_out: int, n_heads: int, context_length: int, dropout: float=0.0, qkv_bias: bool=False):
+    """
+    GPT2, small, medium, large, XL
+    """
+    def __init__(self, d_model: int, d_out: int, n_heads: int, 
+                 context_length: int, dropout: float=0.0, qkv_bias: bool=False, 
+                 max_seq_len: int=None, window_size: int=None):
         super().__init__()
 
         assert (d_out % n_heads == 0), "d_out must be divisible by n_heads"
@@ -108,9 +111,14 @@ class MultiHeadAttention(nn.Module):
         # dropout
         self.dropout = nn.Dropout(dropout)
         # mask buffer
-        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool())
+        self.max_seq_len = max_seq_len or context_length
+        self.window_size = window_size or self.max_seq_len
+        # self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool(), persistent=False)
+        self.register_buffer("cache_k", None, persistent=False)
+        self.register_buffer("cache_v", None, persistent=False)
+        # self.ptr_current_pos = 0
     
-    def forward(self, x):
+    def forward(self, x, use_cache=False):
         # shape: [batch_size, num_tokens, d_model]
         batch_size, num_tokens, embed_dim = x.shape
         # Query, Key, Value
@@ -122,24 +130,65 @@ class MultiHeadAttention(nn.Module):
         # shape: [batch_size, num_tokens, d_out]->[batch_size, num_tokens, n_heads, head_dim]
         queries = queries.view(batch_size, num_tokens, self.n_heads, self.head_dim)
         keys =       keys.view(batch_size, num_tokens, self.n_heads, self.head_dim)
-        values =   values.view(batch_size, num_tokens, self.n_heads, self.head_dim)
+        values =   values.view(batch_size, num_tokens, self.n_heads, self.head_dim) 
         # Transpose
         # shape: [batch_size, num_tokens, n_heads, head_dim]->[batch_size, n_heads, num_tokens, head_dim]
         queries = queries.transpose(1, 2)
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
+        # KV-Cache
+        if use_cache:
+            if self.cache_k is None or self.cache_k.size(0) != batch_size:
+                self.cache_k = torch.zeros(batch_size, self.n_heads, self.window_size, self.head_dim, device=x.device)
+                self.cache_v = torch.zeros_like(self.cache_k)
+                self.ptr_cur = 0  # pointer to next free slot
+            
+            # if incoming chunk would overflow discard oldest tokens
+            if self.ptr_cur + num_tokens > self.window_size:
+                overflow = self.ptr_cur + num_tokens - self.window_size
+                # shift everything left by 'overflow' (cheap view-copy)
+                self.cache_k[:, :, :-overflow, :] = self.cache_k[:, :, overflow:, :].clone()
+                self.cache_v[:, :, :-overflow, :] = self.cache_v[:, :, overflow:, :].clone()
+                self.ptr_cur -= overflow  # pointer after shift
+            
+            self.cache_k[:, :, self.ptr_cur:(self.ptr_cur + num_tokens), :] = keys
+            self.cache_v[:, :, self.ptr_cur:(self.ptr_cur + num_tokens), :] = values
+            self.ptr_cur += num_tokens
+
+            keys = self.cache_k[:, :, :self.ptr_cur, :]
+            values = self.cache_v[:, :, :self.ptr_cur, :]
+        else:
+            keys, values = keys, values
+            self.ptr_cur = 0  # keep pointer sane if you interleave modes
         # ------------------------------
         # scaled dot-product attention(aka self-attention) with a causal mask
         # ------------------------------
         # dot product for each head
         # [_, _, num_tokens, head_dim]->[_, _, head_dim, num_tokens]->[_, _, num_tokens, num_tokens]
         attn_scores = queries @ keys.transpose(2, 3)
-        # mask to fill attention scores
-        # [batch_size, n_heads, num_tokens, num_tokens]
-        mask_bool = self.mask[:num_tokens, :num_tokens]
-        # use the mask to fill attention scores
-        # [batch_size, n_heads, num_tokens, num_tokens]
-        attn_scores.masked_fill_(mask_bool, -torch.inf)
+
+        # mask to fill attention scores, [batch_size, n_heads, num_tokens, num_tokens] 
+        # num_tokens_Q = queries.shape[-2]
+        # num_tokens_K = keys.shape[-2]
+        # if use_cache:
+        #     mask_bool = self.mask[self.ptr_current_pos:(self.ptr_current_pos + num_tokens_Q), :num_tokens_K]
+        #     self.ptr_current_pos += num_tokens_Q
+        # else:
+        #     mask_bool = self.mask[:num_tokens_Q, :num_tokens_K]
+        
+        K = attn_scores.size(-1)
+        if num_tokens == K:
+            # No cache → use the pre‑baked triangular mask slice
+            causal_mask = torch.triu(torch.ones(num_tokens, K, device=x.device, dtype=torch.bool), diagonal=1)
+        else:
+            # Cached: need to offset the diagonal by (K − num_tokens)
+            offset = K - num_tokens  # number of tokens already in cache before this chunk
+            row_idx = torch.arange(num_tokens, device=x.device).unsqueeze(1)  # (num_tokens, 1)
+            col_idx = torch.arange(K, device=x.device).unsqueeze(0)           # (1, K)
+            causal_mask = row_idx + offset < col_idx                          # True where j > i+offset
+        
+        # use the mask to fill attention scores, [batch_size, n_heads, num_tokens, num_tokens]
+        attn_scores.masked_fill_(causal_mask.unsqueeze(0).unsqueeze(0), -torch.inf)
         # ------------------------------
         # attention weights
         # ------------------------------
@@ -157,6 +206,9 @@ class MultiHeadAttention(nn.Module):
         context_vec = self.out_proj(context_vec)
 
         return context_vec
+    
+    def reset_cache(self):
+        self.cache_k, self.cache_v = None, None
 
 
 class MultiHeadAttentionCombinedQKV(nn.Module):

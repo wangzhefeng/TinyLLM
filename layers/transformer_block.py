@@ -49,19 +49,20 @@ class TransformerBlockGPT2_124M(nn.Module):
             context_length = cfg.context_length,
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
+            window_size = cfg.kv_window_size if "kv_window_size" in cfg else cfg.context_length
         )
         self.ff = FeedForwardGELU(cfg)
         self.norm1 = LayerNorm(cfg.embed_dim)
         self.norm2 = LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
-    def forward(self, x):
+    def forward(self, x, use_cache=False):
         # shortcut connection for attention block
         shortcut = x
         # LayerNorm 1
         x = self.norm1(x)          # shape: [batch_size, num_tokens, embed_dim]
         # Masked multi-head attention
-        x = self.attn(x)           # shape: [batch_size, num_tokens, embed_dim]
+        x = self.attn(x, use_cache=use_cache)  # shape: [batch_size, num_tokens, embed_dim]
         # Dropout
         x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
         # Residual connection
