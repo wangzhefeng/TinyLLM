@@ -29,6 +29,7 @@ from layers.position_encoding.RoPE import (
     precompute_rope_params, 
     compute_rope
 )
+from layers.normailzation.rms_norm import RMSNorm_Qwen
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -664,14 +665,14 @@ class GroupedQueryAttention(nn.Module):
 
         self.d_out = d_out
         self.n_heads = n_heads
+        self.num_kv_groups = num_kv_groups
+        self.group_size = n_heads // num_kv_groups
         self.head_dim = d_out // n_heads
         # query, key, value weights
         # self.W_key = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
         # self.W_value = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
         self.W_key = nn.Linear(d_model, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
         self.W_value = nn.Linear(d_model, num_kv_groups * self.head_dim, bias=False, dtype=dtype)
-        self.num_kv_groups = num_kv_groups
-        self.group_size = n_heads // num_kv_groups
         self.W_query = nn.Linear(d_model, d_out, bias=False, dtype=dtype)
         # out projection
         self.out_proj = nn.Linear(d_out, d_out, bias=False, dtype=dtype)
@@ -685,8 +686,8 @@ class GroupedQueryAttention(nn.Module):
         batch_size, num_tokens, embed_dim = x.shape
 
         queries = self.W_query(x)  # Shape: (batch_size, num_tokens, d_out)
-        keys = self.W_key(x)  # Shape: (batch_size, num_tokens, num_kv_groups * head_dim)
-        values = self.W_value(x)  # Shape: (batch_size, num_tokens, num_kv_groups * head_dim)
+        keys = self.W_key(x)       # Shape: (batch_size, num_tokens, num_kv_groups * head_dim)
+        values = self.W_value(x)   # Shape: (batch_size, num_tokens, num_kv_groups * head_dim)
 
         # Reshape queries, keys, and values
         queries = queries.view(batch_size, num_tokens, self.n_heads, self.head_dim)
@@ -694,10 +695,12 @@ class GroupedQueryAttention(nn.Module):
         # values = values.view(batch_size, num_tokens, self.n_heads, self.head_dim)
         keys = keys.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim)
         values = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim)
+        
         # Transpose keys, values, and queries
         keys = keys.transpose(1, 2)  # Shape: (batch_size, n_heads, num_tokens, head_dim)
         values = values.transpose(1, 2)  # Shape: (batch_size, n_heads, num_tokens, head_dim)
         queries = queries.transpose(1, 2)  # Shape: (batch_size, num_query_groups, num_tokens, head_dim)
+        
         # Apply RoPE
         keys = compute_rope(keys, self.cos, self.sin)
         queries = compute_rope(queries, self.cos, self.sin)
@@ -712,27 +715,94 @@ class GroupedQueryAttention(nn.Module):
         #   [K1, K1, K2, K2]
         # If we used regular repeat instead of repeat_interleave, we'd get:
         #   [K1, K2, K1, K2]
-
+        # ------------------------------
+        # Attention
+        # ------------------------------
         # Compute scaled dot-product attention (aka self-attention) with a causal mask
         # Shape: (batch_size, n_heads, num_tokens, num_tokens)
         attn_scores = queries @ keys.transpose(2, 3)  # Dot product for each head
-
         # Original mask truncated to the number of tokens and converted to boolean
         mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
-
         # Use the mask to fill attention scores
         attn_scores.masked_fill_(mask_bool, -torch.inf)
-
+        # attention weights
         attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
         assert keys.shape[-1] == self.head_dim
-
+        # ------------------------------
+        # context vector
+        # ------------------------------
         # Shape: (batch_size, num_tokens, n_heads, head_dim)
         context_vec = (attn_weights @ values).transpose(1, 2)
-
         # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.reshape(batch_size, num_tokens, self.d_out)
         context_vec = self.out_proj(context_vec)  # optional projection
 
+        return context_vec
+
+
+class GroupedQueryAttention_Qwen(nn.Module):
+
+    def __init__(self, d_model, n_heads, num_kv_groups, head_dim=None, qk_norm=False, dtype=None):
+        super().__init__()
+
+        assert n_heads % num_kv_groups == 0, "n_heads must be divisible by num_kv_groups"
+        if head_dim is None:
+            assert d_model % n_heads == 0, "`d_model` must be divisible by `n_heads` if `head_dim` is not set"
+            head_dim = d_model // n_heads
+        
+        self.n_heads = n_heads
+        self.num_kv_groups = num_kv_groups
+        self.head_dim = head_dim
+        self.d_out = n_heads * head_dim
+        self.group_size = n_heads // num_kv_groups
+        # query, key, value weights
+        self.W_key = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
+        self.W_query = nn.Linear(d_model, self.d_out, bias=False, dtype=dtype)
+        # out projection
+        self.out_proj = nn.Linear(self.d_out, d_model, bias=False, dtype=dtype)
+        # RMSNorm
+        if qk_norm:
+            self.q_norm = RMSNorm_Qwen(head_dim, eps=1e-6)
+            self.k_norm = RMSNorm_Qwen(head_dim, eps=1e-6)
+        else:
+            self.q_norm = None
+            self.k_norm = None
+
+    def forward(self, x, mask, cos, sin):
+        batch_size, num_tokens, embed_dim = x.shape
+
+        # Apply projections
+        queries = self.W_query(x)  # (batch_size, num_tokens, n_heads * head_dim)
+        keys = self.W_key(x)       # (batch_size, num_tokens, num_kv_groups * head_dim)
+        values = self.W_value(x)   # (batch_size, num_tokens, num_kv_groups * head_dim)
+
+        # Reshape
+        queries = queries.view(batch_size, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
+        keys = keys.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        values = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+
+        # Optional normalization
+        queries = self.q_norm(queries) if self.q_norm else queries
+        keys = self.k_norm(keys) if self.k_norm else keys
+
+        # Apply RoPE
+        queries = compute_rope(queries, cos, sin)
+        keys = compute_rope(keys, cos, sin)
+
+        # Expand K and V to match number of heads
+        keys = keys.repeat_interleave(self.group_size, dim=1)
+        values = values.repeat_interleave(self.group_size, dim=1)
+
+        # Attention
+        attn_scores = queries @ keys.transpose(2, 3)
+        attn_scores = attn_scores.masked_fill(mask, -torch.inf)
+        attn_weights = torch.softmax(attn_scores / self.head_dim ** 0.5, dim=-1)
+
+        # context vector
+        context_vec = (attn_weights @ values).transpose(1, 2).reshape(batch_size, num_tokens, self.d_out)
+        context_vec = self.out_proj(context_vec)
+        
         return context_vec
 
 

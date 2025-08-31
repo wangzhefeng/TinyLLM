@@ -27,11 +27,11 @@ import torch
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-def precompute_rope_params(head_dim, theta_base = 10_000, context_length = 4096, freq_config = None):
+def precompute_rope_params(head_dim, theta_base=10_000, context_length=4096, freq_config=None, dtype=torch.float32):
     assert head_dim % 2 == 0, "Embedding dimension must be even"
 
     # Compute the inverse frequencies
-    inv_freq = 1.0 / (theta_base ** (torch.arange(0, head_dim, 2)[: (head_dim // 2)].float() / head_dim))
+    inv_freq = 1.0 / (theta_base ** (torch.arange(0, head_dim, 2, dtype=dtype)[: (head_dim // 2)].float() / head_dim))
     # Frequency adjustments
     if freq_config is not None:
         low_freq_wavelen = freq_config["original_context_length"] / freq_config["low_freq_factor"]
@@ -48,8 +48,8 @@ def precompute_rope_params(head_dim, theta_base = 10_000, context_length = 4096,
         inv_freq_llama = torch.where(is_medium_freq, smoothed_inv_freq, inv_freq_llama)
         inv_freq = inv_freq_llama
     # Generate position indices
-    positions = torch.arange(context_length)
-    # Compute the angles, Shape: (context_length, head_dim//2)
+    positions = torch.arange(context_length, dtype=dtype)
+    # Compute the angles, shape: (context_length, head_dim//2)
     angles = positions[:, None] * inv_freq[None, :]
     # Expand angles to match the head_dim, shape: (context_length, head_dim)
     angles = torch.cat([angles, angles], dim = 1)
@@ -80,7 +80,7 @@ def compute_rope(x, cos, sin):
     # Apply the rotary transformation
     rotated = torch.cat((-x2, x1), dim=-1)
     x_rotated = (x * cos) + (rotated * sin)
-
+    # It's ok to use lower-precision after applying cos and sin rotation
     return x_rotated.to(dtype=x.dtype)
 
 

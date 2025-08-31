@@ -27,11 +27,12 @@ from layers.attention import (
     MultiHeadAttention,
     MultiHeadAttentionRoPE,
     GroupedQueryAttention,
+    GroupedQueryAttention_Qwen,
 )
 from layers.feed_forward import FeedForwardGELU, FeedForwardSiLU
 from layers.moe import SparseMoE
 from layers.normailzation.layer_norm import LayerNorm
-from layers.normailzation.rms_norm import RMSNorm
+from layers.normailzation.rms_norm import RMSNorm, RMSNorm_Qwen
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -184,6 +185,37 @@ class TransformerBlockLlama3(nn.Module):
 
         return x
 
+
+class TransformerBlockQwen3(nn.Module):
+    
+    def __init__(self, cfg):
+        super().__init__()
+
+        self.attn = GroupedQueryAttention_Qwen(
+            d_model = cfg.embed_dim,
+            n_heads = cfg.n_heads,
+            num_kv_groups = cfg.n_kv_groups,
+            head_dim = cfg.head_dim,
+            qk_norm = cfg.qk_norm,
+            dtype = cfg.dtype,
+        )
+        self.ff = FeedForwardSiLU(cfg)
+        self.norm1 = RMSNorm_Qwen(cfg.embed_dim, eps=1e-6)
+        self.norm2 = RMSNorm_Qwen(cfg.embed_dim, eps=1e-6)
+    
+    def forward(self, x, mask, cos, sin):
+        # Shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x = self.attn(x.to(torch.bfloat16), mask, cos, sin)  # Shape: [batch_size, num_tokens, emb_size]
+        x = x + shortcut
+        # Shortcut connection for feed-forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x.to(torch.bfloat16))
+        x = x + shortcut
+
+        return x
 
 
 

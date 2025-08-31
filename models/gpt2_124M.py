@@ -58,21 +58,29 @@ class Model(nn.Module):
         # token embedding layer
         tok_embeds = self.tok_embed(x)                   # shape: [batch_size, num_tokens, embed_dim]
         # positional embedding layer
-        # pos_embeds = self.pos_embed(torch.arange(seq_len, device=x.device))  # shape: [batch_size, num_tokens, embed_dim]
         if use_cache:
-            pos_id = torch.arange(self.ptr_current_pos, self.ptr_current_pos + seq_len, device=x.device, dtype=torch.long)
+            pos_id = torch.arange(
+                self.ptr_current_pos, 
+                self.ptr_current_pos + seq_len, 
+                device=x.device, 
+                dtype=torch.long
+            )
             self.ptr_current_pos += seq_len
         else:
-            pos_id = torch.arange(0, seq_len, device=x.device, dtype=torch.long)
+            pos_id = torch.arange(
+                0, 
+                seq_len, 
+                device=x.device, 
+                dtype=torch.long
+            )                                            # shape: [batch_size, num_tokens, embed_dim]
         pos_embeds = self.pos_embed(pos_id).unsqueeze(0) # shape: [batch_size, num_tokens, embed_dim]
         # embedding
         x = tok_embeds + pos_embeds                      # shape: [batch_size, num_tokens, embed_dim]
         # dropout
         x = self.drop_embed(x)                           # shape: [batch_size, num_tokens, embed_dim]
         # transformer blocks
-        # x = self.trf_blocks(x)                           # shape: [batch_size, num_tokens, embed_dim]
-        for blk in self.trf_blocks:
-            x = blk(x, use_cache=use_cache)
+        for block in self.trf_blocks:
+            x = block(x, use_cache=use_cache)            # shape: [batch_size, num_tokens, embed_dim]
         # final layer norm
         x = self.final_norm(x)                           # shape: [batch_size, num_tokens, embed_dim]
         # linear output layer(head)
