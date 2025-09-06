@@ -36,6 +36,7 @@
         - [Agent](#agent)
     - [others](#others)
         - [KV Cache](#kv-cache)
+- [其他资料](#其他资料)
 </p></details><p></p>
 
 # Data Preprocessing
@@ -230,3 +231,6 @@ Flash Attention：Flash Attention 是一种精确的注意力计算优化方法�
 
 * [图解 KV Cache：解锁 LLM 推理效率的关键](https://mp.weixin.qq.com/s/uWV56N-NeHA57_UeNDE67g)
 
+# 其他资料
+
+* [The Big LLM Architecture Comparison](https://magazine.sebastianraschka.com/p/the-big-llm-architecture-comparison)

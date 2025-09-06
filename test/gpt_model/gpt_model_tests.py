@@ -42,12 +42,15 @@ def gpt2_124M_transformer_block_test(GPT2_124M_CONFIG):
     logger.info(f"Output shape: {output.shape}")
 
 
-def gpt2_model_test(tokenizer, GPT2_CONFIG, device): 
+def gpt2_model_test(tokenizer, GPT2_CONFIG, device):  
+    # ------------------------------
     # input text
+    # ------------------------------
     txt1 = "Every effort moves you"
     txt2 = "Every day holds a"
-    
+    # ------------------------------
     # input batch
+    # ------------------------------
     batch = []
     batch.append(torch.tensor(tokenizer.encode(txt1)))
     batch.append(torch.tensor(tokenizer.encode(txt2)))
@@ -56,21 +59,27 @@ def gpt2_model_test(tokenizer, GPT2_CONFIG, device):
     batch = batch.to(device)
     logger.info(f"batch: \n{batch}")
     logger.info(f"batch.shape: {batch.shape}")
-
+    # ------------------------------
     # model
+    # ------------------------------
     model = Model(GPT2_CONFIG).to(device)
+    # ------------------------------
+    # model size and memory
+    # ------------------------------
     total_params = sum(p.numel() for p in model.parameters())
     logger.info(f"total_params: {total_params / 1000**3:.1f}B")
-
     total_params_without_outhead = total_params - sum(p.numel() for p in model.out_head.parameters())
     logger.info(f"total_params_without_outhead: {total_params_without_outhead / 1000**3:.1f}B")
-
     # Calculate the total size in bytes (assuming float32, 4 bytes per parameter)
     total_size_bytes = total_params * 4
     # Convert to megabytes
     total_size_mb = total_size_bytes / (1024 * 1024)
     logger.info(f"Total size of the model: {total_size_mb:.2f}MB")
-
+    # ------------------------------
+    # model inference
+    # ------------------------------
+    # disable dropout during inference
+    model.eval()
     # model inference
     logits = model(batch)
     logger.info(f"logits: \n{logits}")
@@ -81,7 +90,7 @@ def gpt2_model_test(tokenizer, GPT2_CONFIG, device):
 
 # 测试代码 main 函数
 def main():
-    from test.model_config import (
+    from test.gpt_model.model_config import (
         device, 
         tokenizer, 
         GPT2_124M_CONFIG,
@@ -90,9 +99,8 @@ def main():
         GPT2_XL_CONFIG,
     )
 
-    gpt2_124M_transformer_block_test(GPT2_124M_CONFIG)
-
     # GPT2 small
+    gpt2_124M_transformer_block_test(GPT2_124M_CONFIG)
     gpt2_model_test(tokenizer, GPT2_124M_CONFIG, device)
     # GPT2 medium
     gpt2_model_test(tokenizer, GPT2_MEDIUM_CONFIG, device)

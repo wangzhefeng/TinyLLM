@@ -28,7 +28,7 @@ import torch
 from utils.args_tools import DotDict
 from utils.device import device_setting
 from utils.model_memory import model_memory_size
-from test.qwen_model_config import QWEN3_CONFIG
+from test.qwen_model.qwen_model_config import QWEN3_CONFIG
 from models.qwen3_06B import Model
 
 # global variable

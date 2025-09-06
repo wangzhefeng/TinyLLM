@@ -22,10 +22,12 @@ if ROOT not in sys.path:
 import torch
 import torch.nn as nn
 
-from data_provider.data_loader import data_load
-from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
+from layers.tokenizers.tokenization import (
+    text_to_token_ids, 
+    token_ids_to_text
+)
 from models.gpt2_124M import Model
-from layers.generator import generate_text_simple
+from test.gpt_model.model_config import device, GPT2_124M_CONFIG
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -33,36 +35,7 @@ os.environ['LOG_NAME'] = LOGGING_LABEL
 from utils.log_util import logger
 
 
-
-
-# 测试代码 main 函数
-def main():
-    # ------------------------------
-    # model
-    # ------------------------------
-    train_cfgs = {
-        "train_epochs": 10,
-        "max_new_tokens": 10,
-    }
-
-    # disable dropout durning inference
-    model.eval()
-    # ------------------------------
-    # text generation
-    # ------------------------------
-    # text
-    start_context = "Every effort move you"
-    
-    # token IDs 
-    token_ids = generate_text_simple(
-        model = model,
-        token_idx = text_to_token_ids(start_context),
-        max_new_tokens = 10,
-        context_size = GPT2_124M_CONFIG.context_length,
-    )
-    logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
-    
-    
+def text_generation(GPT2_CONFIG):
     # ------------------------------
     # text generation loss: cross-entropy and perplexity
     # ------------------------------
@@ -75,23 +48,28 @@ def main():
     targets = torch.tensor([[3626, 6100, 345  ],  # [" effort moves you",
                             [1107,  588, 11311]]) #  " really like chocolate"]
     logger.info(f"targets shape: {targets.shape}")
-    
+    # ------------------------------
+    # model
+    # ------------------------------
+    model = Model(GPT2_CONFIG).to(device)
+    # ------------------------------
     # model inference
+    # ------------------------------
     with torch.no_grad():
-        logits = model(inputs)
+        logits = model(inputs.to(device))
     logger.info(f"logits: \n{logits} \nlogits shape: {logits.shape}")
     
     # softmax
     probas = torch.softmax(logits, dim=-1)
     logger.info(f"probas: \n{probas} \nprobas.shape: {probas.shape}")
-    
+
     # argmax
     token_ids = torch.argmax(probas, dim=-1, keepdim=True)
     logger.info(f"Token IDs: \n{token_ids} \nToken IDs shape: {token_ids.shape}")
-    logger.info(f"Targets batch 1: \n{targets[0]} \n{token_ids_to_text(targets[0])}")
-    logger.info(f"Outputs batch 1: \n{token_ids[0].flatten()} \n{token_ids_to_text(token_ids[0].flatten())}")
-    logger.info(f"Targets batch 1: \n{targets[1]} \n{token_ids_to_text(targets[1])}")
-    logger.info(f"Outputs batch 1: \n{token_ids[1].flatten()} \n{token_ids_to_text(token_ids[1].flatten())}")
+    logger.info(f"\nTargets batch 1: {targets[0]} \nTarget batch 1 text: {token_ids_to_text(targets[0])}")
+    logger.info(f"\nOutputs batch 1: {token_ids[0].flatten()} \nOutputs batch 1 text: {token_ids_to_text(token_ids[0].flatten())}")
+    logger.info(f"\nTargets batch 1: {targets[1]} \nTarget batch 1 text: {token_ids_to_text(targets[1])}")
+    logger.info(f"\nOutputs batch 1: {token_ids[1].flatten()} \nOutputs batch 1 text: {token_ids_to_text(token_ids[1].flatten())}")
 
     # token probabilities corresponding to the target indices
     text_idx = 0
@@ -131,6 +109,13 @@ def main():
     logger.info(f"perplexity: {perplexity}")
 
 
+
+
+# 测试代码 main 函数
+def main():
+    text_generation(GPT2_124M_CONFIG) 
+
+    """ 
     # ------------------------------
     # model training
     # ------------------------------
@@ -243,6 +228,7 @@ def main():
         val_loss = _calc_loss_loader(val_loader, model, device)
     logger.info(f"Training loss: {train_loss}")
     logger.info(f"Validation loss: {val_loss}") 
+    """
 
 if __name__ == "__main__":
     main()

@@ -295,7 +295,7 @@ def test_todo(model, tokenizer, GPT2_124M_CONFIG):
  
 # 测试代码 main 函数
 def main():
-    from test.model_config import device, tokenizer, GPT2_124M_CONFIG
+    from test.gpt_model.model_config import device, tokenizer, GPT2_124M_CONFIG
     
     gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device)
 
