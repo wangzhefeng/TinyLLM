@@ -29,7 +29,11 @@ from layers.tokenizers.tokenization import (
     text_to_token_ids, 
     token_ids_to_text,
 )
-from layers.generator import generate_simple, generate_simple_cached, generate
+from layers.generator import (
+    generate_simple, 
+    generate_simple_cached, 
+    generate,
+)
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

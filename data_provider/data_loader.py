@@ -73,9 +73,9 @@ class LLMDataset(Dataset):
             # sampling input and target
             input_seq =  block[:-1]
             target_seq = block[1:]
-            logger.info(f"debug::i: {i}")
-            logger.info(f"debug::input_seq  start_idx:end_idx: {i}:{(i + max_len)}")
-            logger.info(f"debug::target_seq start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
+            # logger.info(f"debug::i: {i}")
+            # logger.info(f"debug::input_seq  start_idx:end_idx: {i}:{(i + max_len)}")
+            # logger.info(f"debug::target_seq start_idx:end_idx: {i+1}:{(i + max_len + 1)}")
 
             # input and target block
             self.input_blocks.append(input_seq)
@@ -141,7 +141,7 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
         flag=flag,
         dtype=dtype,
         device=device,
-    ) 
+    )
     # create dataloader
     if is_dist():
         dataloader = DataLoader(
@@ -172,12 +172,12 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
 # 测试代码 main 函数
 def main():
     # data path
-    # data_path = "./dataset/pretrain/gpt"
-    # data_file = "the-verdict.txt" 
+    data_path = "./dataset/pretrain/gpt"
+    data_file = "the-verdict.txt" 
 
     # huggingface data path
-    data_path="EleutherAI/wikitext_document_level"
-    data_file="wikitext-2-raw-v1"
+    # data_path="EleutherAI/wikitext_document_level"
+    # data_file="wikitext-2-raw-v1"
 
     # tokenizer
     from layers.tokenizers.tokenization import choose_tokenizer
@@ -185,7 +185,7 @@ def main():
 
     # dataloader
     train_dataset, train_dataloader = create_dataloader(
-        data_source="huggingface",
+        data_source="local",
         data_path = data_path, 
         data_file = data_file,
         flag = "train", 
@@ -196,6 +196,7 @@ def main():
         num_workers = 0,
     )
     # valid_dataset, valid_dataloader = create_dataloader(
+    #     data_source = "huggingface",
     #     data_path = data_path, 
     #     data_file = data_file,
     #     flag = "valid", 

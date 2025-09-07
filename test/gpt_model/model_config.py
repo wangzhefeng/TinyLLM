@@ -51,6 +51,8 @@ GPT2_124M_CONFIG = {
     "qkv_bias": False,       # Query-Key-Value bias
     "dtype": torch.float32,
     "kv_window_size": 1024,  # KV cache window size
+    "top_k": 1,
+    "temperature": 0.0,
 }
 GPT2_124M_CONFIG= DotDict(GPT2_124M_CONFIG)
 

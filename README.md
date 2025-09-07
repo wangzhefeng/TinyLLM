@@ -36,6 +36,7 @@
         - [Agent](#agent)
     - [others](#others)
         - [KV Cache](#kv-cache)
+- [技巧](#技巧)
 - [其他资料](#其他资料)
 </p></details><p></p>
 
@@ -230,6 +231,12 @@ Flash Attention：Flash Attention 是一种精确的注意力计算优化方法�
 ### KV Cache
 
 * [图解 KV Cache：解锁 LLM 推理效率的关键](https://mp.weixin.qq.com/s/uWV56N-NeHA57_UeNDE67g)
+
+# 技巧
+
+1. 寻览 LLMs 通常不适用 dropout;
+2. 现代 LLMs 在 query、key 和 value 矩阵的 `nn.Linear` 层也不使用偏置(bias)向量（与早期的 GPT 模型不同）;
+3. 
 
 # 其他资料
 

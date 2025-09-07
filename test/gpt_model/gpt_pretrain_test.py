@@ -22,12 +22,15 @@ if ROOT not in sys.path:
 import torch
 import torch.nn as nn
 
+from data_provider.data_loader import load_local_data
+from data_provider.data_loader import create_dataloader
 from layers.tokenizers.tokenization import (
-    text_to_token_ids, 
-    token_ids_to_text
+    choose_tokenizer,
+    text_to_token_ids,
+    token_ids_to_text,
 )
 from models.gpt2_124M import Model
-from test.gpt_model.model_config import device, GPT2_124M_CONFIG
+from utils.llm.calc_loss import calc_loss_loader
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -35,7 +38,7 @@ os.environ['LOG_NAME'] = LOGGING_LABEL
 from utils.log_util import logger
 
 
-def text_generation(GPT2_CONFIG):
+def text_generation(GPT2_CONFIG, device):
     # ------------------------------
     # text generation loss: cross-entropy and perplexity
     # ------------------------------
@@ -64,12 +67,12 @@ def text_generation(GPT2_CONFIG):
     logger.info(f"probas: \n{probas} \nprobas.shape: {probas.shape}")
 
     # argmax
-    token_ids = torch.argmax(probas, dim=-1, keepdim=True)
-    logger.info(f"Token IDs: \n{token_ids} \nToken IDs shape: {token_ids.shape}")
-    logger.info(f"\nTargets batch 1: {targets[0]} \nTarget batch 1 text: {token_ids_to_text(targets[0])}")
-    logger.info(f"\nOutputs batch 1: {token_ids[0].flatten()} \nOutputs batch 1 text: {token_ids_to_text(token_ids[0].flatten())}")
-    logger.info(f"\nTargets batch 1: {targets[1]} \nTarget batch 1 text: {token_ids_to_text(targets[1])}")
-    logger.info(f"\nOutputs batch 1: {token_ids[1].flatten()} \nOutputs batch 1 text: {token_ids_to_text(token_ids[1].flatten())}")
+    output_token_ids = torch.argmax(probas, dim=-1, keepdim=True)
+    logger.info(f"\nOutput Token IDs: \n{output_token_ids} \nOutput Token IDs shape: {output_token_ids.shape}")
+    logger.info(f"\nTargets batch 0: {targets[0]}             \nTarget batch 0 text: {token_ids_to_text(targets[0])}")
+    logger.info(f"\nOutputs batch 0: {output_token_ids[0].flatten()} \nOutputs batch 0 text: {token_ids_to_text(output_token_ids[0].flatten())}")
+    logger.info(f"\nTargets batch 1: {targets[1]}             \nTarget batch 1 text: {token_ids_to_text(targets[1])}")
+    logger.info(f"\nOutputs batch 1: {output_token_ids[1].flatten()} \nOutputs batch 1 text: {token_ids_to_text(output_token_ids[1].flatten())}")
 
     # token probabilities corresponding to the target indices
     text_idx = 0
@@ -94,141 +97,124 @@ def text_generation(GPT2_CONFIG):
     # Targets have shape: (batch_size, num_tokens)
     logger.info(f"Targets shape: {targets.shape}")
     
+    # ------------------------------
+    # loss
+    # ------------------------------
     # compute cross-entropy loss
-    logits_flat = logits.flatten(0, 1)
+    logits_flat = logits.flatten(0, 1).to(device)
     logger.info(f"logits_flat: \n{logits_flat} \nFlattened logtis: {logits_flat.shape}")
-    targets_flat = targets.flatten(0, 1)
+    targets_flat = targets.flatten(0, 1).to(device)
     logger.info(f"targets_flat: \n{targets_flat} \nFlattened targets: {targets_flat.shape}")
     
-    loss = nn.CrossEntropyLoss()
-    # loss = torch.nn.functional.cross_entropy(logits_flat, targets_flat)
-    loss = loss(logits_flat, targets_flat)
+    # loss
+    criterion = nn.CrossEntropyLoss()
+    loss = criterion(logits_flat, targets_flat)
     logger.info(f"loss: {loss}")
+    
     # perplexity
     perplexity = torch.exp(loss)
     logger.info(f"perplexity: {perplexity}")
+
+
+def test_training(tokenizer, GPT2_CONFIG, device):
+    # ------------------------------
+    # model training
+    # ------------------------------
+    # data path
+    data_path = "./dataset/pretrain/gpt"
+    data_file = "the-verdict.txt" 
+    # 数据加载
+    raw_text = load_local_data(data_path=data_path, data_file=data_file)
+    logger.info(f"raw_text[:99]: \n{raw_text[:99]}")
+    logger.info(f"raw_text[:99]: \n{raw_text[-99:]}")
+
+    # Sanity check
+    total_characters = len(raw_text)
+    total_tokens = len(tokenizer.encode(raw_text))
+    logger.info(f"total_characters: {total_characters}")
+    logger.info(f"total_tokens: {total_tokens}")
+
+    # training and validation data loader create
+    train_ratio = 0.90
+    split_idx = int(train_ratio * len(raw_text))
+    train_data = raw_text[:split_idx]
+    val_data = raw_text[split_idx:]
+    if total_tokens * (train_ratio) < GPT2_CONFIG.context_length:
+        logger.info("Not enough tokens for the training loader. "
+                    "Try to lower the `GPT2_124M_CONFIG['context_length']` or "
+                    "increase the `training_ratio`")
+
+    if total_tokens * (1-train_ratio) < GPT2_CONFIG.context_length:
+        logger.info("Not enough tokens for the validation loader. "
+                    "Try to lower the `GPT2_124M_CONFIG['context_length']` or "
+                    "decrease the `training_ratio`")
+    
+    # dataloader
+    torch.manual_seed(123)
+    train_dataset, train_dataloader = create_dataloader(
+        data_source="local",
+        data_path = data_path, 
+        data_file = data_file,
+        flag = "train", 
+        train_ratio = 0.8,
+        tokenizer = tokenizer,
+        batch_size = 2,
+        max_len = 256,
+        num_workers = 0,
+        device=device,
+    )
+    valid_dataset, valid_dataloader = create_dataloader(
+        data_source="local",
+        data_path = data_path, 
+        data_file = data_file,
+        flag = "valid", 
+        train_ratio = 0.8,
+        tokenizer = tokenizer,
+        batch_size = 2,
+        max_len = 256,
+        num_workers = 0,
+        device=device,
+    )
+    logger.info(f"Train loader:")
+    for x, y in train_dataloader:
+        logger.info(f"x.shape: {x.shape}, y.shape: {y.shape}")
+    
+    logger.info("Validation loader:")
+    for x, y in valid_dataloader:
+        logger.info(f"x.shape: {x.shape}, y.shape: {y.shape}")
+    
+    # train, validation tokens
+    train_tokens = 0
+    for input_batch, target_batch in train_dataloader:
+        train_tokens += input_batch.numel()
+    val_tokens = 0
+    for input_batch, target_batch in valid_dataloader:
+        val_tokens += input_batch.numel()
+    logger.info(f"Training tokens: {train_tokens}")
+    logger.info(f"Validation tokens: {val_tokens}")
+    logger.info(f"All tokens: {train_tokens + val_tokens}")
+
+    # model
+    model = Model(GPT2_CONFIG).to(device)
+    
+    # loss
+    with torch.no_grad():
+        train_loss = calc_loss_loader("pretrain", train_dataloader, model, device)
+        valid_loss = calc_loss_loader("pretrain", valid_dataloader, model, device)
+    logger.info(f"Training loss: {train_loss}")
+    logger.info(f"Validation loss: {valid_loss}")
 
 
 
 
 # 测试代码 main 函数
 def main():
-    text_generation(GPT2_124M_CONFIG) 
+    from test.gpt_model.model_config import device, tokenizer, GPT2_124M_CONFIG
 
-    """ 
-    # ------------------------------
-    # model training
-    # ------------------------------
-    # 数据加载
-    raw_text = data_load(
-        url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
-    )
-    logger.info(f"raw_text[:99]: \n{raw_text[:99]}")
-    logger.info(f"raw_text[:99]: \n{raw_text[-99:]}")
+    # text_generation(GPT2_124M_CONFIG, device)
 
-    # Sanity check
-    total_characters = len(raw_text)
-    import tiktoken
-    tokenizer = tiktoken.get_encoding("gpt2")
-    total_tokens = len(tokenizer.encode(raw_text))
-    logger.info(f"total_characters: {total_characters}")
-    logger.info(f"total_tokens: {total_tokens}")
- 
-    # training and validation data loader create
-    from data_provider.data_loader import create_dataloader
-    train_ratio = 0.90
-    split_idx = int(train_ratio * len(raw_text))
-    train_data = raw_text[:split_idx]
-    val_data = raw_text[split_idx:]
-    if total_tokens * (train_ratio) < GPT2_124M_CONFIG.context_length:
-        print("Not enough tokens for the training loader. "
-            "Try to lower the `GPT2_124M_CONFIG['context_length']` or "
-            "increase the `training_ratio`")
-
-    if total_tokens * (1-train_ratio) < GPT2_124M_CONFIG.context_length:
-        print("Not enough tokens for the validation loader. "
-            "Try to lower the `GPT2_124M_CONFIG['context_length']` or "
-            "decrease the `training_ratio`")
-    
-    train_loader = create_dataloader(
-        train_data,
-        batch_size=2,
-        max_len=GPT2_124M_CONFIG.context_length,
-        stride=GPT2_124M_CONFIG.context_length,
-        drop_last=True,
-        shuffle=True,
-        num_workers=0,
-    )
-    val_loader = create_dataloader(
-        val_data,
-        batch_size=2,
-        max_len=GPT2_124M_CONFIG.context_length,
-        stride=GPT2_124M_CONFIG.context_length,
-        drop_last=False,
-        shuffle=False,
-        num_workers=0,
-    ) 
-    logger.info(f"Train loader:")
-    for x, y in train_loader:
-        logger.info(f"x.shape: {x.shape}, y.shape: {y.shape}")
-    logger.info("Validation loader:")
-    for x, y in val_loader:
-        logger.info(f"x.shape: {x.shape}, y.shape: {y.shape}")
-    
-    # train, validation tokens
-    train_tokens = 0
-    for input_batch, target_batch in train_loader:
-        train_tokens += input_batch.numel()
-    val_tokens = 0
-    for input_batch, target_batch in val_loader:
-        val_tokens += input_batch.numel()
-    logger.info(f"Training tokens: {train_tokens}")
-    logger.info(f"Validation tokens: {val_tokens}")
-    logger.info(f"All tokens: {train_tokens + val_tokens}")
- 
-    # model
-    def _calc_loss_batch(input_batch, target_batch, model, device):
-        # criterion
-        criterion = nn.CrossEntropyLoss()
-        # training data batch
-        input_batch = input_batch.to(device)
-        target_batch = target_batch.to(device)
-        # forward
-        logits = model(input_batch)
-        # loss
-        loss = criterion(logits.flatten(0, 1), target_batch.flatten(0, 1))
-
-        return loss
-
-    def _calc_loss_loader(data_loader, model, device, num_batches = None):
-        # number of batches
-        if len(data_loader) == 0:
-            return float("nan")
-        elif num_batches is None:
-            num_batches = len(data_loader)
-        else:
-            num_batches = min(num_batches, len(data_loader))
-        # calculate loss
-        total_loss = 0
-        for i, (input_batch, target_batch) in enumerate(data_loader):
-            if i < num_batches:
-                loss = _calc_loss_batch(input_batch, target_batch, model, device)
-                total_loss += loss.item()
-            else:
-                break
-        
-        return total_loss / num_batches
-    # seed
-    torch.manual_seed(123)
-    # model
-    model = Model(GPT2_124M_CONFIG).to(device)
-    # loss
-    with torch.no_grad():
-        train_loss = _calc_loss_loader(train_loader, model, device)
-        val_loss = _calc_loss_loader(val_loader, model, device)
-    logger.info(f"Training loss: {train_loss}")
-    logger.info(f"Validation loss: {val_loss}") 
-    """
+    GPT2_124M_CONFIG.context_length = 6
+    test_training(tokenizer, GPT2_124M_CONFIG, device)
 
 if __name__ == "__main__":
     main()
