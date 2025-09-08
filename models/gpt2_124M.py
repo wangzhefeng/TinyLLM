@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockGPT2_124M
-from layers.normailzation.layer_norm import LayerNorm
+# from layers.normailzation.layer_norm import LayerNorm
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -47,7 +47,7 @@ class Model(nn.Module):
         )
         self.ptr_current_pos = 0
         # LayerNorm
-        self.final_norm = LayerNorm(cfg.embed_dim)
+        self.final_norm = nn.LayerNorm(cfg.embed_dim)
         # output head linear
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False)
 

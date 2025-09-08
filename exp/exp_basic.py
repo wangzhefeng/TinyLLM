@@ -43,9 +43,14 @@ class Exp_Basic:
             # "minimind": minimind,
             # "mlp": MLP,
         }
+        # device
         self.device = self._acquire_device()
+        # tokenizer
         self.tokenizer = self._get_tokenizer()
-        self.model = self._build_model().to(self.device)
+        # model
+        self.model = self._build_model()
+        self.model = torch.compile(self.model)
+        self.model.to(self.device).to(torch.bfloat16)
  
     def _acquire_device(self):
         # use gpu or not

@@ -142,8 +142,7 @@ class Model_Pretrain(Exp_Basic):
         ckp = self.model.module.state_dict()
         torch.save(ckp, model_path)
 
-
-    def train(self, training_iter: int, setting: str, eval_freq: int=5, eval_iter: int=1):
+    def train(self, training_iter: int, setting: str, eval_freq: int=10, eval_iter: int=1):
         logger.info(f"{43 * '-'}")
         logger.info(f"Model start training...")
         logger.info(f"{43 * '-'}")
@@ -166,7 +165,7 @@ class Model_Pretrain(Exp_Basic):
         optimizer = select_optimizer(
             self.model, 
             learning_rate=self.args.learning_rate, 
-            weight_decay=self.args.weight_decay
+            weight_decay=self.args.weight_decay,
         )
         logger.info(f"Train optimizer has builded...")
         # early stopping
@@ -390,7 +389,7 @@ class Model_Pretrain(Exp_Basic):
         # inference mode
         self.model.eval()
         # context size
-        context_size = self.model.pos_emb.weight.shape[0]
+        context_size = self.model.module.pos_emb.weight.shape[0] if isinstance(self.model, DDP) else self.model.pos_emb.weight.shape[0]
         # start context tokenization
         start_context_encoded = text_to_token_ids(start_context).to(self.device)
         # generate text

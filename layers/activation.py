@@ -16,6 +16,7 @@ __all__ = [
     "ReLUPyTorch",
     "GELU",
     "SiLU",
+    "SwiGLU",
 ]
 
 # python libraries
@@ -106,8 +107,8 @@ def main():
     relu_torch = ReLUPyTorch()
     # relu_torch = nn.functional.relu()
 
-    gelu = GELU()
-    # gelu = nn.GELU() 
+    # gelu = GELU()
+    gelu = nn.GELU(approximate="tanh") 
     
     silu = SiLU()
     # silu = nn.SiLU()

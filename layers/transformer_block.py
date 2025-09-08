@@ -25,13 +25,14 @@ import torch.nn as nn
 
 from layers.attention import (
     MultiHeadAttention,
+    MHAPyTorchScaledDotProduct,
     MultiHeadAttentionRoPE,
     GroupedQueryAttention,
     GroupedQueryAttention_Qwen,
 )
 from layers.feed_forward import FeedForwardGELU, FeedForwardSiLU
 from layers.moe import SparseMoE
-from layers.normailzation.layer_norm import LayerNorm
+# from layers.normailzation.layer_norm import LayerNorm
 from layers.normailzation.rms_norm import RMSNorm, RMSNorm_Qwen
 
 # global variable
@@ -43,18 +44,19 @@ class TransformerBlockGPT2_124M(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         
-        self.attn = MultiHeadAttention(
+        self.attn = MHAPyTorchScaledDotProduct(
             d_model = cfg.embed_dim,
             d_out = cfg.embed_dim,
             n_heads = cfg.n_heads,
             context_length = cfg.context_length,
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
-            window_size = cfg.kv_window_size if "kv_window_size" in cfg else cfg.context_length
+            training=cfg.is_train,
+            # window_size = cfg.kv_window_size if "kv_window_size" in cfg else cfg.context_length
         )
         self.ff = FeedForwardGELU(cfg)
-        self.norm1 = LayerNorm(cfg.embed_dim)
-        self.norm2 = LayerNorm(cfg.embed_dim)
+        self.norm1 = nn.LayerNorm(cfg.embed_dim)
+        self.norm2 = nn.LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
     def forward(self, x, use_cache=False):
@@ -100,8 +102,8 @@ class TransformerBlockMoE(nn.Module):
             qkv_bias = cfg.qkv_bias,
         )
         self.smoe = SparseMoE(cfg)
-        self.norm1 = LayerNorm(cfg.embed_dim)
-        self.norm2 = LayerNorm(cfg.embed_dim)
+        self.norm1 = nn.LayerNorm(cfg.embed_dim)
+        self.norm2 = nn.LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
     def forward(self, x):
@@ -216,6 +218,7 @@ class TransformerBlockQwen3(nn.Module):
         x = x + shortcut
 
         return x
+
 
 
 

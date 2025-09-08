@@ -385,7 +385,7 @@ class MHAPyTorchScaledDotProduct(nn.Module):
             queries, keys, values, 
             attn_mask=None, 
             dropout_p=use_dropout, 
-            is_causal=True
+            is_causal=True,
         )
         # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.transpose(1, 2).contiguous().view(batch_size, num_tokens, self.d_out)

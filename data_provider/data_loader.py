@@ -122,7 +122,6 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
         raw_text = load_local_data(data_path=data_path, data_file=data_file)    
     elif data_source == "huggingface":
         raw_text = load_hf_data(data_path=data_path, data_name=data_file, cache_dir="./dataset/pretrain")
-
     logger.info(f"Train data character length: {len(raw_text)}")
     # data split
     train_data, valid_data = data_split(text=raw_text, train_ratio=train_ratio)
@@ -148,7 +147,7 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
             dataset,
             batch_size=batch_size,
             pin_memory=True,
-            shuffle=shuffle,
+            shuffle=False,
             drop_last=drop_last,
             sampler=DistributedSampler(dataset),
             num_workers=num_workers,
@@ -157,10 +156,9 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
         dataloader = DataLoader(
             dataset,
             batch_size=batch_size,
-            # pin_memory=True,
+            pin_memory=True,
             shuffle=shuffle,
             drop_last=drop_last,
-            # sampler=DistributedSampler(dataset),
             num_workers=num_workers,
         )
     
@@ -178,6 +176,10 @@ def main():
     # huggingface data path
     # data_path="EleutherAI/wikitext_document_level"
     # data_file="wikitext-2-raw-v1"
+
+    # data path
+    file_path = "./dataset/pretrain/gpt/middlemarch.txt"
+    url = "https://www.gutenberg.org/cache/epub/145/pg145.txt"
 
     # tokenizer
     from layers.tokenizers.tokenization import choose_tokenizer

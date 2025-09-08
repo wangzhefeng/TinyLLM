@@ -27,6 +27,7 @@ from layers.activation import (
     ReLUPyTorch,
     GELU, 
     SiLU,
+    SwiGLU,
 )
 
 # global variable
@@ -56,7 +57,7 @@ class FeedForwardGELU(nn.Module):
         super().__init__()
 
         self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=True)
-        self.gelu = GELU()
+        self.gelu = nn.GELU(approximate="tanh")
         self.fc2 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=True)
     
     def forward(self, x):
@@ -80,7 +81,7 @@ class FeedForwardSiLU(nn.Module):
 
         self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
         self.fc2 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
-        self.silu = SiLU()
+        self.silu = nn.SiLU()
         self.fc3 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=False)
 
     def forward(self, x):
@@ -90,6 +91,16 @@ class FeedForwardSiLU(nn.Module):
         out = self.fc3(x)
 
         return out
+
+
+class FeedForwardSwiGLU(nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+        self.swiglu = None
+
+    def forward(self, x):
+        pass
 
 
 
