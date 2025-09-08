@@ -185,3 +185,4 @@ localtest/
 utils/
 tokenizers/
 checkpoints/
+.chainlit/

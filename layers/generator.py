@@ -13,6 +13,7 @@
 
 __all__ = [
     "generate_simple",
+    "generate_simple_cached",
     "generate",
 ]
 

@@ -29,7 +29,11 @@ from layers.tokenizers.tokenization import (
     text_to_token_ids, 
     token_ids_to_text,
 )
-from layers.generator import generate_simple, generate_simple_cached, generate
+from layers.generator import (
+    generate_simple, 
+    generate_simple_cached, 
+    generate,
+)
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -295,7 +299,7 @@ def test_todo(model, tokenizer, GPT2_124M_CONFIG):
  
 # 测试代码 main 函数
 def main():
-    from test.model_config import device, tokenizer, GPT2_124M_CONFIG
+    from test.gpt_model.model_config import device, tokenizer, GPT2_124M_CONFIG
     
     gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device)
 
