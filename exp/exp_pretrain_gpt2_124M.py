@@ -20,12 +20,15 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
 import warnings
+import platform
 warnings.filterwarnings("ignore")
 
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
 
 # data
 from data_provider.data_loader import create_dataloader
@@ -54,11 +57,12 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 class Model_Pretrain(Exp_Basic):
 
-    def __init__(self, args):
+    def __init__(self, args, rank):
         logger.info(f"{41 * '-'}")
         logger.info("Initializing Experiment...")
         logger.info(f"{41 * '-'}")
-        super(Model_Pretrain, self).__init__(args) 
+        super(Model_Pretrain, self).__init__(args)
+        self.rank = rank
     
     def _get_tokenizer(self):
         """
@@ -108,7 +112,8 @@ class Model_Pretrain(Exp_Basic):
         if self.args.use_gpu and self.args.use_multi_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         elif self.args.use_ddp:
-            model = DDP(model, device_ids=[self.device])
+            # Wrap model with DDP
+            model = DDP(model, device_ids=[self.rank])
         # 打印模型参数量
         model_memory_size(model, verbose=True)
         
@@ -143,6 +148,9 @@ class Model_Pretrain(Exp_Basic):
         torch.save(ckp, model_path)
 
     def train(self, training_iter: int, setting: str, eval_freq: int=10, eval_iter: int=1):
+        # Determine the current rank (default to 0 if not distributed)
+        rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
+
         logger.info(f"{43 * '-'}")
         logger.info(f"Model start training...")
         logger.info(f"{43 * '-'}")
@@ -193,10 +201,30 @@ class Model_Pretrain(Exp_Basic):
         train_losses, valid_losses = [], []
         # initialize tokens seen
         tokens_seen = 0
+        last_tokens = 0
         # initialize list to track train iter tokens seen
         track_tokens_seen = []
+        
+        # Variables for cumulative average tokens/sec
+        cumulative_tokens, cumulative_time = 0.0, 0.0
+        
+        # CUDA-specific timing setup
+        use_cuda = self.device.type == "cuda"
+        if use_cuda:
+            t_start = torch.cuda.Event(enable_timing=True)
+            t_end = torch.cuda.Event(enable_timing=True)
+            # Ensure all prior CUDA operations are done
+            torch.cuda.synchronize()
+            # Start the timer for the first interval
+            t_start.record()
+        else:
+            # Start the timer for the first interval
+            t0 = time.time()
         # main training loop
         for epoch in range(self.args.train_epochs):
+            # set epoch for DistributedSampler so each process gets a unique shuffle order
+            if isinstance(train_loader.sampler, DistributedSampler):
+                train_loader.sampler.set_epoch(epoch)
             # epoch 模型训练开始时间
             epoch_start_time = time.time()
             logger.info(f"\t\tEpoch {epoch + 1}: start time: {from_unix_time(epoch_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
@@ -284,6 +312,42 @@ class Model_Pretrain(Exp_Basic):
                 # ------------------------
                 if global_step % eval_freq == 0:
                 # TODO if (batch + 1) % 5 == 0:
+                    # End timing for the current interval
+                    if use_cuda:
+                        t_end.record()
+                        # Wait for all CUDA ops to complete.
+                        torch.cuda.synchronize()
+                        # Convert ms to seconds
+                        elapsed = t_start.elapsed_time(t_end) / 1000
+                        # Reset timer for the next interval
+                        t_start.record()
+                    else:
+                        elapsed = time.time() - t0
+                        # Reset timer for the next interval
+                        t0 = time.time()
+                    
+                    # Calculate local tokens processed during this interval
+                    local_interval = tokens_seen - last_tokens
+                    last_tokens = tokens_seen
+
+                    # Aggregate the tokens processed over all devices
+                    local_tensor = torch.tensor([local_interval], device=self.device, dtype=torch.float)
+                    global_tensor = local_tensor.clone()
+                    torch.distributed.all_reduce(global_tensor, op=torch.distributed.ReduceOp.SUM)
+                    global_interval = global_tensor.item()
+
+                    # Global tokens per second for this interval
+                    global_tps = global_interval / elapsed if elapsed > 0 else 0
+
+                    # Update cumulative tokens (local) and aggregate globally
+                    cumulative_tokens += local_interval
+                    local_cum_tensor = torch.tensor([cumulative_tokens], device=self.device, dtype=torch.float)
+                    global_cum_tensor = local_cum_tensor.clone()
+                    torch.distributed.all_reduce(global_cum_tensor, op=torch.distributed.ReduceOp.SUM)
+                    global_cumulative_tokens = global_cum_tensor.item()
+                    cumulative_time += elapsed
+                    global_avg_tps = global_cumulative_tokens / cumulative_time if cumulative_time > 0 else 0
+                    
                     # evaluate model
                     train_loss, valid_loss = self.valid(train_loader, valid_loader, eval_iter)
                     # collect losses and tokens seen
@@ -296,6 +360,10 @@ class Model_Pretrain(Exp_Basic):
                     speed = (time.time() - train_start_time) / iter_count
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch)
                     logger.info(f'\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f} | Speed: {speed:.4f}s/batch; left time: {left_time:.2f}seconds.')
+
+                    # Only print logs once per GPU (choosing the rank 0 GPU)
+                    if rank == 0:
+                        logger.info(f"\t\tEpoch {epoch + 1}, Step {global_step:06d}, Train: {train_loss:.3f}, Val: {valid_loss}, Step tok/sec: {round(global_tps)}, Global avg tok/sec: {round(global_avg_tps)}")
                     
                     # init epoch iter count
                     iter_count = 0
@@ -322,8 +390,15 @@ class Model_Pretrain(Exp_Basic):
             # ------------------------------
             # model inference
             # ------------------------------
-            # print a sample text after each epoch
-            self.inference(epoch = epoch + 1, setting=setting, load=False)
+            if rank == 0 and epoch % 5 == 0:
+                # print a sample text after each epoch
+                self.inference(epoch = epoch + 1, setting=setting, load=False)
+                # Memory stats
+                if torch.cuda.is_available():
+                    current_device = torch.cuda.current_device()
+                    allocated = torch.cuda.memory_allocated(current_device) / 1024 ** 3  # Convert to GB
+                    reserved = torch.cuda.memory_reserved(current_device) / 1024 ** 3  # Convert to GB
+                    logger.info(f"Allocated memory: {allocated:4f} GB, Reserved memory: {reserved:4f} GB")
             
             # calculate one epoch training used time
             logger.info(f"\t\tEpoch {epoch + 1}: cost time: {(time.time() - epoch_start_time):.2f}seconds")
@@ -391,7 +466,7 @@ class Model_Pretrain(Exp_Basic):
         # context size
         context_size = self.model.module.pos_emb.weight.shape[0] if isinstance(self.model, DDP) else self.model.pos_emb.weight.shape[0]
         # start context tokenization
-        start_context_encoded = text_to_token_ids(start_context).to(self.device)
+        start_context_encoded = text_to_token_ids(start_context, tokenizer_model=self.tokenizer).to(self.device)
         # generate text
         with torch.no_grad():
             completion_id = generate(
@@ -399,8 +474,12 @@ class Model_Pretrain(Exp_Basic):
                 token_idx = start_context_encoded,
                 max_new_tokens = self.args.max_new_tokens,
                 context_length = context_size,
+                temperature=0,
+                top_k=1,
+                eos_id=self.tokenizer.eos_id,
+                use_cache=self.args.use_cache
             )
-            completion = token_ids_to_text(completion_id).replace("\n", " ")
+            completion = token_ids_to_text(completion_id, tokenizer_model=self.tokenizer).replace("\n", " ")
             logger.info(f"\t\tEpoch {epoch}: Model inference [start context]: {start_context}, [completion]: {completion}")
         # train mode
         self.model.train()

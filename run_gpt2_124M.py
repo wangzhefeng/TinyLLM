@@ -12,6 +12,7 @@
 # ***************************************************
 
 # python libraries
+import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
@@ -102,8 +103,7 @@ def args_parse():
     return args
 
 
-
-def run(args):
+def run(args, rank):
     # 模型任务
     Exp = Model_Pretrain
     # 模型训练
@@ -114,7 +114,7 @@ def run(args):
             logger.info(f">>>>>>>training: iter-{itr} {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
             logger.info(f"{180 * '='}")
             # set experiments
-            exp = Exp(args)
+            exp = Exp(args, rank)
             # model training
             model = exp.train(
                 training_iter=itr, 
@@ -147,22 +147,62 @@ def run(args):
 
 # 测试代码 main 函数
 def main(rank: int, world_size: int, args):
+    # Initialize process groups
     ddp_setup(rank, world_size)
+    device = torch.device("cuda", rank)
+    
     # 设置随机数
     set_seed(seed = 2025)
-    # 参数使用
+    
+    # Print info only on 1 GPU
+    if rank == 0:
+        logger.info(f"PyTorch version: {torch.__version__}")
+        if torch.cuda.is_available():
+            logger.info(f"CUDA version: {torch.version.cuda}")
+        capability = torch.cuda.get_device_capability()
+        if capability[0] >= 7:
+            torch.set_float32_matmul_precision("high")
+            logger.info("Uses tensor cores.")
+        else:
+            logger.info("Tensor cores not supported on this GPU. Using default precision.")
+    
+    # All processes wait util rank 0 is done, using the GPU index.
+    torch.distributed.barrier(device_ids=[device.index])
+    
+    # 模型训练
     run(args)
+    
+    # Clean up distributed processes
     destroy_process_group()
 
 if __name__ == "__main__":
+    ###########################
     # 参数解析
+    ###########################
     args = args_parse()
     print_args_llm(args)
-    # distributed data parallelim training
-    world_size = torch.cuda.device_count()
-    mp.spawn(
-        main,
-        args=(world_size, args),
-        nprocs=world_size,
-        join=True,
-    )
+    ###########################
+    # Extract rank and world size from environment variables
+    ###########################
+    if "WORLD_SIZE" in os.environ:
+        world_size = int(os.environ["WORLD_SIZE"])
+    else:
+        # world_size = 1
+        world_size = torch.cuda.device_count()
+        
+    if "LOCAL_RANK" in os.environ:
+        rank = int(os.environ["LOCAL_RANK"])
+    elif "RANK" in os.environ:
+        rank = int(os.environ["RANK"])
+    else:
+        rank = 0
+    ###########################
+    # Initiate training
+    ###########################
+    main(rank=rank, world_size=world_size, args=args)
+    ###########################
+    # After training
+    ###########################
+    # Only create 1 plot
+    if rank == 0:
+        pass
