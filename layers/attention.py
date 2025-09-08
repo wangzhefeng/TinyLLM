@@ -555,6 +555,7 @@ class MHAPyTorchFlexAttention(nn.Module):
         return context_vec
 
 
+# TODO
 class MultiHeadAttentionRoPE(nn.Module):
     
     def __init__(self, d_model: int, d_out: int, n_heads: int, context_length: int, dtype = None):

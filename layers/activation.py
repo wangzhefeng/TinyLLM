@@ -56,7 +56,8 @@ class ReLUPyTorch(nn.Module):
 
 class GELU(nn.Module):
     """
-    GELU(Gaussian Error Linear Unit, 高斯误差线性单元): https://arxiv.org/abs/1606.08415
+    GELU(Gaussian Error Linear Unit, 高斯误差线性单元)
+    https://arxiv.org/abs/1606.08415
     """
     def __init__(self):
         super().__init__()
@@ -70,7 +71,8 @@ class GELU(nn.Module):
 
 class SiLU(nn.Module):
     """
-    SiLU: https://arxiv.org/abs/1702.03118
+    SiLU(Sigmoid-Weighted Linear Units, Sigmoid 加权线性单元)
+    https://arxiv.org/abs/1702.03118
     """
     def __init__(self):
         super().__init__()
@@ -82,7 +84,7 @@ class SiLU(nn.Module):
 # TODO
 class SwiGLU(nn.Module):
     """
-    SwiGLU(Swish-Gated Linear Unit, Swish 门控线性单元):  
+    SwiGLU(Swish-Gated Linear Unit, Swish 门控线性单元)
     """
     def __init__(self):
         super().__init__()

@@ -22,6 +22,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch
+import torch.nn as nn
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -82,6 +83,15 @@ def compute_rope(x, cos, sin):
     x_rotated = (x * cos) + (rotated * sin)
     # It's ok to use lower-precision after applying cos and sin rotation
     return x_rotated.to(dtype=x.dtype)
+
+
+class RoPE(nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, x):
+        pass
 
 
 
