@@ -178,7 +178,7 @@ class Model(Exp_Basic):
         """
         # 模型保存路径
         model_path = Path(self.args.checkpoints).joinpath(setting)
-        os.makedirs(model_path, exist_ok=True)
+        model_path.mkdir(parents=True, exist_ok=True)
         # 最优模型保存路径
         model_checkpoint_path = Path(model_path).joinpath("checkpoint.pth")
         
@@ -189,7 +189,7 @@ class Model(Exp_Basic):
         结果保存路径
         """
         results_path = Path(self.args.test_results).joinpath(setting)
-        os.makedirs(results_path, exist_ok=True)
+        results_path.mkdir(parents=True, exist_ok=True)
         
         return results_path
     

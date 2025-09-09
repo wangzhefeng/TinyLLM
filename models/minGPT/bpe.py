@@ -261,9 +261,9 @@ def get_encoder():
     Returns an instance of the GPT BPE Encoder/Decoder
     and handles caching of "database" files.
     """
-    home_dir = os.path.expanduser('~')
-    cache_dir = os.path.join(home_dir, '.cache', 'mingpt')
-    os.makedirs(cache_dir, exist_ok=True)
+    home_dir = Path.expanduser('~')
+    cache_dir = home_dir.joinpath('.cache').joinpath('mingpt')
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
     # load encoder.json that has the raw mappings from token -> bpe index
     encoder_local_file = os.path.join(cache_dir, 'encoder.json')

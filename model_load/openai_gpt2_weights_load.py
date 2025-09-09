@@ -164,7 +164,7 @@ def download_and_load_gpt2(model_size, models_dir):
     ]
 
     # Download files
-    os.makedirs(model_dir, exist_ok=True)
+    model_dir.mkdir(parents=True, exist_ok=True)
     for filename in filenames:
         file_url = Path(base_url).joinpath(model_size).joinpath(filename)
         backup_url = Path(backup_base_url).joinpath(model_size).joinpath(filename)

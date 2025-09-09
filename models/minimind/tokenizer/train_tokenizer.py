@@ -87,7 +87,7 @@ def train_tokenizer(data_path: str = "./minimind/dataset/pretrain_hq.jsonl",
     # ------------------------------
     # save tokenizer
     # ------------------------------
-    os.makedirs(tokenizer_dir, exist_ok=True)
+    tokenizer_dir.mkdir(parents = True, exist_ok = True)
     tokenizer.save(Path(tokenizer_dir).joinpath("tokenizer.json"))
     tokenizer.model.save(tokenizer_dir)
     

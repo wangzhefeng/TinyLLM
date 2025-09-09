@@ -19,16 +19,14 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
-import warnings
 import platform
+import warnings
 warnings.filterwarnings("ignore")
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data.distributed import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.distributed import init_process_group, destroy_process_group
 
 # data
 from data_provider.data_loader import create_dataloader
@@ -41,8 +39,8 @@ from layers.tokenizers.tokenization import (
 # model
 from exp.exp_basic import Exp_Basic
 # training
-from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.llm.train_funcs import select_optimizer
+from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
 from layers.generator import generate
 from utils.plot_losses import plot_losses
@@ -77,6 +75,8 @@ class Model_Pretrain(Exp_Basic):
         get dataset and dataloader
         """
         train_data, train_loader = create_dataloader(
+            data_source=self.args.data_source,
+            url=self.args.url,
             data_path=self.args.data_path,
             data_file=self.args.data_file,
             flag="train",
@@ -86,8 +86,11 @@ class Model_Pretrain(Exp_Basic):
             max_len=self.args.context_length,
             stride=self.args.context_length,
             num_workers=self.args.num_workers,
+            device=self.device,
         )
         valid_data, valid_loader = create_dataloader(
+            data_source=self.args.data_source,
+            url=self.args.url,
             data_path=self.args.data_path,
             data_file=self.args.data_file,
             flag="valid",
@@ -97,25 +100,25 @@ class Model_Pretrain(Exp_Basic):
             max_len=self.args.context_length,
             stride=self.args.context_length,
             num_workers=self.args.num_workers,
+            device=self.device,
         )
         
         return train_loader, valid_loader 
 
     def _build_model(self):
         """
-        build model
+        模型构建
         """
-        # model instance
+        # 模型实例化
         logger.info(f"Initializing model {self.args.model_name}...")
         model = self.model_dict[self.args.model_name].Model(self.args)
         # 单机多卡训练
         if self.args.use_gpu and self.args.use_multi_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
-        elif self.args.use_ddp:
-            # Wrap model with DDP
-            model = DDP(model, device_ids=[self.rank])
+        elif self.args.use_gpu and self.args.use_multi_gpu and self.args.use_ddp:
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[self.rank])
         # 打印模型参数量
-        model_memory_size(model, verbose=True)
+        model_memory_size(model, input_dtype=self.args.dtype, verbose=True)
         
         return model
 
@@ -125,7 +128,7 @@ class Model_Pretrain(Exp_Basic):
         """
         # 模型保存路径
         model_path = Path(self.args.checkpoints).joinpath(setting)
-        os.makedirs(model_path, exist_ok=True)
+        model_path.mkdir(parents=True, exist_ok=True)
         # 最优模型保存路径
         model_checkpoint_path = f"{model_path}/checkpoint.pth"
         
@@ -136,10 +139,11 @@ class Model_Pretrain(Exp_Basic):
         结果保存路径
         """
         results_path = Path(self.args.test_results).joinpath(setting)
-        os.makedirs(results_path, exist_ok=True)
+        results_path.mkdir(parents=True, exist_ok=True)
         
         return results_path
 
+    # TODO 继续训练
     def _save_checkpoint(self, epoch, model_path):
         """
         模型 checkpoint 保存
@@ -464,7 +468,9 @@ class Model_Pretrain(Exp_Basic):
         # inference mode
         self.model.eval()
         # context size
-        context_size = self.model.module.pos_emb.weight.shape[0] if isinstance(self.model, DDP) else self.model.pos_emb.weight.shape[0]
+        context_size = self.model.module.pos_emb.weight.shape[0] \
+            if isinstance(self.model, nn.parallel.DistributedDataParallel) \
+            else self.model.pos_emb.weight.shape[0]
         # start context tokenization
         start_context_encoded = text_to_token_ids(start_context, tokenizer_model=self.tokenizer).to(self.device)
         # generate text

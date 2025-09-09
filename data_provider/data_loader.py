@@ -104,6 +104,7 @@ class LLMDataset(Dataset):
 
 
 def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
+                      url: str,
                       data_path: str,
                       data_file: str,
                       flag: str,
@@ -112,14 +113,14 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
                       batch_size: int=4,
                       max_len: int=256,
                       stride: int=None,
-                      num_examples: int=10000,
-                      dtype=torch.long,
                       num_workers: bool=0,
+                      num_examples: int=100000,
+                      dtype=torch.long,
                       device=None):
     # data load
     assert data_source in ['huggingface', 'local'], "data_source must be in ['huggingface', 'local']"
     if data_source == "local":
-        raw_text = load_local_data(data_path=data_path, data_file=data_file)    
+        raw_text = load_local_data(url, data_path=data_path, data_file=data_file)    
     elif data_source == "huggingface":
         raw_text = load_hf_data(data_path=data_path, data_name=data_file, cache_dir="./dataset/pretrain")
     logger.info(f"Train data character length: {len(raw_text)}")
@@ -169,25 +170,21 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
 
 # 测试代码 main 函数
 def main():
-    # data path
-    data_path = "./dataset/pretrain/gpt"
-    data_file = "the-verdict.txt" 
-
-    # huggingface data path
-    # data_path="EleutherAI/wikitext_document_level"
-    # data_file="wikitext-2-raw-v1"
-
-    # data path
-    file_path = "./dataset/pretrain/gpt/middlemarch.txt"
-    url = "https://www.gutenberg.org/cache/epub/145/pg145.txt"
-
     # tokenizer
     from layers.tokenizers.tokenization import choose_tokenizer
     tokenizer = choose_tokenizer(tokenizer_model = "tiktoken_gpt2_bpe")
-
+    # ------------------------------
+    # the-verdict.txt
+    # ------------------------------
+    # data path
+    data_source = "local"
+    url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
+    data_path = "./dataset/pretrain/gpt"
+    data_file = "the-verdict.txt" 
     # dataloader
     train_dataset, train_dataloader = create_dataloader(
-        data_source="local",
+        data_source=data_source,
+        url = url,
         data_path = data_path, 
         data_file = data_file,
         flag = "train", 
@@ -197,18 +194,57 @@ def main():
         max_len = 256,
         num_workers = 0,
     )
-    # valid_dataset, valid_dataloader = create_dataloader(
-    #     data_source = "huggingface",
-    #     data_path = data_path, 
-    #     data_file = data_file,
-    #     flag = "valid", 
-    #     train_ratio = 0.8,
-    #     tokenizer = tokenizer,
-    #     batch_size = 4,
-    #     max_len = 256,
-    #     num_workers = 0,
-    # )
     for input, label in train_dataloader:
+        logger.info(f"input: \n{input} \ninput.shape: {input.shape}")
+        logger.info(f"label: \n{label} \nlabel.shape: {label.shape}")
+        break
+    # ------------------------------
+    # pg145.txt
+    # ------------------------------
+    # data path
+    data_source = "local"
+    url = "https://www.gutenberg.org/cache/epub/145/pg145.txt"
+    data_path = "./dataset/pretrain/gpt"
+    data_file = "pg145.txt" 
+    # dataloader
+    train_dataset, train_dataloader = create_dataloader(
+        data_source=data_source,
+        url = url,
+        data_path = data_path, 
+        data_file = data_file,
+        flag = "train", 
+        train_ratio = 0.8,
+        tokenizer = tokenizer,
+        batch_size = 4,
+        max_len = 256,
+        num_workers = 0,
+    )
+    for input, label in train_dataloader:
+        logger.info(f"input: \n{input} \ninput.shape: {input.shape}")
+        logger.info(f"label: \n{label} \nlabel.shape: {label.shape}")
+        break
+    # ------------------------------
+    # huggingface data
+    # ------------------------------
+    # data path
+    data_source="huggingface"
+    url = None
+    data_path="EleutherAI/wikitext_document_level"
+    data_file="wikitext-2-raw-v1"
+    # dataloader
+    valid_dataset, valid_dataloader = create_dataloader(
+        data_source = "huggingface",
+        url=None,
+        data_path = data_path, 
+        data_file = data_file,
+        flag = "valid", 
+        train_ratio = 0.8,
+        tokenizer = tokenizer,
+        batch_size = 4,
+        max_len = 256,
+        num_workers = 0,
+    )
+    for input, label in valid_dataloader:
         logger.info(f"input: \n{input} \ninput.shape: {input.shape}")
         logger.info(f"label: \n{label} \nlabel.shape: {label.shape}")
         break

@@ -40,8 +40,6 @@ class Exp_Basic:
             "gpt2_124M": gpt2_124M,
             "llama2": llama2,
             "llama3_8B": llama3_8B,
-            # "minimind": minimind,
-            # "mlp": MLP,
         }
         # device
         self.device = self._acquire_device()
@@ -50,20 +48,18 @@ class Exp_Basic:
         # model
         self.model = self._build_model()
         self.model = torch.compile(self.model)
-        self.model.to(self.device).to(torch.bfloat16)
- 
+        self.model.to(self.device).to(args.dtype)
+
     def _acquire_device(self):
-        # use gpu or not
-        self.args.use_gpu = True \
-            if self.args.use_gpu and (torch.cuda.is_available() or torch.backends.mps.is_available()) \
-            else False
-        # gpu type: "cuda", "mps"
+        # Use GPU or not
+        self.args.use_gpu = True if self.args.use_gpu and (torch.cuda.is_available() or torch.backends.mps.is_available()) else False
+        # GPU type: "cuda", "mps"
         self.args.gpu_type = self.args.gpu_type.lower().strip()
-        # gpu device ids list
+        # GPU device ids list
         self.args.devices = self.args.devices.replace(" ", "")
         self.args.device_ids = [int(id_) for id_ in self.args.devices.split(",")]
-        # gpu device ids string
-        self.gpu = self.args.device_ids[0]  # ro self.gpu = "0"
+        # GPU device ids string
+        self.gpu = self.args.device_ids[0]
         # device
         if self.args.use_gpu and self.args.gpu_type == "cuda":
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self.gpu) if not self.args.use_multi_gpu else self.args.devices
@@ -83,20 +79,17 @@ class Exp_Basic:
     def _get_data(self):
         pass
     
+    def _get_tokenizer(self):
+        pass 
+    
     def _build_model(self):
         raise NotImplementedError
-        return None
-    
-    def _get_tokenizer(self):
-        pass
+        return None 
     
     def train(self):
         pass 
 
     def vali(self):
-        pass
-
-    def test(self):
         pass
 
     def inference(self):

@@ -45,9 +45,9 @@ def setup_logging(config):
     """
     monotonous bookkeeping
     """
-    work_dir = config.system.work_dir
+    work_dir = Path(config.system.work_dir)
     # create the work directory if it doesn't already exist
-    os.makedirs(work_dir, exist_ok=True)
+    work_dir.mkdir(parents=True, exist_ok=True)
     # log the args (if any)
     with open(os.path.join(work_dir, 'args.txt'), 'w') as f:
         f.write(' '.join(sys.argv))

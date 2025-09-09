@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -201,9 +202,9 @@ class Checkpointer:
         optim_state_dict = self._get_full_optimizer_state_dict(model, optim)
         if torch.distributed.get_rank() == 0:
             new_training_time = int(time.time() * 1000)
-            new_checkpoint_folder = f"{self.folder}/{'dcp_api' if self.dcp_api else 'dtensor_api'}/{new_training_time}"
-            new_model_checkpoint = f"{new_checkpoint_folder}/{MODEL_CHECKPOINT}"
-            new_optim_checkpoint = f"{new_checkpoint_folder}/{OPTIM_CHECKPOINT}"
-            os.makedirs(new_checkpoint_folder, exist_ok=True)
+            new_checkpoint_folder = Path(f"{self.folder}/{'dcp_api' if self.dcp_api else 'dtensor_api'}/{new_training_time}")
+            new_model_checkpoint = new_checkpoint_folder.joinpath(MODEL_CHECKPOINT)
+            new_optim_checkpoint = new_checkpoint_folder.joinpath(OPTIM_CHECKPOINT)
+            new_checkpoint_folder.mkdir(parents=True, exist_ok=True)
             torch.save(model_state_dict, new_model_checkpoint)
             torch.save(optim_state_dict, new_optim_checkpoint)
