@@ -26,6 +26,7 @@ from models import (
     llama2, 
     llama3_8B,
 )
+from utils.ddp_utils import get_env_rank, get_env_world_size
 from utils.log_util import logger
 
 # global variable
@@ -57,18 +58,25 @@ class Exp_Basic:
         self.args.gpu_type = self.args.gpu_type.lower().strip()
         # GPU device ids list
         self.args.devices = self.args.devices.replace(" ", "")
-        self.args.device_ids = [int(id_) for id_ in self.args.devices.split(",")]
-        # GPU device ids string
-        self.gpu = self.args.device_ids[0]
-        # device
+        self.args.device_ids = [int(id_) for id_ in self.args.devices.split(",")] 
+        # device 
         if self.args.use_gpu and self.args.gpu_type == "cuda":
-            os.environ["CUDA_VISIBLE_DEVICES"] = str(self.gpu) if not self.args.use_multi_gpu else self.args.devices
-            device = torch.device(f"cuda:{self.gpu}")
-            logger.info(f"\t\tUse device GPU: cuda:{self.gpu}")
+            # GPU device ids
+            device_id = get_env_rank()
+            world_size = get_env_world_size()
+            if not self.args.use_multi_gpu:
+                if world_size == 1:
+                    os.environ["CUDA_VISIBLE_DEVICES"] = 0
+                    device = torch.device(f"cuda:{0}")
+                else:
+                    os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
+                    device = torch.device(f"cuda:{device_id}")
+            else:
+                os.environ["CUDA_VISIBLE_DEVICES"] = self.args.devices
+                device = torch.device(f"cuda:{self.args.device_ids[0]}")
+            logger.info(f"\t\tUse device GPU: {device}")
         elif self.args.use_gpu and self.args.gpu_type == "mps":
-            device = torch.device("mps") \
-                if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() \
-                else torch.device("cpu")
+            device = torch.device("mps") if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else torch.device("cpu")
             logger.info(f"\t\tUse device GPU: mps")
         else:
             device = torch.device("cpu")

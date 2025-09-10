@@ -144,12 +144,17 @@ class Model_Pretrain(Exp_Basic):
         return results_path
 
     # TODO 继续训练
-    def _save_checkpoint(self, epoch, model_path):
+    def _save_checkpoint(self, model, optimizer, model_path: str):
         """
         模型 checkpoint 保存
         """
-        ckp = self.model.module.state_dict()
-        torch.save(ckp, model_path)
+        model_state = model.module.state_dict() if self.args.use_ddp else model.state_dict()
+        optimizer_state = optimizer.state_dict()
+        state_dict = {
+            "model_state_dict": model_state,
+            "optimizer_state_dict": optimizer_state,
+        }
+        torch.save(state_dict, model_path)
 
     def train(self, training_iter: int, setting: str, eval_freq: int=10, eval_iter: int=1):
         # Determine the current rank (default to 0 if not distributed)
@@ -181,7 +186,13 @@ class Model_Pretrain(Exp_Basic):
         )
         logger.info(f"Train optimizer has builded...")
         # early stopping
-        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
+        early_stopping = EarlyStopping(
+            patience=self.args.patience, 
+            verbose=True, 
+            delta=0, 
+            use_ddp=self.args.use_ddp, 
+            gpu=self.rank,  # TODO
+        )
         logger.info(f"Train early stopping instance has builded, patience: {self.args.patience}")
         # auto mix precision
         if self.args.use_amp:
@@ -431,7 +442,7 @@ class Model_Pretrain(Exp_Basic):
         """
         model evaluation
         """
-        # logger.info(f"\t\tModel start validating...")
+        logger.info(f"\t\tModel start validating...")
         # inference mode
         self.model.eval()
         # model evaluation
@@ -459,12 +470,12 @@ class Model_Pretrain(Exp_Basic):
         """
         model inference
         """
-        # logger.info(f"\t\tModel start inference...")
-        # 模型加载
+        logger.info(f"\t\tModel start inference...")
+        # load model
         if load:
             logger.info(f"Pretrained model has loaded from: {model_checkpoint_path}")
             model_checkpoint_path = self._get_model_path(setting)
-            self.model.load_state_dict(torch.load(model_checkpoint_path)) 
+            self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)) 
         # inference mode
         self.model.eval()
         # context size
