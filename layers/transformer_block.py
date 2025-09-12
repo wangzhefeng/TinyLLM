@@ -65,7 +65,10 @@ class TransformerBlockGPT2_124M(nn.Module):
         # LayerNorm 1
         x = self.norm1(x)          # shape: [batch_size, num_tokens, embed_dim]
         # Masked multi-head attention
-        x = self.attn(x, use_cache=use_cache)  # shape: [batch_size, num_tokens, embed_dim]
+        x = self.attn(
+            x, 
+            # use_cache=use_cache
+        )  # shape: [batch_size, num_tokens, embed_dim]
         # Dropout
         x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
         # Residual connection

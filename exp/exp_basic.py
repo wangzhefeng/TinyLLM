@@ -26,7 +26,13 @@ from models import (
     llama2, 
     llama3_8B,
 )
-from utils.ddp_utils import get_env_rank, get_env_world_size
+from utils.ddp_utils import (
+    is_dist, 
+    init_dist,
+    get_global_rank, 
+    get_local_rank,
+    get_world_size,
+)
 from utils.log_util import logger
 
 # global variable
@@ -35,7 +41,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 class Exp_Basic:
     
-    def __init__(self, args):
+    def __init__(self, args, local_rank):
         self.args = args
         self.model_dict = {
             "gpt2_124M": gpt2_124M,
@@ -43,7 +49,7 @@ class Exp_Basic:
             "llama3_8B": llama3_8B,
         }
         # device
-        self.device = self._acquire_device()
+        self.device = self._acquire_device(local_rank)
         # tokenizer
         self.tokenizer = self._get_tokenizer()
         # model
@@ -51,29 +57,23 @@ class Exp_Basic:
         self.model = torch.compile(self.model)
         self.model.to(self.device).to(args.dtype)
 
-    def _acquire_device(self):
+    def _acquire_device(self, local_rank):
         # Use GPU or not
         self.args.use_gpu = True if self.args.use_gpu and (torch.cuda.is_available() or torch.backends.mps.is_available()) else False
         # GPU type: "cuda", "mps"
         self.args.gpu_type = self.args.gpu_type.lower().strip()
-        # GPU device ids list
-        self.args.devices = self.args.devices.replace(" ", "")
-        self.args.device_ids = [int(id_) for id_ in self.args.devices.split(",")] 
-        # device 
+        # GPU device ids list(CUDA_VISIBLE_DEVICES)
+        self.args.device_ids = [int(id_) for id_ in os.environ["CUDA_VISIBLE_DEVICES"].replace(" ", "").split(",")]
+        # device
         if self.args.use_gpu and self.args.gpu_type == "cuda":
-            # GPU device ids
-            device_id = get_env_rank()
-            world_size = get_env_world_size()
-            if not self.args.use_multi_gpu:
-                if world_size == 1:
-                    os.environ["CUDA_VISIBLE_DEVICES"] = 0
-                    device = torch.device(f"cuda:{0}")
-                else:
-                    os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
-                    device = torch.device(f"cuda:{device_id}")
-            else:
-                os.environ["CUDA_VISIBLE_DEVICES"] = self.args.devices
+            if self.args.use_dp:
                 device = torch.device(f"cuda:{self.args.device_ids[0]}")
+            elif self.args.use_ddp:
+                # 显式设置当前进程使用的 GPU 设备
+                torch.cuda.set_device(local_rank)
+                device = torch.device(f"cuda:{local_rank}")
+            else:
+                device = torch.device("cuda", 0)
             logger.info(f"\t\tUse device GPU: {device}")
         elif self.args.use_gpu and self.args.gpu_type == "mps":
             device = torch.device("mps") if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else torch.device("cpu")

@@ -1,31 +1,41 @@
-export CUDA_VISIBLE_DEVICES=0
-export LOG_NAME=gpt2_124M
+#!/bin/bash
+
+# *********************************************
+# * Author      : Zhefeng Wang
+# * Email       : wangzhefengr@163.com
+# * Date        : 2021.01.01
+# * Version     : 1.0.0
+# * Description : description
+# * Link        : link
+# **********************************************
+
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+export LOG_NAME=gpt2_124M_DP
 
 tk_model_name=tiktoken_gpt2_bpe
 lm_model_name=gpt2_124M
 
-python -u run_gpt2_124M.py \
-    --task_name gpt2_124M_pretrain \
-    --des 'GPT2-124M Pretrain' \
+python -u ./exp/exp_pretrain_gpt2_124M.py \
+    --task_name gpt2_124M_pretrain_DP \
+    --des 'GPT2-124M Pretrain using DP' \
     --is_train 1 \
     --is_test 1 \
     --is_inference 0 \
     --data_source local \
-    --data_url "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt" \
+    --url "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt" \
     --data_path ./dataset/pretrain/gpt \
     --data_file the-verdict.txt \
     --data_name the-verdict \
     --train_ratio 0.95 \
-    --batch_size 16 \
+    --batch_size 2 \
     --num_workers 0 \
     --tokenizer_model $tk_model_name \
     --vocab_size 50257 \
     --model_name $lm_model_name \
-    --context_length 256 \
+    --context_length 1024 \
     --embed_dim 768 \
-    --d_ff 3072 \
-    --n_heads 24 \
-    --n_layers 24 \
+    --n_heads 12 \
+    --n_layers 12 \
     --dropout 0.1 \
     --qkv_bias \
     --dtype bfloat16 \
@@ -37,13 +47,12 @@ python -u run_gpt2_124M.py \
     --lradj type1 \
     --seed 42 \
     --itrs 1 \
-    --train_epochs 100 \
+    --train_epochs 30 \
     --patience 14 \
     --checkpoints ./saved_results/pretrained_models/ \
     --test_results ./saved_results/test_results/ \
     --max_new_tokens 50 \
-    --use_cache 0 \
     --use_gpu 1 \
     --gpu_type cuda \
-    --use_dp 0 \
+    --use_dp 1 \
     --use_ddp 0

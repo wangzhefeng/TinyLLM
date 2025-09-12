@@ -12,18 +12,15 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import time
-import platform
 import warnings
 warnings.filterwarnings("ignore")
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data.distributed import DistributedSampler
@@ -43,7 +40,7 @@ from utils.llm.train_funcs import select_optimizer
 from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
 from layers.generator import generate
-from utils.plot_losses import plot_losses
+from utils.plot_losses import plot_losses_llm, plot_losses
 # utils
 from utils.model_memory import model_memory_size
 from utils.timestamp_utils import from_unix_time
@@ -55,12 +52,14 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 class Model_Pretrain(Exp_Basic):
 
-    def __init__(self, args, rank):
+    def __init__(self, args, global_rank, world_size, local_rank):
         logger.info(f"{41 * '-'}")
         logger.info("Initializing Experiment...")
         logger.info(f"{41 * '-'}")
-        super(Model_Pretrain, self).__init__(args)
-        self.rank = rank
+        super(Model_Pretrain, self).__init__(args, local_rank)
+        self.global_rank = global_rank
+        self.world_size = world_size
+        self.local_rank = local_rank
     
     def _get_tokenizer(self):
         """
@@ -76,7 +75,7 @@ class Model_Pretrain(Exp_Basic):
         """
         train_data, train_loader = create_dataloader(
             data_source=self.args.data_source,
-            url=self.args.url,
+            url=self.args.data_url,
             data_path=self.args.data_path,
             data_file=self.args.data_file,
             flag="train",
@@ -87,10 +86,12 @@ class Model_Pretrain(Exp_Basic):
             stride=self.args.context_length,
             num_workers=self.args.num_workers,
             device=self.device,
+            global_rank=self.global_rank,
+            world_size=self.world_size,
         )
         valid_data, valid_loader = create_dataloader(
             data_source=self.args.data_source,
-            url=self.args.url,
+            url=self.args.data_url,
             data_path=self.args.data_path,
             data_file=self.args.data_file,
             flag="valid",
@@ -101,6 +102,8 @@ class Model_Pretrain(Exp_Basic):
             stride=self.args.context_length,
             num_workers=self.args.num_workers,
             device=self.device,
+            global_rank=self.global_rank,
+            world_size=self.world_size,
         )
         
         return train_loader, valid_loader 
@@ -113,10 +116,10 @@ class Model_Pretrain(Exp_Basic):
         logger.info(f"Initializing model {self.args.model_name}...")
         model = self.model_dict[self.args.model_name].Model(self.args)
         # 单机多卡训练
-        if self.args.use_gpu and self.args.use_multi_gpu:
+        if self.args.use_gpu and self.args.use_dp:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
-        elif self.args.use_gpu and self.args.use_multi_gpu and self.args.use_ddp:
-            model = nn.parallel.DistributedDataParallel(model, device_ids=[self.rank])
+        elif self.args.use_gpu and self.args.use_ddp:
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[self.local_rank])
         # 打印模型参数量
         model_memory_size(model, input_dtype=self.args.dtype, verbose=True)
         
@@ -157,49 +160,56 @@ class Model_Pretrain(Exp_Basic):
         torch.save(state_dict, model_path)
 
     def train(self, training_iter: int, setting: str, eval_freq: int=10, eval_iter: int=1):
-        # Determine the current rank (default to 0 if not distributed)
-        rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
-
         logger.info(f"{43 * '-'}")
         logger.info(f"Model start training...")
         logger.info(f"{43 * '-'}")
-        # training start time
-        train_start_time = time.time()
-        logger.info(f"Train start time: {from_unix_time(train_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
-        # build dataloader
+        # ------------------------------
+        # data
+        # ------------------------------
         train_loader, valid_loader = self._get_data()
         logger.info(f"Train and valid dataloader has builded...")
         # train steps
         train_steps = len(train_loader)
         logger.info(f"Train total steps: {train_steps}")
+        # ------------------------------
+        # model and results path
+        # ------------------------------
         # checkpoint path
         model_checkpoint_path = self._get_model_path(setting)
         logger.info(f"Train checkpoint will be saved in path: {model_checkpoint_path}")
         # test results path
         results_path = self._get_results_path(setting)
         logger.info(f"Train results will be saved in path: {results_path}") 
+        # ------------------------------
         # train optimizer
+        # ------------------------------
         optimizer = select_optimizer(
             self.model, 
             learning_rate=self.args.learning_rate, 
             weight_decay=self.args.weight_decay,
         )
         logger.info(f"Train optimizer has builded...")
+        # ------------------------------
         # early stopping
+        # ------------------------------
         early_stopping = EarlyStopping(
             patience=self.args.patience, 
-            verbose=True, 
-            delta=0, 
+            verbose=True,
+            delta=0,
             use_ddp=self.args.use_ddp, 
-            gpu=self.rank,  # TODO
+            gpu=self.global_rank,
         )
         logger.info(f"Train early stopping instance has builded, patience: {self.args.patience}")
+        # ------------------------------
         # auto mix precision
+        # ------------------------------
         if self.args.use_amp:
             scaler = torch.amp.GradScaler(device = self.device)
             logger.info(f"Train auto mix precision instance has builded...") 
-        """
+        # ------------------------------
         # learning rate
+        # ------------------------------
+        """
         track_lrs = []
         # 从优化器中获取最大学习率
         peak_lr = 0.001  # peak_lr = optimizer.param_groups[0]["lr"]
@@ -210,22 +220,22 @@ class Model_Pretrain(Exp_Basic):
         # 计算 warmup 阶段的迭代次数
         lr_increment = (peak_lr - self.args.initial_lr) / warmup_steps
         """
-        # TODO initialize train iter global steps
+        # ------------------------------
+        # training data collactor
+        # ------------------------------
+        # initialize train iter global steps
         global_step = -1
         # initialize list to track train iter losses
         train_losses, valid_losses = [], []
         # initialize tokens seen
-        tokens_seen = 0
-        last_tokens = 0
-        # initialize list to track train iter tokens seen
-        track_tokens_seen = []
-        
+        track_tokens_seen, total_tokens_seen, last_tokens = [], 0, 0
         # Variables for cumulative average tokens/sec
         cumulative_tokens, cumulative_time = 0.0, 0.0
-        
+        # ------------------------------
         # CUDA-specific timing setup
+        # ------------------------------
         use_cuda = self.device.type == "cuda"
-        if use_cuda:
+        if self.args.use_gpu and use_cuda:
             t_start = torch.cuda.Event(enable_timing=True)
             t_end = torch.cuda.Event(enable_timing=True)
             # Ensure all prior CUDA operations are done
@@ -235,11 +245,12 @@ class Model_Pretrain(Exp_Basic):
         else:
             # Start the timer for the first interval
             t0 = time.time()
+        
+        # training start time
+        train_start_time = time.time()
+        logger.info(f"Train start time: {from_unix_time(train_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
         # main training loop
-        for epoch in range(self.args.train_epochs):
-            # set epoch for DistributedSampler so each process gets a unique shuffle order
-            if isinstance(train_loader.sampler, DistributedSampler):
-                train_loader.sampler.set_epoch(epoch)
+        for epoch in range(self.args.train_epochs):            
             # epoch 模型训练开始时间
             epoch_start_time = time.time()
             logger.info(f"\t\tEpoch {epoch + 1}: start time: {from_unix_time(epoch_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
@@ -249,6 +260,10 @@ class Model_Pretrain(Exp_Basic):
             # TODO initialize epoch train loss collector
             epoch_train_loss = []
 
+            # set epoch for DistributedSampler so each process gets a unique shuffle order
+            if isinstance(train_loader.sampler, DistributedSampler):
+                train_loader.sampler.set_epoch(epoch)
+            
             # training mode
             self.model.train()
             # ------------------------------
@@ -258,12 +273,11 @@ class Model_Pretrain(Exp_Basic):
                 # update train iter global step
                 global_step += 1
                 # update epoch iter count
-                iter_count += 1
-                # update tokens seen
-                tokens_seen += input_batch.numel()
+                iter_count += 1 
                 
                 # reset loss gradients from previous batch iteration
                 optimizer.zero_grad()
+                
                 """
                 # TODO learning rate warmup
                 # ------------------------
@@ -323,97 +337,90 @@ class Model_Pretrain(Exp_Basic):
                     # update model weights using loss gradients
                     optimizer.step()
                 
+                # update tokens seen
+                # ------------------------
+                total_tokens_seen += input_batch.numel()
+
                 # optional evaluation step
                 # ------------------------
                 if global_step % eval_freq == 0:
-                # TODO if (batch + 1) % 5 == 0:
-                    # End timing for the current interval
-                    if use_cuda:
-                        t_end.record()
-                        # Wait for all CUDA ops to complete.
-                        torch.cuda.synchronize()
-                        # Convert ms to seconds
-                        elapsed = t_start.elapsed_time(t_end) / 1000
-                        # Reset timer for the next interval
-                        t_start.record()
-                    else:
-                        elapsed = time.time() - t0
-                        # Reset timer for the next interval
-                        t0 = time.time()
-                    
-                    # Calculate local tokens processed during this interval
-                    local_interval = tokens_seen - last_tokens
-                    last_tokens = tokens_seen
+                    if self.args.use_ddp:
+                        # End timing for the current interval
+                        if self.args.use_gpu and use_cuda:
+                            t_end.record()
+                            # Wait for all CUDA ops to complete.
+                            torch.cuda.synchronize()
+                            # Convert ms to seconds
+                            elapsed = t_start.elapsed_time(t_end) / 1000
+                            # Reset timer for the next interval
+                            t_start.record()
+                        else:
+                            elapsed = time.time() - t0
+                            # Reset timer for the next interval
+                            t0 = time.time()
+                        
+                        # Calculate local tokens processed during this interval
+                        local_interval = total_tokens_seen - last_tokens
+                        last_tokens = total_tokens_seen
 
-                    # Aggregate the tokens processed over all devices
-                    local_tensor = torch.tensor([local_interval], device=self.device, dtype=torch.float)
-                    global_tensor = local_tensor.clone()
-                    torch.distributed.all_reduce(global_tensor, op=torch.distributed.ReduceOp.SUM)
-                    global_interval = global_tensor.item()
+                        # Aggregate the tokens processed over all devices
+                        local_tensor = torch.tensor([local_interval], device=self.device, dtype=torch.float)
+                        global_tensor = local_tensor.clone()
+                        torch.distributed.all_reduce(global_tensor, op=torch.distributed.ReduceOp.SUM)
+                        global_interval = global_tensor.item()
 
-                    # Global tokens per second for this interval
-                    global_tps = global_interval / elapsed if elapsed > 0 else 0
+                        # Global tokens per second for this interval
+                        global_tps = global_interval / elapsed if elapsed > 0 else 0
 
-                    # Update cumulative tokens (local) and aggregate globally
-                    cumulative_tokens += local_interval
-                    local_cum_tensor = torch.tensor([cumulative_tokens], device=self.device, dtype=torch.float)
-                    global_cum_tensor = local_cum_tensor.clone()
-                    torch.distributed.all_reduce(global_cum_tensor, op=torch.distributed.ReduceOp.SUM)
-                    global_cumulative_tokens = global_cum_tensor.item()
-                    cumulative_time += elapsed
-                    global_avg_tps = global_cumulative_tokens / cumulative_time if cumulative_time > 0 else 0
+                        # Update cumulative tokens (local) and aggregate globally
+                        cumulative_tokens += local_interval
+                        local_cum_tensor = torch.tensor([cumulative_tokens], device=self.device, dtype=torch.float)
+                        global_cum_tensor = local_cum_tensor.clone()
+                        torch.distributed.all_reduce(global_cum_tensor, op=torch.distributed.ReduceOp.SUM)
+                        global_cumulative_tokens = global_cum_tensor.item()
+                        cumulative_time += elapsed
+                        global_avg_tps = global_cumulative_tokens / cumulative_time if cumulative_time > 0 else 0
                     
                     # evaluate model
                     train_loss, valid_loss = self.valid(train_loader, valid_loader, eval_iter)
                     # collect losses and tokens seen
                     train_losses.append(train_loss)
                     valid_losses.append(valid_loss)
-                    track_tokens_seen.append(tokens_seen)
-                    # logger.info(f"\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f}")
-                    
+                    track_tokens_seen.append(total_tokens_seen)
                     # calculate training left time
-                    speed = (time.time() - train_start_time) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch)
-                    logger.info(f'\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f} | Speed: {speed:.4f}s/batch; left time: {left_time:.2f}seconds.')
-
-                    # Only print logs once per GPU (choosing the rank 0 GPU)
-                    if rank == 0:
-                        logger.info(f"\t\tEpoch {epoch + 1}, Step {global_step:06d}, Train: {train_loss:.3f}, Val: {valid_loss}, Step tok/sec: {round(global_tps)}, Global avg tok/sec: {round(global_avg_tps)}")
-                    
+                    if self.global_rank == 0:
+                        speed = (time.time() - train_start_time) / iter_count
+                        left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch)
+                        logger.info(f'\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f} | Speed: {speed:.4f}s/batch; left time: {left_time:.2f}seconds.')
+                        if self.args.use_ddp:
+                            # Only print logs once per GPU (choosing the rank 0 GPU)
+                            logger.info(f'\t\tEpoch {epoch + 1}, Batch {batch + 1} (Step {global_step:06d}):, Step tok/sec: {round(global_tps)}, Global avg tok/sec: {round(global_avg_tps)}')
+                
                     # init epoch iter count
                     iter_count = 0
                     # init train start time
                     train_start_time = time.time()
-            """
-            # 模型验证
-            train_loss = np.average(train_loss)
-            vali_loss = self.valid(train_loader, valid_loader, eval_iter)
-            logger.info(f"\t\tEpoch: {epoch + 1}, Steps: {train_steps} | Train Loss: {train_loss:.7f}, Vali Loss: {vali_loss:.7f}")
-            # 训练/验证损失收集
-            train_losses.append(train_loss)
-            valid_losses.append(vali_loss)
-            """
-            
+            # ------------------------------
             # 早停机制、模型保存
-            early_stopping(epoch = epoch + 1, val_loss = valid_loss, model = self.model, path = model_checkpoint_path)
+            # ------------------------------
+            early_stopping(epoch=epoch + 1, val_loss=valid_loss, model=self.model, model_path=model_checkpoint_path)
             if early_stopping.early_stop:
                 logger.info(f"\t\tEpoch {epoch + 1}: Early stopping...")
                 break
             # 学习率调整
-            adjust_learning_rate(optimizer = optimizer, epoch = epoch + 1, args = self.args)
-            
+            adjust_learning_rate(optimizer=optimizer, epoch=epoch + 1, args=self.args)
             # ------------------------------
             # model inference
             # ------------------------------
-            if rank == 0 and epoch % 5 == 0:
+            if self.global_rank == 0 and epoch % 5 == 0:
                 # print a sample text after each epoch
-                self.inference(epoch = epoch + 1, setting=setting, load=False)
+                self.inference(epoch=epoch + 1, setting=setting, load=False)
                 # Memory stats
                 if torch.cuda.is_available():
                     current_device = torch.cuda.current_device()
-                    allocated = torch.cuda.memory_allocated(current_device) / 1024 ** 3  # Convert to GB
-                    reserved = torch.cuda.memory_reserved(current_device) / 1024 ** 3  # Convert to GB
-                    logger.info(f"Allocated memory: {allocated:4f} GB, Reserved memory: {reserved:4f} GB")
+                    allocated = torch.cuda.memory_allocated(current_device) / 1024 ** 3
+                    reserved = torch.cuda.memory_reserved(current_device) / 1024 ** 3
+                    logger.info(f"Allocated memory: {allocated:4f}GB, Reserved memory: {reserved:4f}GB")
             
             # calculate one epoch training used time
             logger.info(f"\t\tEpoch {epoch + 1}: cost time: {(time.time() - epoch_start_time):.2f}seconds")
@@ -426,13 +433,14 @@ class Model_Pretrain(Exp_Basic):
         # calculate all epoch training used time
         logger.info(f"Training Iter {training_iter + 1} cost time: {((time.time() - train_start_time) / 60):.2f}mins")
         
-        # plot loss
+        # TODO plot loss
         logger.info("Plot and save train/valid losses...")
-        plot_losses(self.args.train_epochs, track_tokens_seen, train_losses, valid_losses, "loss", results_path)
+        plot_losses_llm(self.args.train_epochs, track_tokens_seen, train_losses, valid_losses, "loss_llm", results_path)
+        plot_losses(self.args.train_epochs, train_losses, valid_losses, "loss", results_path)
         
         # model load
         logger.info("Loading best model...")
-        self.model.load_state_dict(torch.load(model_checkpoint_path))
+        self.model.load_state_dict(torch.load(model_checkpoint_path)["model"])
         
         # return model and train results
         logger.info("Return training results...")
@@ -475,13 +483,13 @@ class Model_Pretrain(Exp_Basic):
         if load:
             logger.info(f"Pretrained model has loaded from: {model_checkpoint_path}")
             model_checkpoint_path = self._get_model_path(setting)
-            self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)) 
+            self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"]) 
         # inference mode
         self.model.eval()
         # context size
-        context_size = self.model.module.pos_emb.weight.shape[0] \
+        context_size = self.model.module.pos_embed.weight.shape[0] \
             if isinstance(self.model, nn.parallel.DistributedDataParallel) \
-            else self.model.pos_emb.weight.shape[0]
+            else self.model.pos_embed.weight.shape[0]
         # start context tokenization
         start_context_encoded = text_to_token_ids(start_context, tokenizer_model=self.tokenizer).to(self.device)
         # generate text
@@ -493,7 +501,7 @@ class Model_Pretrain(Exp_Basic):
                 context_length = context_size,
                 temperature=0,
                 top_k=1,
-                eos_id=self.tokenizer.eos_id,
+                eos_id=50256,
                 use_cache=self.args.use_cache
             )
             completion = token_ids_to_text(completion_id, tokenizer_model=self.tokenizer).replace("\n", " ")

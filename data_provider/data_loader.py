@@ -29,7 +29,7 @@ from data_provider.load_save_data import (
     load_local_data, 
     load_hf_data,
 )
-from utils.ddp_utils import is_dist
+from utils.ddp_utils import is_dist, get_global_rank, get_world_size
 from utils.log_util import logger
 
 # global variable
@@ -56,6 +56,7 @@ class LLMDataset(Dataset):
         # tokenize the entrie text
         logger.info("Tokenization...")
         token_ids = tokenizer.encode(text)
+        logger.info(f"len(token_ids): {len(token_ids)}")
         assert len(token_ids) > max_len, "Number of tokenized inputs must at least be equal to max_len+1"
         logger.info(f"{flag.capitalize()} token length: {len(token_ids)}")
 
@@ -116,7 +117,9 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
                       num_workers: bool=0,
                       num_examples: int=100000,
                       dtype=torch.long,
-                      device=None):
+                      device=None,
+                      global_rank=None,
+                      world_size=None):
     # data load
     assert data_source in ['huggingface', 'local'], "data_source must be in ['huggingface', 'local']"
     if data_source == "local":
@@ -150,14 +153,14 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
             pin_memory=True,
             shuffle=False,
             drop_last=drop_last,
-            sampler=DistributedSampler(dataset),
+            sampler=DistributedSampler(dataset, num_replicas=world_size, rank=global_rank),
             num_workers=num_workers,
         )
     else:
         dataloader = DataLoader(
             dataset,
             batch_size=batch_size,
-            pin_memory=True,
+            # pin_memory=True,
             shuffle=shuffle,
             drop_last=drop_last,
             num_workers=num_workers,
