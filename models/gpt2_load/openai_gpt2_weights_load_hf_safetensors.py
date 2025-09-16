@@ -21,7 +21,6 @@ if ROOT not in sys.path:
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import urllib.request
 
-
 import torch
 from safetensors.torch import load_file
 
@@ -138,32 +137,19 @@ def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
 # 测试代码 main 函数
 def main():
     from models.gpt2_124M import Model
-    from layers.generator import generate
+    from layers.inference import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.args_tools import DotDict
     from utils.log_util import logger
+    from models.model_cfgs import gpt2_model_names, gpt2_model_configs
 
     # device
     device = device_setting()
 
-    # huggingface allowed model names
-    model_names = {
-        "gpt2-small (124M)": "gpt2",         # works ok
-        "gpt2-medium (355M)": "gpt2-medium", # this file seems to have issues via `generate`
-        "gpt2-large (774M)": "gpt2-large",   # works ok
-        "gpt2-xl (1558M)": "gpt2-xl"         # works ok
-    }
-    model_configs = {
-        "gpt2-small (124M)": {"embed_dim": 768, "n_layers": 12, "n_heads": 12},
-        "gpt2-medium (355M)": {"embed_dim": 1024, "n_layers": 24, "n_heads": 16},
-        "gpt2-large (774M)": {"embed_dim": 1280, "n_layers": 36, "n_heads": 20},
-        "gpt2-xl (1558M)": {"embed_dim": 1600, "n_layers": 48, "n_heads": 25},
-    }
-
     # huggingface gpt2 model
     choose_model = "gpt2-small (124M)"
-    state_dict = download_and_load_gpt2_st(model_names, choose_model)
+    state_dict = download_and_load_gpt2_st(gpt2_model_names, choose_model)
 
     # custom model config
     base_config = {
@@ -172,7 +158,7 @@ def main():
         "dropout": 0.0,       # Dropout rate
         "qkv_bias": True        # Query-key-value bias
     }
-    base_config.update(model_configs[choose_model])
+    base_config.update(gpt2_model_configs[choose_model])
     base_config = DotDict(base_config)
     # custom model
     gpt = Model(base_config)

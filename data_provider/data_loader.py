@@ -25,7 +25,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from data_provider.load_save_data import (
+from utils.llm.load_save_data import (
     load_local_data, 
     load_hf_data,
 )
@@ -133,7 +133,7 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
     text = train_data if flag == 'train' else valid_data
     # params
     shuffle = True if flag == "train" else False
-    drop_last = False
+    drop_last = True if flag == "train" else False
     # create dataset
     dataset = LLMDataset(
         text=text, 
@@ -146,13 +146,14 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
         device=device,
     )
     # create dataloader
-    if is_dist():
+    if is_dist() and flag == "train":
         dataloader = DataLoader(
             dataset,
             batch_size=batch_size,
-            pin_memory=True,
             shuffle=False,
+            pin_memory=True,
             drop_last=drop_last,
+            # chunk batches across GPUs without overlapping samples
             sampler=DistributedSampler(dataset, num_replicas=world_size, rank=global_rank),
             num_workers=num_workers,
         )
@@ -160,7 +161,6 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
         dataloader = DataLoader(
             dataset,
             batch_size=batch_size,
-            # pin_memory=True,
             shuffle=shuffle,
             drop_last=drop_last,
             num_workers=num_workers,

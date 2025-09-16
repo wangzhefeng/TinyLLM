@@ -186,3 +186,5 @@ utils/
 tokenizers/
 checkpoints/
 .chainlit/
+test/local_test/model.pth
+*.pth

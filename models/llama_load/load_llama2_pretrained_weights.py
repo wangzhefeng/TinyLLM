@@ -14,21 +14,17 @@
 __all__ = []
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
-import torch
-
+from models.model_cfgs import LLAMA2_CONFIG_7B
+from models.llama2 import Model
+from models.llama_load.meta_llama2_weights_load_hf import load_weights_into_llama
 from utils.args_tools import DotDict
 from utils.device import device_setting
-from models.llama2 import Model
-from model_load.model_cfgs import LLAMA2_CONFIG_7B
-from model_load.meta_llama2_weights_load_hf import load_weights_into_llama
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -54,11 +50,11 @@ def model_with_llama2_weights(weights):
 
 # 测试代码 main 函数
 def main():
-    from model_load.meta_llama2_weights_load_hf import (
+    from models.llama_load.meta_llama2_weights_load_hf import (
         download_llama2_model, 
         download_llama2_chat_model
     )
-    from layers.generator import generate
+    from layers.inference import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting
     from utils.log_util import logger

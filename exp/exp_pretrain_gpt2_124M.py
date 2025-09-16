@@ -36,11 +36,12 @@ from layers.tokenizers.tokenization import (
 # model
 from exp.exp_basic import Exp_Basic
 # training
-from utils.llm.train_funcs import select_optimizer
+from utils.llm.optimizer import select_optimizer
+from utils.llm.criterion import select_criterion
 from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
-from layers.generator import generate
 from utils.plot_losses import plot_losses_llm, plot_losses
+from layers.inference import generate
 # utils
 from utils.model_memory import model_memory_size
 from utils.timestamp_utils import from_unix_time
@@ -144,20 +145,7 @@ class Model_Pretrain(Exp_Basic):
         results_path = Path(self.args.test_results).joinpath(setting)
         results_path.mkdir(parents=True, exist_ok=True)
         
-        return results_path
-
-    # TODO 继续训练
-    def _save_checkpoint(self, model, optimizer, model_path: str):
-        """
-        模型 checkpoint 保存
-        """
-        model_state = model.module.state_dict() if self.args.use_ddp else model.state_dict()
-        optimizer_state = optimizer.state_dict()
-        state_dict = {
-            "model_state_dict": model_state,
-            "optimizer_state_dict": optimizer_state,
-        }
-        torch.save(state_dict, model_path)
+        return results_path 
 
     def train(self, training_iter: int, setting: str, eval_freq: int=10, eval_iter: int=1):
         logger.info(f"{43 * '-'}")
@@ -190,6 +178,12 @@ class Model_Pretrain(Exp_Basic):
         )
         logger.info(f"Train optimizer has builded...")
         # ------------------------------
+        # 
+        # ------------------------------
+        # criterion
+        criterion = select_criterion()
+        logger.info(f"Train criterion has builded...")
+        # ------------------------------
         # early stopping
         # ------------------------------
         early_stopping = EarlyStopping(
@@ -207,7 +201,7 @@ class Model_Pretrain(Exp_Basic):
             scaler = torch.amp.GradScaler(device = self.device)
             logger.info(f"Train auto mix precision instance has builded...") 
         # ------------------------------
-        # learning rate
+        # TODO learning rate
         # ------------------------------
         """
         track_lrs = []
@@ -257,8 +251,6 @@ class Model_Pretrain(Exp_Basic):
             
             # initialize epcoh iter count
             iter_count = 0
-            # TODO initialize epoch train loss collector
-            epoch_train_loss = []
 
             # set epoch for DistributedSampler so each process gets a unique shuffle order
             if isinstance(train_loader.sampler, DistributedSampler):
@@ -306,6 +298,7 @@ class Model_Pretrain(Exp_Basic):
                             input_batch=input_batch,
                             target_batch=target_batch,
                             model=self.model, 
+                            criterion=criterion,
                             device=self.device,
                         )
                 else:
@@ -314,10 +307,9 @@ class Model_Pretrain(Exp_Basic):
                         input_batch=input_batch,
                         target_batch=target_batch,
                         model=self.model, 
+                        criterion=criterion,
                         device=self.device,
                     )
-                # collect epoch loss value
-                epoch_train_loss.append(loss.item())
 
                 # backward
                 # ------------------------
@@ -382,7 +374,7 @@ class Model_Pretrain(Exp_Basic):
                         global_avg_tps = global_cumulative_tokens / cumulative_time if cumulative_time > 0 else 0
                     
                     # evaluate model
-                    train_loss, valid_loss = self.valid(train_loader, valid_loader, eval_iter)
+                    train_loss, valid_loss = self.valid(criterion, train_loader, valid_loader, eval_iter)
                     # collect losses and tokens seen
                     train_losses.append(train_loss)
                     valid_losses.append(valid_loss)
@@ -433,25 +425,24 @@ class Model_Pretrain(Exp_Basic):
         # calculate all epoch training used time
         logger.info(f"Training Iter {training_iter + 1} cost time: {((time.time() - train_start_time) / 60):.2f}mins")
         
-        # TODO plot loss
+        # plot loss
         logger.info("Plot and save train/valid losses...")
         plot_losses_llm(self.args.train_epochs, track_tokens_seen, train_losses, valid_losses, "loss_llm", results_path)
-        plot_losses(self.args.train_epochs, train_losses, valid_losses, "loss", results_path)
         
         # model load
         logger.info("Loading best model...")
-        self.model.load_state_dict(torch.load(model_checkpoint_path)["model"])
+        self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"])
         
         # return model and train results
         logger.info("Return training results...")
         return self.model
 
-    def valid(self, train_loader, valid_loader, eval_iter):
+    def valid(self, criterion, train_loader, valid_loader, eval_iter):
         """
         model evaluation
         """
         logger.info(f"\t\tModel start validating...")
-        # inference mode
+        # deactivate dropout
         self.model.eval()
         # model evaluation
         with torch.no_grad():
@@ -459,6 +450,7 @@ class Model_Pretrain(Exp_Basic):
                 task_name=self.args.task_name,
                 data_loader=train_loader,
                 model=self.model, 
+                criterion=criterion,
                 device=self.device,
                 num_batches=eval_iter
             )
@@ -466,6 +458,7 @@ class Model_Pretrain(Exp_Basic):
                 task_name=self.args.task_name,
                 data_loader=valid_loader,
                 model=self.model, 
+                criterion=criterion,
                 device=self.device,
                 num_batches=eval_iter
             )
@@ -474,7 +467,9 @@ class Model_Pretrain(Exp_Basic):
         
         return train_loss, valid_loss
 
-    def inference(self, epoch, setting: str, load: bool=False, start_context: str="Every effort moves you"):
+    def inference(self, epoch, setting: str, load: bool=False, 
+                  start_context: str="Every effort moves you", eos_id: int=50256,
+                  temperature: float=0.0, top_k: float=1.0):
         """
         model inference
         """
@@ -483,28 +478,28 @@ class Model_Pretrain(Exp_Basic):
         if load:
             logger.info(f"Pretrained model has loaded from: {model_checkpoint_path}")
             model_checkpoint_path = self._get_model_path(setting)
-            self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"]) 
+            self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"])
         # inference mode
         self.model.eval()
         # context size
-        context_size = self.model.module.pos_embed.weight.shape[0] \
+        context_length = self.model.module.pos_embed.weight.shape[0] \
             if isinstance(self.model, nn.parallel.DistributedDataParallel) \
             else self.model.pos_embed.weight.shape[0]
         # start context tokenization
-        start_context_encoded = text_to_token_ids(start_context, tokenizer_model=self.tokenizer).to(self.device)
+        start_context_encoded = text_to_token_ids(start_context, self.tokenizer).to(self.device)
         # generate text
         with torch.no_grad():
             completion_id = generate(
                 model = self.model, 
                 token_idx = start_context_encoded,
                 max_new_tokens = self.args.max_new_tokens,
-                context_length = context_size,
-                temperature=0,
-                top_k=1,
-                eos_id=50256,
-                use_cache=self.args.use_cache
+                context_length = context_length,
+                temperature = temperature,
+                top_k = top_k,
+                eos_id = eos_id,
+                use_cache = self.args.use_cache,
             )
-            completion = token_ids_to_text(completion_id, tokenizer_model=self.tokenizer).replace("\n", " ")
+            completion = token_ids_to_text(completion_id, self.tokenizer).replace("\n", " ")
             logger.info(f"\t\tEpoch {epoch}: Model inference [start context]: {start_context}, [completion]: {completion}")
         # train mode
         self.model.train()

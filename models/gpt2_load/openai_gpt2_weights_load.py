@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : load_gpt2_pretrained_weights.py
+# * File        : openai_gpt2_weights_load.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-01-29
@@ -24,7 +24,6 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import json
 import urllib.request
 from tqdm import tqdm
-
 
 import numpy as np
 import torch
@@ -269,10 +268,11 @@ def load_weights_download(gpt, params):
 def main():
     from models.gpt2_124M import Model
     from layers.tokenizers.tokenization import token_ids_to_text, text_to_token_ids
-    from layers.generator import generate
+    from layers.inference import generate
     from utils.device import device_setting
     from utils.args_tools import DotDict
     from utils.log_util import logger
+
     # device
     device = device_setting()
 
@@ -319,26 +319,29 @@ def main():
     # custom model
     # ------------------------------
     gpt = Model(base_config)
-    gpt.eval();
+    gpt.eval()
     # ------------------------------
     # load weights
     # ------------------------------
     load_weights_download(gpt, params)
-    
+    # ------------------------------
     # gpt eval mode and move to device
+    # ------------------------------
     gpt.eval()
     gpt.to(device)
-
+    # ------------------------------
     # model inference
+    # ------------------------------
     torch.manual_seed(123)
     token_ids = generate(
         model=gpt,
         token_idx=text_to_token_ids("Every effort moves you").to(device),
         max_new_tokens=25,
         context_length=base_config.context_length,
-        top_k=50,
         temperature=1.5,
+        top_k=50,
         eos_id=50256,
+        use_cache=False,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
 

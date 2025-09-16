@@ -209,7 +209,7 @@ def test_training(tokenizer, GPT2_CONFIG, device):
 
 # 测试代码 main 函数
 def main():
-    from test.gpt_model.model_config import device, tokenizer, GPT2_124M_CONFIG
+    from models.model_cfgs import device, tokenizer, GPT2_124M_CONFIG
 
     # text_generation(GPT2_124M_CONFIG, device)
 

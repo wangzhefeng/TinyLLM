@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : openai_gpt2_pretrained_weight_load_hf.py
+# * File        : openai_gpt2_weight_load_hf.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-15
@@ -18,7 +18,6 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import numpy as np
@@ -80,15 +79,21 @@ def main():
     from transformers import GPT2Model
 
     from models.gpt2_124M import Model
-    from layers.generator import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
+    from layers.inference import generate
     from utils.device import device_setting
     from utils.args_tools import DotDict
-    from utils.log_util import logger 
+    from utils.log_util import logger
+    from models.model_cfgs import gpt2_model_names, gpt2_model_configs
+
+    # device
+    device = device_setting()
 
     # huggingface gpt2 model
     choose_model = "gpt2-small (124M)"
-    # huggingface allowed model names 
+    # ------------------------------
+    # huggingface allowed model names
+    # ------------------------------
     gpt_hf = GPT2Model.from_pretrained(
         gpt2_model_names[choose_model], 
         cache_dir="./downloaded_models/gpt2_model"
@@ -104,18 +109,24 @@ def main():
     }
     base_config.update(gpt2_model_configs[choose_model])
     base_config = DotDict(base_config)
-
-    # device
-    device = device_setting()
-
+    # ------------------------------
     # custom model
+    # ------------------------------
     gpt = Model(base_config)
-
-    # update weights
-    gpt = load_weights_hf(gpt, gpt_hf, base_config) 
+    gpt.eval()
+    # ------------------------------
+    # load weights
+    # ------------------------------
+    gpt = load_weights_hf(gpt, gpt_hf, base_config)
+    # ------------------------------
+    # gpt eval mode and move to device
+    # ------------------------------
+    gpt.eval()
     gpt.to(device)
-
+    # ------------------------------
     # model inference
+    # ------------------------------
+    torch.manual_seed(123)
     token_ids = generate(
         model=gpt,
         token_idx=text_to_token_ids("Every effort moves").to(device),
@@ -124,6 +135,7 @@ def main():
         temperature=1.0,
         top_k=1,
         eos_id=50256,
+        use_cache=False,
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids)}")
 

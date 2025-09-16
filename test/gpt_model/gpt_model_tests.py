@@ -90,7 +90,7 @@ def gpt2_model_test(tokenizer, GPT2_CONFIG, device):
 
 # 测试代码 main 函数
 def main():
-    from test.gpt_model.model_config import (
+    from models.model_cfgs import (
         device, 
         tokenizer, 
         GPT2_124M_CONFIG,

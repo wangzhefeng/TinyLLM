@@ -41,7 +41,7 @@ from utils.log_util import logger
 
 # 测试代码 main 函数
 def main():
-    from test.gpt_model.model_config import device, tokenizer, GPT2_124M_CONFIG
+    from models.model_cfgs import device, tokenizer, GPT2_124M_CONFIG
 
     # feed forward layer
     ffn_relu = FeedForwardReLU(GPT2_124M_CONFIG)

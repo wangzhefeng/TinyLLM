@@ -65,12 +65,12 @@ class Model(nn.Module):
 def main():
     import torch
     from utils.args_tools import DotDict
-    from layers.generator import generate
+    from layers.inference import generate
     from layers.tokenizers.tokenization import (
         text_to_token_ids,
         token_ids_to_text,
     )
-    from model_load.model_cfgs import LLAMA2_CONFIG_7B
+    from models.model_cfgs import LLAMA2_CONFIG_7B
     from utils.model_memory import model_memory_size
     from utils.device import device_setting
     from utils.log_util import logger 

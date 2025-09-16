@@ -33,7 +33,7 @@ from layers.tokenizers.tokenization import (
     token_ids_to_text,
 )
 from models.gpt2_124M import Model
-from layers.generator import generate
+from layers.inference import generate
 from utils.args_tools import DotDict
 from utils.device import device_setting
 

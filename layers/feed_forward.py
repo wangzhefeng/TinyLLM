@@ -72,6 +72,31 @@ class FeedForwardGELU(nn.Module):
         return out
 
 
+class FeedForwardGELU_Gemma3(nn.Module):
+    
+    def __init__(self, cfg):
+        super().__init__()
+
+        self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
+        self.fc2 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
+        self.fc3 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=False)
+        self.gelu = nn.GELU(approximate="tanh")
+    
+    def forward(self, x):
+        # input tensor x.shape: [batch_size, num_tokens, embed_dim]
+        # Linear layer
+        x_fc1 = self.fc1(x)  # [batch_size, num_tokens, 4*embed_dim]
+        x_fc2 = self.fc2(x)  # [batch_size, num_tokens, 4*embed_dim]
+        # GELU activation
+        x = self.gelu(x_fc1) * x_fc2  # [batch_size, num_tokens, 4*embed_dim]
+        # Linear layer
+        out = self.fc3(x)  # [batch_size, num_tokens, embed_dim]
+
+        return out
+
+
+
+
 class FeedForwardSiLU(nn.Module):
     """
     SwiGLU: GLU Variants Improve Transformer (2020): https://arxiv.org/abs/2002.05202

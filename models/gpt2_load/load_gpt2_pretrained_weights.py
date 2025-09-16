@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : opeai_gpt2_models.py
+# * File        : load_gpt2_pretrained_weights.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-03-02
@@ -12,22 +12,25 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-
 from transformers import GPT2Model
 
-from model_load.openai_gpt2_weights_load_hf import load_weights_hf
-from model_load.openai_gpt2_weights_load_hf_safetensors import (
+from models.model_cfgs import (
+    gpt2_model_names,
+    gpt2_model_configs,
+    gpt2_huggingface_models,
+)
+from models.gpt2_load.openai_gpt2_weights_load_hf import load_weights_hf
+from models.gpt2_load.openai_gpt2_weights_load_hf_safetensors import (
     download_and_load_gpt2_st, 
     load_weights_hf_safetensors,
 )
-from model_load.openai_gpt2_weights_load import (
+from models.gpt2_load.openai_gpt2_weights_load import (
     download_and_load_gpt2, 
     load_weights_download,
 )
@@ -36,28 +39,6 @@ from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-
-
-# huggingface allowed model names
-gpt2_model_names = {
-    "gpt2-small (124M)": "gpt2",         # works ok
-    "gpt2-medium (355M)": "gpt2-medium", # this file seems to have issues via `generate`
-    "gpt2-large (774M)": "gpt2-large",   # works ok
-    "gpt2-xl (1558M)": "gpt2-xl"         # works ok
-}
-gpt2_model_configs = {
-    "gpt2-small (124M)": {"embed_dim": 768, "n_layers": 12, "n_heads": 12},
-    "gpt2-medium (355M)": {"embed_dim": 1024, "n_layers": 24, "n_heads": 16},
-    "gpt2-large (774M)": {"embed_dim": 1280, "n_layers": 36, "n_heads": 20},
-    "gpt2-xl (1558M)": {"embed_dim": 1600, "n_layers": 48, "n_heads": 25},
-}
-# huggingface gpt2 model
-gpt2_huggingface_models = {
-    "gpt2-small (124M)": "openai-community/gpt2",
-    "gpt2-medium (355M)": "openai-community/gpt2-medium",
-    "gpt2-large (774M)": "openai-community/gpt2-large",
-    "gpt2-xl (1558M)": "openai-community/gpt2-xl"
-}
 
 
 def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gpt2"):

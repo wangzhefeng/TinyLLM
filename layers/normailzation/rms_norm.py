@@ -82,7 +82,6 @@ class RMSNorm_Qwen(nn.Module):
     def __init__(self, embed_dim: int, eps: float = 1e-6, bias: bool=False, compatible: bool=True):
         super().__init__()
 
-        self.embed_dim = embed_dim
         self.eps = eps
         self.compatible = compatible
         self.scale = nn.Parameter(torch.ones(embed_dim))
@@ -113,6 +112,53 @@ class RMSNorm_Qwen(nn.Module):
             norm_x = norm_x + self.shift
 
         return norm_x.to(input_dtype)
+
+
+class RMSNorm_Gemma3(nn.Module):
+    """
+    Root Mean Square Layer Normalization (RMSNorm) implementation.
+    
+    Args:
+        embed_dim (int): Dimension of the input embeddings
+        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-5.
+    
+    Attributes:
+        eps (float): Small value for numerical stability
+        embed_dim (int): Dimension of the input embeddings
+        weight (nn.Parameter): Learnable scaling parameter
+    """
+    def __init__(self, embed_dim: int, eps: float = 1e-6, bias: bool=False):
+        super().__init__()
+
+        self.eps = eps
+        self.scale = nn.Parameter(torch.ones(embed_dim))
+        self.shift = nn.Parameter(torch.zeros(embed_dim)) if bias else None
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for RMSNorm.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (..., dim)
+            
+        Returns:
+            torch.Tensor: Normalized output tensor
+        """
+        # Match HF Gemma3: compute norm in float32, then scale by (1 + w)
+        # input dtype
+        input_dtype = x.dtype
+        # compatible
+        x = x.float()
+        # Compute mean square with inplace operations for memory efficiency
+        variance = x.pow(2).mean(dim=-1, keepdim=True)
+        # Use fused operation for better numerical stability
+        x_norm = x * torch.rsqrt(variance + self.eps)
+        out = x_norm * (1.0 + self.scale.float())
+
+        if self.shift is not None:
+            out = out + self.shift.float()
+
+        return out.to(input_dtype)
 
 
 

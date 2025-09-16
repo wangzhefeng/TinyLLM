@@ -7,7 +7,7 @@
 # * Date        : 2025-02-13
 # * Version     : 0.1.021322
 # * Description : description
-# * Link        : link
+# * Link        : Thunder: https://github.com/Lightning-AI/lightning-thunder
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
@@ -20,18 +20,12 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch
+import thunder
 
 from models import (
     gpt2_124M, 
     llama2, 
     llama3_8B,
-)
-from utils.ddp_utils import (
-    is_dist, 
-    init_dist,
-    get_global_rank, 
-    get_local_rank,
-    get_world_size,
 )
 from utils.log_util import logger
 
@@ -54,7 +48,11 @@ class Exp_Basic:
         self.tokenizer = self._get_tokenizer()
         # model
         self.model = self._build_model()
-        self.model = torch.compile(self.model)
+        if args.compile_type == "torch":
+            self.model = torch.compile(self.model)
+        elif args.compile_type == "thunder":
+            self.model = thunder.compile(self.model)
+        
         self.model.to(self.device).to(args.dtype)
 
     def _acquire_device(self, local_rank):

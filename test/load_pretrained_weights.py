@@ -12,13 +12,11 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-
 
 import torch
 import torch.nn as nn
@@ -53,16 +51,12 @@ def load_pretrained_model(cfgs, model_configs, model_cls, device: str = "cpu", t
     # pretrained model instance
     model = model_cls(base_config)
     if task == "binary_classification":
-        model.out_head = nn.Linear(
-            in_features=cfgs.embed_dim, 
-            out_features=cfgs.num_classes
-        )
-    model.load_state_dict(torch.load(
-        cfgs.finetuned_model_path, 
-        map_location = device, 
-        weights_only = True
-    ))
+        model.out_head = nn.Linear(in_features=cfgs.embed_dim, out_features=cfgs.num_classes)
+    
+    model.load_state_dict(torch.load(cfgs.finetuned_model_path, map_location = device, weights_only = True))
+    # model to device
     model.to(device)
+
     # assign pretrained model's weights
     # load_weights_hf(model, gpt2_hf, base_config)
 
