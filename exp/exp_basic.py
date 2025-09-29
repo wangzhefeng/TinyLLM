@@ -57,8 +57,13 @@ class Exp_Basic:
 
     def _acquire_device(self, local_rank):
         # Use GPU or not
-        self.args.use_gpu = True if self.args.use_gpu and (torch.cuda.is_available() or torch.backends.mps.is_available()) else False
-        # GPU type: "cuda", "mps"
+        self.args.use_gpu = True \
+            if self.args.use_gpu and (
+                torch.cuda.is_available() or 
+                torch.backends.mps.is_available() or 
+                torch.xpu.is_available()
+            ) else False
+        # GPU type: "cuda", "mps", "xpu"
         self.args.gpu_type = self.args.gpu_type.lower().strip()
         # GPU device ids list(CUDA_VISIBLE_DEVICES)
         self.args.device_ids = [int(id_) for id_ in os.environ["CUDA_VISIBLE_DEVICES"].replace(" ", "").split(",")]
@@ -72,13 +77,19 @@ class Exp_Basic:
                 device = torch.device(f"cuda:{local_rank}")
             else:
                 device = torch.device("cuda", 0)
-            logger.info(f"\t\tUse device GPU: {device}")
+            logger.info(f"\t\tUse NVIDIA CUDA GPU: {device}")
         elif self.args.use_gpu and self.args.gpu_type == "mps":
-            device = torch.device("mps") if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else torch.device("cpu")
-            logger.info(f"\t\tUse device GPU: mps")
+            device = torch.device("mps") \
+                if hasattr(torch.backends, "mps") and \
+                torch.backends.mps.is_available() \
+                else torch.device("cpu")
+            logger.info(f"\t\tUse Apple Silicon GPU (MPS)")
+        elif self.args.use_gpu and self.args.gpu_type == "xpu":
+            device = torch.device("xpu") if torch.xpu.is_available() else torch.device("cpu")
+            logger.info(f"\t\tUse Intel GPU")
         else:
             device = torch.device("cpu")
-            logger.info("\t\tUse device CPU")
+            logger.info("\t\tUse CPU")
 
         return device
     
