@@ -105,7 +105,7 @@ async def main(message: chainlit.Message):
         context_length=model_config.context_length,
         temperature=model_config.temperature,
         top_k=model_config.top_k,
-        eos_id=model_config.eos_id,
+        eos_token_id=model_config.eos_id,
         use_cache=model_config.use_cache,
     )
     text = tokenizer.decode(token_ids, tokenizer)

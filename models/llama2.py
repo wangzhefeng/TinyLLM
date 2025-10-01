@@ -100,7 +100,7 @@ def main():
         token_idx = text_to_token_ids(input_text, tokenizer_model="llama2").to(device),
         max_new_tokens = 30,
         context_length = LLAMA2_CONFIG_7B.context_length,
-        eos_id = 50256,  # TODO
+        eos_token_id = 50256,  # TODO
     )
     generated_text = token_ids_to_text(token_ids, tokenizer_model="llama2")
     logger.info(f"generated_text:\n{generated_text}")

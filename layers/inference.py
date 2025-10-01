@@ -26,10 +26,13 @@ if ROOT not in sys.path:
 
 import torch
 
+from utils.log_util import logger
+
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
+@torch.inference_mode()
 def generate_simple(model, token_idx: torch.tensor, max_new_tokens: int, context_length: int):
     """
     generate text
@@ -58,6 +61,7 @@ def generate_simple(model, token_idx: torch.tensor, max_new_tokens: int, context
     return token_idx
 
 
+@torch.inference_mode()
 def generate_simple_cached(model, token_idx: torch.tensor, max_new_tokens: int, context_length: int, use_cache=True):
     """
     generate text
@@ -114,8 +118,9 @@ def generate_simple_cached(model, token_idx: torch.tensor, max_new_tokens: int, 
     return token_idx
 
 
+@torch.inference_mode()
 def generate(model, token_idx: torch.tensor, max_new_tokens: int, context_length: int, 
-             temperature: float=0.0, top_k: int=None, eos_id: int=None, use_cache=False):
+             temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
 
@@ -126,6 +131,7 @@ def generate(model, token_idx: torch.tensor, max_new_tokens: int, context_length
         context_size (int): start context length
     """
     model.eval()
+    input_len = token_idx.shape[1]
     ctx_len = context_length or model.pos_embed.num_embeddings
     with torch.no_grad():
         if use_cache:
@@ -155,7 +161,7 @@ def generate(model, token_idx: torch.tensor, max_new_tokens: int, context_length
                 else:
                     next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
-                if next_idx == eos_id:
+                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
                 # Append sampled index to the running sequence
                 token_idx = torch.cat([token_idx, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
@@ -166,7 +172,8 @@ def generate(model, token_idx: torch.tensor, max_new_tokens: int, context_length
                 # Crop current context if it exceeds the supported context size
                 cond_idx = token_idx[:, -ctx_len:]
                 # Get the predictions
-                logits = model(cond_idx, use_cache=False)
+                # logits = model(cond_idx, use_cache=False)
+                logits = model(cond_idx)
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 # logits = logits[:, -1, :]
                 logits = logits[:, -1]
@@ -186,15 +193,117 @@ def generate(model, token_idx: torch.tensor, max_new_tokens: int, context_length
                 else:
                     next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
-                if eos_id is not None and torch.all(next_idx == eos_id):
+                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
                 
-                yield next_idx
+                # TODO yield next_idx
 
                 # Append sampled index to the running sequence
                 token_idx = torch.cat([token_idx, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
 
     return token_idx
+
+
+@torch.inference_mode()
+def generate_qwen3(model, token_idx: torch.tensor, max_new_tokens: int, context_length: int, 
+             temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
+    """
+    get logits, and only focus on last time step
+
+    Args:
+        model (_type_): LLM model
+        token_idx (torch.tensor): token_idx is array of indices in the current contex. shape: (batch_size, num_tokens)
+        max_new_tokens (int): maximum length new tokens
+        context_size (int): start context length
+    """
+    model.eval()
+    ctx_len = context_length or model.pos_embed.num_embeddings
+    with torch.no_grad():
+        if use_cache:
+            # input length
+            input_len = token_idx.shape[1]
+            # Init cache with full prompt
+            from utils.llm.reasoning_from_scratch.qwen3 import KVCache
+            cache = KVCache(n_layers=model.cfg["n_layers"])
+            model.reset_kv_cache()
+            # Crop current context if it exceeds the supported context size
+            cond_idx = token_idx[:, -ctx_len:]
+            # Get the predictions
+            logits = model(cond_idx, cache=cache)[:, -1]
+            for _ in range(max_new_tokens):
+                # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
+                # logits = logits[:, -1, :]
+                # logits = logits[:, -1]
+                # Filter logits with top_k sampling
+                if top_k is not None:
+                    top_logits, _ = torch.topk(logits, top_k)
+                    min_val = top_logits[:, -1]
+                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
+                # Apply temperature scaling
+                if temperature > 0.0:
+                    logits = logits / temperature
+                    # apply softmax to get probabilities
+                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
+                    # sample from the distribution
+                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
+                # Otherwise same as before: get idx of the vocab entry with the highest logits value
+                else:
+                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                # Stop generating early if end-of-sequence token is encountered and eos_id is specified
+                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
+                    break
+                # Append sampled index to the running sequence
+                token_idx = torch.cat([token_idx, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
+                # Feed model only the new token
+                logits = model(next_idx, cache=cache)[:, -1]
+            return token_idx[:, input_len:]
+        else:
+            # input length
+            input_len = token_idx.shape[1]
+            for _ in range(max_new_tokens):
+                # Crop current context if it exceeds the supported context size
+                cond_idx = token_idx[:, -ctx_len:]
+                # Get the predictions
+                # logits = model(cond_idx, use_cache=False)
+                logits = model(cond_idx)
+                # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
+                logits = logits[:, -1]
+                # Filter logits with top_k sampling
+                if top_k is not None:
+                    top_logits, _ = torch.topk(logits, top_k)
+                    min_val = top_logits[:, -1]
+                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
+                # Apply temperature scaling
+                if temperature > 0.0:
+                    logits = logits / temperature
+                    # apply softmax to get probabilities
+                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
+                    # sample from the distribution
+                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
+                # Otherwise same as before: get idx of the vocab entry with the highest logits value
+                else:
+                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                # Stop generating early if end-of-sequence token is encountered and eos_id is specified
+                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
+                    break
+                # Append sampled index to the running sequence
+                token_idx = torch.cat([token_idx, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
+
+            return token_idx[:, input_len:]
+
+
+def generate_stats(output_token_ids, tokenizer, start_time, end_time):
+    total_time = end_time - start_time
+    logger.info(f"Time: {total_time:.2f} sec")
+    logger.info(f"{int(output_token_ids.numel() / total_time)} tokens/sec")
+    for name, backend in (("CUDA", getattr(torch, "cuda", None)), ("XPU", getattr(torch, "xpu", None))):
+        if backend is not None and backend.is_available():
+            max_mem_bytes = backend.max_memory_allocated()
+            max_mem_gb = max_mem_bytes / (1024 ** 3)
+            logger.info(f"Max {name} memory allocated: {max_mem_gb:.2f} GB")
+            backend.reset_peak_memory_stats()
+    # output_text = tokenizer.decode(output_token_ids.squeeze(0).tolist())
+    # logger.info(f"\n{output_text}")
 
 
 

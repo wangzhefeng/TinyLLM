@@ -79,7 +79,7 @@ def main():
         context_length=LLAMA3_CONFIG_8B.context_length,
         temperature=0.0,
         top_k=1,
-        eos_id=50256,  # TODO
+        eos_token_id=50256,  # TODO
     )
     logger.info(f"Output text: \n{token_ids_to_text(token_ids, tokenizer_model='llama3-8B')}")
     
@@ -105,7 +105,7 @@ def main():
         context_length=LLAMA3_CONFIG_8B.context_length,
         temperature=0.0,
         top_k=1,
-        eos_id=50256,  # TODO
+        eos_token_id=50256,  # TODO
     )
     output_text = token_ids_to_text(token_ids, tokenizer_model='llama3-8B')
     logger.info(f"Output text: \n{output_text}")

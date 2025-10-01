@@ -496,7 +496,7 @@ class Model_Pretrain(Exp_Basic):
                 context_length = context_length,
                 temperature = temperature,
                 top_k = top_k,
-                eos_id = eos_id,
+                eos_token_id = eos_id,
                 use_cache = self.args.use_cache,
             )
             completion = token_ids_to_text(completion_id, self.tokenizer).replace("\n", " ")

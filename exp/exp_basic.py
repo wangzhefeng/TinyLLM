@@ -48,11 +48,18 @@ class Exp_Basic:
         self.tokenizer = self._get_tokenizer()
         # model
         self.model = self._build_model()
-        if args.compile_type == "torch":
-            self.model = torch.compile(self.model)
-        elif args.compile_type == "thunder":
-            self.model = thunder.compile(self.model)
-        
+        # model compile
+        major, minor = map(int, torch.__version__.split(".")[:2])
+        if self.args.compile and self.args.gpu_type == "cuda":
+            if (major, minor) > (2, 8):
+                # This avoids retriggering model recompilations in PyTorch 2.8 and newer
+                # if the model contains code like self.pos = self.pos + 1
+                torch._dynamo.config.allow_unspec_int_on_nn_module = True
+            if args.compile_type == "torch":
+                self.model = torch.compile(self.model)
+            elif args.compile_type == "thunder":
+                self.model = thunder.compile(self.model) 
+        # model device and dtype
         self.model.to(self.device).to(args.dtype)
 
     def _acquire_device(self, local_rank):

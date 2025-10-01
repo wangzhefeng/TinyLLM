@@ -31,6 +31,7 @@ from utils.llm.reasoning_from_scratch.qwen3 import (
     QWEN_CONFIG_06_B,
 )
 from utils.device import device_setting
+from layers.tokenizers.qwen3_tokenizer import tokenizer
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -40,6 +41,7 @@ from utils.log_util import logger
 
 # device
 device = device_setting(verbose=True)
+# device = torch.device("cpu")
 
 # llm model path
 llm_model_dir = "./downloaded_models/qwen3_model"
@@ -57,15 +59,113 @@ if not llm_model_path.exists():
 model = Qwen3Model(QWEN_CONFIG_06_B)
 model.load_state_dict(torch.load(llm_model_path))
 model.to(device)
-logger.info(f"model: \n{model}")
+# logger.info(f"model: \n{model}")
+
+# model compile
+major, minor = map(int, torch.__version__.split(".")[:2])
+if torch.cuda.is_available():
+    # if (major, minor) > (2, 8):
+    #     # This avoids retriggering model recompilations in PyTorch 2.8 and newer
+    #     # if the model contains code like self.pos = self.pos + 1
+    #     torch._dynamo.config.allow_unspec_int_on_nn_module = True
+    model_compiled = torch.compile(model)
 
 
 
 
 # 测试代码 main 函数
 def main():
-    
-    pass
+    import time
+
+    from utils.args_tools import DotDict
+    from layers.inference import generate, generate_qwen3, generate_stats
+
+
+    # input
+    prompt = "Explain large language models in a single sentence."
+    input_token_ids_tensor = torch.tensor(tokenizer.encode(prompt), device=device).unsqueeze(0)
+
+    """
+    # inference 1
+    output_token_ids_tensor = generate(
+        model = model,
+        token_idx = input_token_ids_tensor,
+        max_new_tokens = 100,
+        context_length=DotDict(QWEN_CONFIG_06_B).context_length,
+    )
+    output_text = tokenizer.decode(output_token_ids_tensor.squeeze(0).tolist())
+    logger.info(f"output_text: \n{output_text}")
+
+    # inference 2
+    output_token_ids_tensor = generate(
+        model = model,
+        token_idx = input_token_ids_tensor,
+        max_new_tokens = 100,
+        eos_token_id = tokenizer.eos_token_id,
+        context_length=DotDict(QWEN_CONFIG_06_B).context_length,
+    )
+    output_text = tokenizer.decode(output_token_ids_tensor.squeeze(0).tolist())
+    logger.info(f"output_text: \n{output_text}")
+    """
+    # inference 3
+    start_time = time.time()
+    output_token_ids_tensor = generate_qwen3(
+        model = model,
+        token_idx = input_token_ids_tensor,
+        max_new_tokens = 100,
+        eos_token_id = tokenizer.eos_token_id,
+        context_length=DotDict(QWEN_CONFIG_06_B).context_length,
+        use_cache = False,
+    )
+    output_text = tokenizer.decode(output_token_ids_tensor.squeeze(0).tolist())
+    logger.info(f"output_text: \n{output_text}")
+    end_time = time.time()
+    generate_stats(
+        output_token_ids = output_token_ids_tensor,
+        tokenizer = tokenizer,
+        start_time = start_time,
+        end_time = end_time,
+    )
+
+    # inference 4
+    start_time = time.time()
+    output_token_ids_tensor = generate_qwen3(
+        model = model,
+        token_idx = input_token_ids_tensor,
+        max_new_tokens = 100,
+        context_length = DotDict(QWEN_CONFIG_06_B).context_length,
+        eos_token_id = tokenizer.eos_token_id,
+        use_cache = True,
+    )
+    output_text = tokenizer.decode(output_token_ids_tensor.squeeze(0).tolist())
+    logger.info(f"output_text: \n{output_text}")
+    end_time = time.time()
+    generate_stats(
+        output_token_ids = output_token_ids_tensor,
+        tokenizer = tokenizer,
+        start_time = start_time,
+        end_time = end_time,
+    )
+
+    # inference 5
+    start_time = time.time()
+    output_token_ids_tensor = generate_qwen3(
+        model = model_compiled,
+        token_idx = input_token_ids_tensor,
+        max_new_tokens = 100,
+        context_length = DotDict(QWEN_CONFIG_06_B).context_length,
+        eos_token_id = tokenizer.eos_token_id,
+        use_cache = True,
+    )
+    output_text = tokenizer.decode(output_token_ids_tensor.squeeze(0).tolist())
+    logger.info(f"output_text: \n{output_text}")
+    end_time = time.time()
+    generate_stats(
+        output_token_ids = output_token_ids_tensor,
+        tokenizer = tokenizer,
+        start_time = start_time,
+        end_time = end_time,
+    )
 
 if __name__ == "__main__":
     main()
