@@ -28,7 +28,7 @@ from layers.attention import (
     MHAPyTorchScaledDotProduct,
     MultiHeadAttentionRoPE,
     GroupedQueryAttention,
-    GroupedQueryAttention_Qwen,
+    GroupedQueryAttention_Qwen3,
     GroupedQueryAttention_Gemma3,
 )
 from layers.feed_forward import (
@@ -40,7 +40,7 @@ from layers.moe import SparseMoE
 # from layers.normailzation.layer_norm import LayerNorm
 from layers.normailzation.rms_norm import (
     RMSNorm, 
-    RMSNorm_Qwen,
+    RMSNorm_Qwen3,
     RMSNorm_Gemma3,
 )
 
@@ -205,7 +205,7 @@ class TransformerBlockQwen3(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
-        self.attn = GroupedQueryAttention_Qwen(
+        self.attn = GroupedQueryAttention_Qwen3(
             d_model = cfg.embed_dim,
             n_heads = cfg.n_heads,
             num_kv_groups = cfg.n_kv_groups,
@@ -214,14 +214,14 @@ class TransformerBlockQwen3(nn.Module):
             dtype = cfg.dtype,
         )
         self.ff = FeedForwardSiLU(cfg)
-        self.norm1 = RMSNorm_Qwen(cfg.embed_dim, eps=1e-6)
-        self.norm2 = RMSNorm_Qwen(cfg.embed_dim, eps=1e-6)
+        self.norm1 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
+        self.norm2 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
     
-    def forward(self, x, mask, cos, sin):
+    def forward(self, x, mask, cos, sin, start_pos=0, cache=None):
         # Shortcut connection for attention block
         shortcut = x
         x = self.norm1(x)
-        x = self.attn(x.to(torch.bfloat16), mask, cos, sin)  # Shape: [batch_size, num_tokens, emb_size]
+        x, next_cache = self.attn(x.to(torch.bfloat16), mask, cos, sin, start_pos=start_pos, cache=cache)  # Shape: [batch_size, num_tokens, emb_size]
         x = x + shortcut
         # Shortcut connection for feed-forward block
         shortcut = x
@@ -229,7 +229,10 @@ class TransformerBlockQwen3(nn.Module):
         x = self.ff(x.to(torch.bfloat16))
         x = x + shortcut
 
-        return x
+        if cache is not None:
+            return x, next_cache
+        else:
+            return x
 
 
 class TransformerBlockGemma3(nn.Module):

@@ -26,15 +26,11 @@ import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockQwen3
-from layers.normailzation.rms_norm import RMSNorm_Qwen
+from layers.normailzation.rms_norm import RMSNorm_Qwen3
 from layers.position_encoding.RoPE import precompute_rope_params
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-
-
-# Control base model and the reasoning("thinking") model flag
-USE_REASONING_MODEL = True
 
 
 class Model(nn.Module):
@@ -50,7 +46,7 @@ class Model(nn.Module):
             [TransformerBlockQwen3(cfg) for _ in range(cfg.n_layers)]
         )
         # RMSNorm
-        self.final_norm = RMSNorm_Qwen(cfg.embed_dim)
+        self.final_norm = RMSNorm_Qwen3(cfg.embed_dim)
         # output head linear
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False, dtype=cfg.dtype)
         # head dim
@@ -66,25 +62,45 @@ class Model(nn.Module):
         )
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
+        self.current_pos = 0
     
-    def forward(self, x):
+    def forward(self, x, cache=None):
         # tokenized text shape
-        # batch_size, seq_len, embed_dim = x.shape
-        batch_size, seq_len = x.shape
+        batch_size, num_tokens = x.shape
         # token embedding layer
         tok_embeds = self.tok_embed(x)
         x = tok_embeds
-        # mask
-        mask = torch.triu(torch.ones(seq_len, seq_len, device=x.device, dtype=torch.bool), diagonal=1)
+        # kv cache
+        if cache is not None:
+            pos_start = self.current_pos
+            pos_end = pos_start + num_tokens
+            self.current_pos = pos_end
+            mask = torch.triu(
+                torch.ones(pos_end, pos_end, device=x.device, dtype=torch.bool), 
+                diagonal=1
+            )[pos_start:pos_end, :pos_end]
+        else:
+            pos_start = 0  # Not strictly necessary but helps torch.compile
+            mask = torch.triu(torch.ones(num_tokens, num_tokens, device=x.device, dtype=torch.bool), diagonal=1)
+        # Shape (1, 1, num_tokens, num_tokens) to broadcast across batch and heads
+        mask = mask[None, None, :, :]
         # transformer block
-        for block in self.trf_blocks:
-            x = block(x, mask, self.cos, self.sin)
+        for i, block in enumerate(self.trf_blocks):
+            if cache is not None:
+                block_cache = cache.get(i)
+                x, new_block_cache = block(x, mask, self.cos, self.sin, start_pos=pos_start, cache=block_cache)
+                cache.update(i, new_block_cache)
+            else:
+                x, new_block_cache = block(x, mask, self.cos, self.sin)
         # final RMSNorm
         x = self.final_norm(x)
         # linear output layer(head)
         logits = self.out_head(x.to(self.cfg.dtype))
 
         return logits
+    
+    def reset_kv_cache(self):
+        self.current_pos = 0
 
 
 

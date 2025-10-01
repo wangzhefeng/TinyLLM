@@ -427,7 +427,7 @@ class PretokDataset(torch.utils.data.IterableDataset):
                     x = chunk[:-1]
                     y = chunk[1:]
                     yield x, y
-                    
+
 
 class Task:
     

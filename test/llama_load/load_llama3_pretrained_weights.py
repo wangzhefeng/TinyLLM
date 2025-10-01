@@ -20,7 +20,7 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-from models.model_cfgs import LLAMA3_CONFIG_8B
+from models.gpt2_model_cfg.model_cfgs import LLAMA3_CONFIG_8B
 from models.llama3_8B import Model
 from utils.args_tools import DotDict
 from utils.device import device_setting

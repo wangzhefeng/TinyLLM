@@ -25,10 +25,9 @@ warnings.filterwarnings("ignore")
 
 import torch
 
-from utils.args_tools import DotDict
 from utils.device import device_setting
 from utils.model_memory import model_memory_size
-from test.qwen_model.qwen_model_config import QWEN3_CONFIG
+from config.qwen3_model_cfg.model_cfgs import QWEN3_CONFIG
 from models.qwen3_06B import Model
 
 # global variable
@@ -45,13 +44,10 @@ def main():
     torch.manual_seed(123)
 
     # device
-    device = device_setting()
-
-    # config
-    cfg = DotDict(QWEN3_CONFIG)
+    device = device_setting(verbose=True)
 
     # model
-    model = Model(cfg=cfg)
+    model = Model(cfg=QWEN3_CONFIG)
     model.to(device)
     logger.info(f"model: \n{model}") 
 
@@ -59,29 +55,14 @@ def main():
     input_tensor = torch.tensor([1, 2, 3]).unsqueeze(0)
     input_tensor = input_tensor.to(device)
     logger.info(f"input_tensor: {input_tensor}")
-    logger.info(f"input_tensor.shape: {input_tensor.shape}")
+    logger.info(f"input_tensor shape: {input_tensor.shape}")
 
     output_tensor = model(input_tensor)
     logger.info(f"output_tensor: \n{output_tensor}")
-    logger.info(f"output_tensor.shape: {output_tensor.shape}")
+    logger.info(f"output_tensor shape: {output_tensor.shape}")
 
     model_memory_size(model, input_dtype=torch.float32, verbose=True)
     model_memory_size(model, input_dtype=torch.bfloat16, verbose=True)
-    """
-    total_params = sum(p.numel() for p in model.parameters())
-    logger.info(f"Total number of parameters: {total_params}")
-    logger.info(f"Total number of parameters: {total_params / 1000**3:.1f}B")
-
-    total_params_normalized = total_params - model.tok_embed.weight.numel()
-    logger.info(f"Total number of unique parameters: {total_params_normalized}")
-    logger.info(f"Total number of unique parameters: {total_params_normalized / 1000**3:.1f}B")
-
-    # Calculate the total size in bytes (assuming float32, 4 bytes per parameter)
-    total_size_bytes = total_params * 4
-    # Convert to megabytes
-    total_size_mb = total_size_bytes / (1024 * 1024)
-    logger.info(f"Total size of the model: {total_size_mb:.2f}MB")
-    """
 
 if __name__ == "__main__":
     main()

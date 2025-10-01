@@ -48,7 +48,7 @@ class RMSNorm(nn.Module):
         # self.weight = nn.Parameter(torch.ones(embed_dim, dtype=torch.float32))
         self.weight = nn.Parameter(torch.ones(embed_dim)).float()
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         """
         Forward pass for RMSNorm.
         
@@ -66,7 +66,7 @@ class RMSNorm(nn.Module):
         return x_normed.mul_(self.weight).to(dtype=x.dtype)
 
 
-class RMSNorm_Qwen(nn.Module):
+class RMSNorm_Qwen3(nn.Module):
     """
     Root Mean Square Layer Normalization (RMSNorm) implementation.
     
@@ -87,7 +87,7 @@ class RMSNorm_Qwen(nn.Module):
         self.scale = nn.Parameter(torch.ones(embed_dim))
         self.shift = nn.Parameter(torch.zeros(embed_dim)) if bias else None
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         """
         Forward pass for RMSNorm.
         
@@ -134,7 +134,7 @@ class RMSNorm_Gemma3(nn.Module):
         self.scale = nn.Parameter(torch.ones(embed_dim))
         self.shift = nn.Parameter(torch.zeros(embed_dim)) if bias else None
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         """
         Forward pass for RMSNorm.
         
@@ -172,7 +172,7 @@ def main():
     # RMSNorm
     rms_norm = RMSNorm(embed_dim=example_batch.shape[-1], eps=1e-5)
     rms_norm_pytorch = nn.RMSNorm(example_batch.shape[-1], eps=1e-5)
-    rms_norm_qwen = RMSNorm_Qwen(embed_dim=example_batch.shape[-1], eps=1e-5)
+    rms_norm_qwen = RMSNorm_Qwen3(embed_dim=example_batch.shape[-1], eps=1e-5)
     print(rms_norm(example_batch))
     print(rms_norm_pytorch(example_batch))
     print(rms_norm_qwen(example_batch))

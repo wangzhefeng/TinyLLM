@@ -61,7 +61,7 @@ def precompute_rope_params(head_dim, theta_base=10_000, context_length=4096, fre
     return cos, sin
 
 
-def compute_rope(x, cos, sin):
+def compute_rope(x, cos, sin, offset=0):
     """
     RoPE: RoFormer: Enhanced Transformer with Rotary Position Embedding (2021)
     https://arxiv.org/abs/2104.09864
@@ -75,8 +75,8 @@ def compute_rope(x, cos, sin):
     x2 = x[..., head_dim // 2 :]  # Second half
 
     # Adjust sin and cos shapes, Shape: (1, 1, seq_len, head_dim)
-    cos = cos[:seq_len, :].unsqueeze(0).unsqueeze(0)
-    sin = sin[:seq_len, :].unsqueeze(0).unsqueeze(0)
+    cos = cos[offset:(offset+seq_len), :].unsqueeze(0).unsqueeze(0)
+    sin = sin[offset:(offset+seq_len), :].unsqueeze(0).unsqueeze(0)
 
     # Apply the rotary transformation
     rotated = torch.cat((-x2, x1), dim=-1)
@@ -85,6 +85,7 @@ def compute_rope(x, cos, sin):
     return x_rotated.to(dtype=x.dtype)
 
 
+# TODO
 class RoPE(nn.Module):
     
     def __init__(self):

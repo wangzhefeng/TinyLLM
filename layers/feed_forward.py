@@ -95,8 +95,6 @@ class FeedForwardGELU_Gemma3(nn.Module):
         return out
 
 
-
-
 class FeedForwardSiLU(nn.Module):
     """
     SwiGLU: GLU Variants Improve Transformer (2020): https://arxiv.org/abs/2002.05202

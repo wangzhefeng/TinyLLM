@@ -39,7 +39,8 @@ from exp.exp_basic import Exp_Basic
 from utils.llm.optimizer import select_optimizer
 from utils.llm.criterion import select_criterion
 from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.llm.train_funcs import adjust_learning_rate, EarlyStopping
+from utils.llm.learning_rate import adjust_learning_rate
+from utils.llm.early_stopping import EarlyStopping
 from utils.plot_losses import plot_losses_llm, plot_losses
 from layers.inference import generate
 # utils

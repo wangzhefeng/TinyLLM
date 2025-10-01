@@ -53,8 +53,7 @@ class Model(nn.Module):
 
     def forward(self, x, use_cache=False):
         # tokenized text shape
-        # TODO batch_size, seq_len, embed_dim = x.shape  # shape: [batch_size, num_tokens(seq_len), embed_dim]
-        batch_size, seq_len = x.shape                    # shape: [batch_size, num_tokens(seq_len), embed_dim]
+        batch_size, seq_len = x.shape                    # shape: [batch_size, num_tokens(seq_len)]
         # token embedding layer
         tok_embeds = self.tok_embed(x)                   # shape: [batch_size, num_tokens, embed_dim]
         # positional embedding layer

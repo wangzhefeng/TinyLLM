@@ -23,9 +23,7 @@ from dataclasses import dataclass
 import warnings
 warnings.filterwarnings("ignore")
 
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from layers.tokenizers.tokenization import choose_tokenizer
 from data_provider.data_loader import create_dataloader
@@ -34,6 +32,7 @@ from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+
 
 @dataclass
 class GPTConfig:

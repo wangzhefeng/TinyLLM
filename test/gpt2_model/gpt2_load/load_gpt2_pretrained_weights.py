@@ -20,7 +20,7 @@ if ROOT not in sys.path:
 
 from transformers import GPT2Model
 
-from models.model_cfgs import (
+from models.gpt2_model_cfg.model_cfgs import (
     gpt2_model_names,
     gpt2_model_configs,
     gpt2_huggingface_models,

@@ -206,7 +206,7 @@ def generate(model, token_idx: torch.tensor, max_new_tokens: int, context_length
 
 @torch.inference_mode()
 def generate_qwen3(model, token_idx: torch.tensor, max_new_tokens: int, context_length: int, 
-             temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
+                   temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
 
@@ -223,8 +223,8 @@ def generate_qwen3(model, token_idx: torch.tensor, max_new_tokens: int, context_
             # input length
             input_len = token_idx.shape[1]
             # Init cache with full prompt
-            from utils.llm.reasoning_from_scratch.qwen3 import KVCache
-            cache = KVCache(n_layers=model.cfg["n_layers"])
+            from layers.kv_cache import KVCache
+            cache = KVCache(n_layers=model.cfg.n_layers)
             model.reset_kv_cache()
             # Crop current context if it exceeds the supported context size
             cond_idx = token_idx[:, -ctx_len:]
@@ -232,8 +232,7 @@ def generate_qwen3(model, token_idx: torch.tensor, max_new_tokens: int, context_
             logits = model(cond_idx, cache=cache)[:, -1]
             for _ in range(max_new_tokens):
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
-                # logits = logits[:, -1, :]
-                # logits = logits[:, -1]
+                logits = logits[:, -1]
                 # Filter logits with top_k sampling
                 if top_k is not None:
                     top_logits, _ = torch.topk(logits, top_k)
@@ -252,11 +251,14 @@ def generate_qwen3(model, token_idx: torch.tensor, max_new_tokens: int, context_
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
+
+                yield next_idx
+
                 # Append sampled index to the running sequence
                 token_idx = torch.cat([token_idx, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
                 # Feed model only the new token
-                logits = model(next_idx, cache=cache)[:, -1]
-            return token_idx[:, input_len:]
+                logits = model(next_idx, cache=cache)
+            # return token_idx[:, -1][:, input_len:]
         else:
             # input length
             input_len = token_idx.shape[1]
@@ -264,7 +266,6 @@ def generate_qwen3(model, token_idx: torch.tensor, max_new_tokens: int, context_
                 # Crop current context if it exceeds the supported context size
                 cond_idx = token_idx[:, -ctx_len:]
                 # Get the predictions
-                # logits = model(cond_idx, use_cache=False)
                 logits = model(cond_idx)
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
@@ -286,10 +287,12 @@ def generate_qwen3(model, token_idx: torch.tensor, max_new_tokens: int, context_
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
+
+                yield next_idx
+
                 # Append sampled index to the running sequence
                 token_idx = torch.cat([token_idx, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
-
-            return token_idx[:, input_len:]
+            # return token_idx[:, input_len:]
 
 
 def generate_stats(output_token_ids, tokenizer, start_time, end_time):

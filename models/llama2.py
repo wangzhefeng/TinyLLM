@@ -44,7 +44,7 @@ class Model(nn.Module):
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias = False, dtype=cfg.dtype)
     
     def forward(self, in_idx):
-        # TODO in_idx size
+        # in_idx size
         batch_size, seq_len = in_idx.shape
         # embedding
         tok_embeds = self.tok_emb(in_idx)
@@ -70,7 +70,7 @@ def main():
         text_to_token_ids,
         token_ids_to_text,
     )
-    from models.model_cfgs import LLAMA2_CONFIG_7B
+    from models.gpt2_model_cfg.model_cfgs import LLAMA2_CONFIG_7B
     from utils.model_memory import model_memory_size
     from utils.device import device_setting
     from utils.log_util import logger 

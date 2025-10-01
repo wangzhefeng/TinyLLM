@@ -31,7 +31,7 @@ from utils.llm.reasoning_from_scratch.qwen3 import (
     QWEN_CONFIG_06_B,
 )
 from utils.device import device_setting
-from layers.tokenizers.qwen3_tokenizer import tokenizer
+from layers.tokenizers.qwen3_tokenizer_load import tokenizer
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

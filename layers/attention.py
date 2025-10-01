@@ -30,7 +30,7 @@ from layers.position_encoding.RoPE import (
     compute_rope
 )
 from layers.normailzation.rms_norm import (
-    RMSNorm_Qwen,
+    RMSNorm_Qwen3,
     RMSNorm_Gemma3,
 )
 
@@ -744,7 +744,7 @@ class GroupedQueryAttention(nn.Module):
         return context_vec
 
 
-class GroupedQueryAttention_Qwen(nn.Module):
+class GroupedQueryAttention_Qwen3(nn.Module):
 
     def __init__(self, d_model, n_heads, num_kv_groups, head_dim=None, qk_norm=False, dtype=None):
         super().__init__()
@@ -767,13 +767,13 @@ class GroupedQueryAttention_Qwen(nn.Module):
         self.out_proj = nn.Linear(self.d_out, d_model, bias=False, dtype=dtype)
         # RMSNorm
         if qk_norm:
-            self.q_norm = RMSNorm_Qwen(head_dim, eps=1e-6)
-            self.k_norm = RMSNorm_Qwen(head_dim, eps=1e-6)
+            self.q_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
+            self.k_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
         else:
             self.q_norm = None
             self.k_norm = None
 
-    def forward(self, x, mask, cos, sin):
+    def forward(self, x, mask, cos, sin, start_pos=0, cache=None):
         batch_size, num_tokens, embed_dim = x.shape
         # Apply projections
         queries = self.W_query(x)  # (batch_size, num_tokens, n_heads * head_dim)
@@ -781,14 +781,23 @@ class GroupedQueryAttention_Qwen(nn.Module):
         values = self.W_value(x)   # (batch_size, num_tokens, num_kv_groups * head_dim)
         # Reshape
         queries = queries.view(batch_size, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
-        keys = keys.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
-        values = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        keys_new = keys.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        values_new = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
         # Optional normalization
         queries = self.q_norm(queries) if self.q_norm else queries
-        keys = self.k_norm(keys) if self.k_norm else keys
+        keys_new = self.k_norm(keys_new) if self.k_norm else keys_new
         # Apply RoPE
-        queries = compute_rope(queries, cos, sin)
-        keys = compute_rope(keys, cos, sin)
+        queries = compute_rope(queries, cos, sin, offset=start_pos)
+        keys_new = compute_rope(keys, cos, sin, offset=start_pos)
+        if cache is not None:
+            prev_k, prev_v = cache
+            keys = torch.cat([prev_k, keys_new], dim=2)
+            values = torch.cat([prev_v, values_new], dim=2)
+            next_cache = (keys, values)
+        else:
+            start_pos = 0  # reset RoPE
+            keys, values = keys_new, values_new
+            next_cache = (keys, values)
         # Expand K and V to match number of heads
         keys = keys.repeat_interleave(self.group_size, dim=1)
         values = values.repeat_interleave(self.group_size, dim=1)
@@ -800,7 +809,7 @@ class GroupedQueryAttention_Qwen(nn.Module):
         context_vec = (attn_weights @ values).transpose(1, 2).reshape(batch_size, num_tokens, self.d_out)
         context_vec = self.out_proj(context_vec)
         
-        return context_vec
+        return context_vec, next_cache
 
 
 class GroupedQueryAttention_Gemma3(nn.Module):

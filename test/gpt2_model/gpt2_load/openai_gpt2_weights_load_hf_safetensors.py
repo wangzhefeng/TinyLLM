@@ -142,7 +142,7 @@ def main():
     from utils.device import device_setting
     from utils.args_tools import DotDict
     from utils.log_util import logger
-    from models.model_cfgs import gpt2_model_names, gpt2_model_configs
+    from models.gpt2_model_cfg.model_cfgs import gpt2_model_names, gpt2_model_configs
 
     # device
     device = device_setting()
