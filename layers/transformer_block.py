@@ -29,12 +29,15 @@ from layers.attention import (
     MultiHeadAttentionRoPE,
     GroupedQueryAttention,
     GroupedQueryAttention_Qwen3,
+    GroupedQueryAttention_Qwen3_optimized,
+    GroupedQueryAttention_Qwen3_batched,
     GroupedQueryAttention_Gemma3,
 )
 from layers.feed_forward import (
     FeedForwardGELU, 
     FeedForwardSiLU,
     FeedForwardGELU_Gemma3, 
+    MoEFeedForward,
 )
 from layers.moe import SparseMoE
 # from layers.normailzation.layer_norm import LayerNorm
@@ -213,7 +216,10 @@ class TransformerBlockQwen3(nn.Module):
             qk_norm = cfg.qk_norm,
             dtype = cfg.dtype,
         )
-        self.ff = FeedForwardSiLU(cfg)
+        if cfg.num_experts > 0:
+            self.ff = MoEFeedForward(cfg)
+        else:
+            self.ff = FeedForwardSiLU(cfg)
         self.norm1 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
         self.norm2 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
     
@@ -221,18 +227,101 @@ class TransformerBlockQwen3(nn.Module):
         # Shortcut connection for attention block
         shortcut = x
         x = self.norm1(x)
-        x, next_cache = self.attn(x.to(torch.bfloat16), mask, cos, sin, start_pos=start_pos, cache=cache)  # Shape: [batch_size, num_tokens, emb_size]
+        x, next_cache = self.attn(
+            x.to(torch.bfloat16), mask, cos, sin, 
+            start_pos=start_pos, 
+            cache=cache, 
+        )  # Shape: [batch_size, num_tokens, emb_size]
         x = x + shortcut
+
         # Shortcut connection for feed-forward block
         shortcut = x
         x = self.norm2(x)
         x = self.ff(x.to(torch.bfloat16))
         x = x + shortcut
 
-        if cache is not None:
-            return x, next_cache
+        return x, next_cache
+
+
+class TransformerBlockQwen3_optimized(nn.Module):
+    
+    def __init__(self, cfg):
+        super().__init__()
+
+        self.attn = GroupedQueryAttention_Qwen3_optimized(
+            d_model = cfg.embed_dim,
+            n_heads = cfg.n_heads,
+            num_kv_groups = cfg.n_kv_groups,
+            head_dim = cfg.head_dim,
+            qk_norm = cfg.qk_norm,
+            dtype = cfg.dtype,
+        )
+        if cfg.num_experts > 0:
+            self.ff = MoEFeedForward(cfg)
         else:
-            return x
+            self.ff = FeedForwardSiLU(cfg)
+        self.norm1 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
+        self.norm2 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
+    
+    def forward(self, x, mask, cos, sin, start_pos=0, cache=None, layer_idx=None, exact=False):
+        # Shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x = self.attn(
+            x.to(torch.bfloat16), mask, cos, sin, 
+            start_pos=start_pos, 
+            cache=cache, 
+            layer_idx=layer_idx, 
+            exact=exact
+        )  # Shape: [batch_size, num_tokens, emb_size]
+        x = x + shortcut
+
+        # Shortcut connection for feed-forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x.to(torch.bfloat16))
+        x = x + shortcut
+
+        return x
+
+
+class TransformerBlockQwen3_batched(nn.Module):
+    
+    def __init__(self, cfg):
+        super().__init__()
+
+        self.attn = GroupedQueryAttention_Qwen3_batched(
+            d_model = cfg.embed_dim,
+            n_heads = cfg.n_heads,
+            num_kv_groups = cfg.n_kv_groups,
+            head_dim = cfg.head_dim,
+            qk_norm = cfg.qk_norm,
+            dtype = cfg.dtype,
+        )
+        if cfg.num_experts > 0:
+            self.ff = MoEFeedForward(cfg)
+        else:
+            self.ff = FeedForwardSiLU(cfg)
+        self.norm1 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
+        self.norm2 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
+    
+    def forward(self, x, mask, cos, sin, cache=None, pos_ids=None):
+        # Shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x, next_cache = self.attn(
+            x.to(torch.bfloat16), mask, cos, sin, 
+            cache=cache, pos_ids=pos_ids
+        )  # Shape: [batch_size, num_tokens, emb_size]
+        x = x + shortcut
+
+        # Shortcut connection for feed-forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x.to(torch.bfloat16))
+        x = x + shortcut
+
+        return x, next_cache
 
 
 class TransformerBlockGemma3(nn.Module):

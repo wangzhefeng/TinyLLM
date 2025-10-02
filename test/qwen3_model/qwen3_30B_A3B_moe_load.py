@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : qwen3_load.py
+# * File        : qwen3_30B_A3B_load.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-10-02
-# * Version     : 1.0.100202
+# * Version     : 1.0.100215
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
@@ -97,21 +97,49 @@ def load_weights_into_qwen(model, param_config, params):
         )
 
         # Feedforward weights
-        block.ff.fc1.weight = assign(
-            block.ff.fc1.weight,
-            params[f"model.layers.{l}.mlp.gate_proj.weight"],
-            f"model.layers.{l}.mlp.gate_proj.weight"
-        )
-        block.ff.fc2.weight = assign(
-            block.ff.fc2.weight,
-            params[f"model.layers.{l}.mlp.up_proj.weight"],
-            f"model.layers.{l}.mlp.up_proj.weight"
-        )
-        block.ff.fc3.weight = assign(
-            block.ff.fc3.weight,
-            params[f"model.layers.{l}.mlp.down_proj.weight"],
-            f"model.layers.{l}.mlp.down_proj.weight"
-        )
+        if "num_experts" in param_config and param_config["num_experts"] > 0:
+            # Load router (gating) weights
+            block.ff.gate.weight = assign(
+                block.ff.gate.weight,
+                params[f"model.layers.{l}.mlp.gate.weight"],
+                f"model.layers.{l}.mlp.gate.weight"
+            )
+            # Load expert weights
+            for e in range(param_config["num_experts"]):
+                prefix = f"model.layers.{l}.mlp.experts.{e}"
+                block.ff.fc1[e].weight = assign(
+                    block.ff.fc1[e].weight,
+                    params[f"{prefix}.gate_proj.weight"],
+                    f"{prefix}.gate_proj.weight"
+                )
+                block.ff.fc2[e].weight = assign(
+                    block.ff.fc2[e].weight,
+                    params[f"{prefix}.up_proj.weight"],
+                    f"{prefix}.up_proj.weight"
+                )
+                block.ff.fc3[e].weight = assign(
+                    block.ff.fc3[e].weight,
+                    params[f"{prefix}.down_proj.weight"],
+                    f"{prefix}.down_proj.weight"
+                )
+
+        else:
+            block.ff.fc1.weight = assign(
+                block.ff.fc1.weight,
+                params[f"model.layers.{l}.mlp.gate_proj.weight"],
+                f"model.layers.{l}.mlp.gate_proj.weight"
+            )
+            block.ff.fc2.weight = assign(
+                block.ff.fc2.weight,
+                params[f"model.layers.{l}.mlp.up_proj.weight"],
+                f"model.layers.{l}.mlp.up_proj.weight"
+            )
+            block.ff.fc3.weight = assign(
+                block.ff.fc3.weight,
+                params[f"model.layers.{l}.mlp.down_proj.weight"],
+                f"model.layers.{l}.mlp.down_proj.weight"
+            )
+
         block.norm2.scale = assign(
             block.norm2.scale,
             params[f"model.layers.{l}.post_attention_layernorm.weight"],
@@ -134,56 +162,29 @@ def load_weights_into_qwen(model, param_config, params):
 def main():
     from utils.device import device_setting
     from config.qwen3_model_cfg.model_cfgs import CHOOSE_MODEL, QWEN3_CONFIG
-    from models.qwen3_06B import Model
+    from models.qwen3 import Model
     from layers.tokenizers.qwen3_tokenizer import Qwen3Tokenizer
     from utils.log_util import logger
     from layers.inference import generate_qwen3
 
-
-    # model type
-    model_type = "reasoning"
-    
-    # Control base model and the reasoning("thinking") model flag
-    if model_type == "base":
-        # base model
-        USE_REASONING_MODEL = False
-        USE_INSTRUCT_MODEL = False
-    elif model_type == "reasoning":
-        # reasoning("thinking") model
-        USE_REASONING_MODEL = True
-        USE_INSTRUCT_MODEL = False
-    elif model_type == "instruct_without_reasoning":
-        # instruct mode(without reasoning)
-        USE_REASONING_MODEL = True
-        USE_INSTRUCT_MODEL = True
-
     # model repo id
-    if USE_REASONING_MODEL:
-        repo_id = f"Qwen/Qwen3-{CHOOSE_MODEL}"
-    else:
-        repo_id = f"Qwen/Qwen3-{CHOOSE_MODEL}-Base"
+    repo_id = "Qwen/Qwen3-30B-A3B"  # Original Instruct/Thinking hybrind model
+    repo_id = "Qwen/Qwen3-235B-A22B-Instruct-2507"  # New instruct model
+    repo_id = "Qwen/Qwen3-30B-A3B-Thinking-2507"  # New thinking model
+    repo_id = "Qwen/Qwen3-Coder-30B-A3B-Instruct"  # (Qwen3 Coder Flash)
 
     local_dir = Path(repo_id).parts[-1]
 
-    # load model weights
-    if CHOOSE_MODEL == "0.6B":
-        weights_file = hf_hub_download(
-            repo_id=repo_id,
-            filename="model.safetensors",
-            local_dir=local_dir,
-        )
-        weights_dict = load_file(weights_file)
-    else:
-        repo_dir = snapshot_download(repo_id=repo_id, local_dir=local_dir)
-        index_path = os.path.join(repo_dir, "model.safetensors.index.json")
-        with open(index_path, "r") as f:
-            index = json.load(f)
+    repo_dir = snapshot_download(repo_id=repo_id, local_dir=local_dir)
+    index_path = os.path.join(repo_dir, "model.safetensors.index.json")
+    with open(index_path, "r") as f:
+        index = json.load(f)
 
-        weights_dict = {}
-        for filename in set(index["weight_map"].values()):
-            shard_path = os.path.join(repo_dir, filename)
-            shard = load_file(shard_path)
-            weights_dict.update(shard)
+    weights_dict = {}
+    for filename in set(index["weight_map"].values()):
+        shard_path = os.path.join(repo_dir, filename)
+        shard = load_file(shard_path)
+        weights_dict.update(shard)
 
     # model init
     model = Model(cfg=QWEN3_CONFIG)
@@ -193,45 +194,37 @@ def main():
 
     # move model to devcie
     device = device_setting(verbose=True)
-    model.to(device)
-    del weights_dict
+    model.to(device);
     
     # load tokenizer weights
-    if USE_REASONING_MODEL:
-        tokenizer_file_path = f"Qwen3-{CHOOSE_MODEL}/tokenizer.json"
-    else:
-        tokenizer_file_path = f"Qwen3-{CHOOSE_MODEL}-Base/tokenizer.json"
-
-    hf_hub_download(
-        repo_id=repo_id,
-        filename="tokenizer.json",
-        local_dir=local_dir,
-    )
+    tokenizer_file_path = f"{Path(repo_id).parts[-1]}/tokenizer.json"
 
     tokenizer = Qwen3Tokenizer(
         tokenizer_file_path=tokenizer_file_path,
         repo_id=repo_id,
-        apply_chat_template=USE_REASONING_MODEL,
-        add_generation_prompt=USE_REASONING_MODEL,
-        add_thinking=not USE_INSTRUCT_MODEL
+        apply_chat_template=True,
+        add_generation_prompt=True,
+        add_thinking=True
     )
     # tokenizer test
-    prompt = "Give me a short introduction to large language models."
+    # prompt = "Give me a short introduction to large language models."
+    prompt = "Implement a binary search function in Python"
     input_token_ids = tokenizer.encode(prompt)
     text = tokenizer.decode(input_token_ids)
     logger.info(f"text: \n{text}")
-    
+
     # model inference
     input_token_ids_tensor = torch.tensor(input_token_ids, device=device).unsqueeze(0)
 
     for token in generate_qwen3(
         model=model,
         token_ids=input_token_ids_tensor,
-        max_new_tokens=500,
-        eos_token_id=tokenizer.eos_token_id
+        max_new_tokens=100,  # Cut-off after 100 tokens because non-kv variant is very slow
+        # eos_token_id=tokenizer.eos_token_id
+        use_cache=False,
     ):
         token_id = token.squeeze(0).tolist()
         print(tokenizer.decode(token_id), end="", flush=True)
-
+    
 if __name__ == "__main__":
     main()

@@ -20,6 +20,7 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import math
+import contextlib
 from packaging.version import parse as parse_version
 
 import torch
@@ -27,7 +28,8 @@ import torch.nn as nn
 
 from layers.position_encoding.RoPE import (
     precompute_rope_params, 
-    compute_rope
+    compute_rope,
+    compute_rope_with_pos_ids,
 )
 from layers.normailzation.rms_norm import (
     RMSNorm_Qwen3,
@@ -788,7 +790,7 @@ class GroupedQueryAttention_Qwen3(nn.Module):
         keys_new = self.k_norm(keys_new) if self.k_norm else keys_new
         # Apply RoPE
         queries = compute_rope(queries, cos, sin, offset=start_pos)
-        keys_new = compute_rope(keys, cos, sin, offset=start_pos)
+        keys_new = compute_rope(keys_new, cos, sin, offset=start_pos)
         if cache is not None:
             prev_k, prev_v = cache
             keys = torch.cat([prev_k, keys_new], dim=2)
@@ -807,6 +809,199 @@ class GroupedQueryAttention_Qwen3(nn.Module):
         attn_weights = torch.softmax(attn_scores / self.head_dim ** 0.5, dim=-1)
         # context vector
         context_vec = (attn_weights @ values).transpose(1, 2).reshape(batch_size, num_tokens, self.d_out)
+        context_vec = self.out_proj(context_vec)
+        
+        return context_vec, next_cache
+
+
+@contextlib.contextmanager
+def sdpa_exact():
+    try:
+        from torch.nn.attention import sdpa_kernel, SDPBackend
+        with sdpa_kernel(SDPBackend.MATH):
+            yield
+    except Exception:
+        # Deprecated, but to support older PyTorch versions
+        with torch.backends.cuda.sdp_kernel(
+            enable_flash=False, enable_mem_efficient=False, enable_math=True
+        ):
+            yield
+
+
+class GroupedQueryAttention_Qwen3_optimized(nn.Module):
+
+    def __init__(self, d_model, n_heads, num_kv_groups, head_dim=None, qk_norm=False, dtype=None):
+        super().__init__()
+
+        assert n_heads % num_kv_groups == 0, "n_heads must be divisible by num_kv_groups"
+        if head_dim is None:
+            assert d_model % n_heads == 0, "`d_model` must be divisible by `n_heads` if `head_dim` is not set"
+            head_dim = d_model // n_heads
+        
+        self.n_heads = n_heads
+        self.num_kv_groups = num_kv_groups
+        self.head_dim = head_dim
+        self.d_out = n_heads * head_dim
+        self.group_size = n_heads // num_kv_groups
+        # query, key, value weights
+        self.W_key = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
+        self.W_query = nn.Linear(d_model, self.d_out, bias=False, dtype=dtype)
+        # out projection
+        self.out_proj = nn.Linear(self.d_out, d_model, bias=False, dtype=dtype)
+        # RMSNorm
+        if qk_norm:
+            self.q_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
+            self.k_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
+        else:
+            self.q_norm = None
+            self.k_norm = None
+
+    def forward(self, x, mask, cos, sin, start_pos=0, cache=None, layer_idx=None, exact=False):
+        batch_size, num_tokens, embed_dim = x.shape
+        # Apply projections
+        queries = self.W_query(x)  # (batch_size, num_tokens, n_heads * head_dim)
+        keys = self.W_key(x)       # (batch_size, num_tokens, num_kv_groups * head_dim)
+        values = self.W_value(x)   # (batch_size, num_tokens, num_kv_groups * head_dim)
+        # Reshape
+        queries = queries.view(batch_size, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
+        keys_new = keys.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        values_new = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        # Optional normalization
+        queries = self.q_norm(queries) if self.q_norm else queries
+        keys_new = self.k_norm(keys_new) if self.k_norm else keys_new
+        # Apply RoPE
+        queries = compute_rope(queries, cos, sin, offset=start_pos)
+        keys_new = compute_rope(keys, cos, sin, offset=start_pos)
+        if cache is not None:
+            if layer_idx is not None:
+                raise ValueError("layer_idx required for KVCache")
+            cache.append(layer_idx, keys_new, values_new)
+            keys, values = cache.view(layer_idx)
+        else:
+            keys, values = keys_new, values_new 
+        # Expand K and V to match number of heads
+        if self.group_size > 1:
+            num_groups, seq_len, head_dim = keys.shape[1], keys.shape[2], keys.shape[3]
+            keys = keys[:, :, None, :, :].expand(batch_size, num_groups, self.group_size, seq_len, head_dim)
+            keys = keys.reshape(batch_size, self.n_heads, seq_len, head_dim)
+            values = values[:, :, None, :, :].expand(batch_size, num_groups, self.group_size, seq_len, head_dim)
+            values = values.reshape(batch_size, self.n_heads, seq_len, head_dim)
+        # Attention mask
+        attn_mask = None
+        if mask is not None:
+            attn_mask = mask
+            if attn_mask.ndim == 2:
+                attn_mask = attn_mask[None, None, :, :]
+            elif attn_mask.ndim == 3:
+                attn_mask = attn_mask[None, :, :, :]
+            if attn_mask.dtype != queries.dtype:
+                attn_mask = attn_mask.to(queries.dtype)
+        # SDPA Attention
+        if exact:
+            with sdpa_exact():
+                context = torch.nn.functional.scaled_dot_product_attention(
+                    queries.contiguous(),
+                    keys.contiguous(),
+                    values.contiguous(),
+                    attn_mask=attn_mask,
+                    dropout_p=0.0,
+                    is_causal=False,
+                )
+        else:
+            context = torch.nn.functional.scaled_dot_product_attention(
+                queries.contiguous(),
+                keys.contiguous(),
+                values.contiguous(),
+                attn_mask=attn_mask,
+                dropout_p=0.0,
+                is_causal=False,
+            )
+        # Final projection
+        projection = self.out_proj(context.transpose(1, 2).reshape(batch_size, num_tokens, self.d_out))
+        
+        return projection
+
+
+class GroupedQueryAttention_Qwen3_batched(nn.Module):
+
+    def __init__(self, d_model, n_heads, num_kv_groups, head_dim=None, qk_norm=False, dtype=None):
+        super().__init__()
+
+        assert n_heads % num_kv_groups == 0, "n_heads must be divisible by num_kv_groups"
+        if head_dim is None:
+            assert d_model % n_heads == 0, "`d_model` must be divisible by `n_heads` if `head_dim` is not set"
+            head_dim = d_model // n_heads
+        
+        self.n_heads = n_heads
+        self.num_kv_groups = num_kv_groups
+        self.head_dim = head_dim
+        self.d_out = n_heads * head_dim
+        self.group_size = n_heads // num_kv_groups
+        # query, key, value weights
+        self.W_key = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
+        self.W_value = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
+        self.W_query = nn.Linear(d_model, self.d_out, bias=False, dtype=dtype)
+        # out projection
+        self.out_proj = nn.Linear(self.d_out, d_model, bias=False, dtype=dtype)
+        # RMSNorm
+        if qk_norm:
+            self.q_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
+            self.k_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
+        else:
+            self.q_norm = None
+            self.k_norm = None
+
+    def forward(self, x, mask, cos, sin, cache=None, pos_ids=None):
+        batch_size, num_tokens, embed_dim = x.shape
+        # Apply projections
+        queries = self.W_query(x)  # (batch_size, num_tokens, n_heads * head_dim)
+        keys = self.W_key(x)       # (batch_size, num_tokens, num_kv_groups * head_dim)
+        values = self.W_value(x)   # (batch_size, num_tokens, num_kv_groups * head_dim)
+        # Reshape
+        queries = queries.view(batch_size, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
+        keys_new = keys.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        values_new = values.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        # Optional normalization
+        queries = self.q_norm(queries) if self.q_norm else queries
+        keys_new = self.k_norm(keys_new) if self.k_norm else keys_new
+        # Apply RoPE
+        queries = compute_rope_with_pos_ids(queries, cos, sin, pos_ids)
+        keys_new = compute_rope_with_pos_ids(keys_new, cos, sin, pos_ids)
+        if cache is not None:
+            prev_k, prev_v = cache
+            keys = torch.cat([prev_k, keys_new], dim=2)
+            values = torch.cat([prev_v, values_new], dim=2)
+            next_cache = (keys, values)
+        else:
+            keys, values = keys_new, values_new
+            next_cache = (keys, values)
+        # Expand K and V to match number of heads
+        keys = keys.repeat_interleave(self.group_size, dim=1)
+        values = values.repeat_interleave(self.group_size, dim=1)
+
+        # Attention
+        attn_scores = torch.matmul(queries.to(torch.float32), keys.transpose(2, 3).to(torch.float32))
+        attn_scores = attn_scores / self.head_dim ** 0.5
+
+        # Apply mask with -inf so masked entries are exactly zero after softmax
+        attn_scores = attn_scores.masked_fill(mask, -torch.inf)
+
+        # Stable log-sum-exp over the unmasked set
+        row_max = attn_scores.amax(dim=-1, keepdim=True)
+        row_max = torch.where(torch.isfinite(row_max), row_max, torch.zeros_like(row_max))
+        exp_scores = torch.exp(attn_scores - row_max)
+        exp_scores = exp_scores.masked_fill(mask, 0.0)
+
+        denom = exp_scores.sum(dim=-1, keepdim=True)
+        attn_weights = exp_scores / denom.clamp(min=torch.finfo(exp_scores.dtype).tiny)
+
+        # Back to model dtype
+        attn_weights = attn_weights.to(values.dtype)
+
+        # context vector
+        context_vec = torch.matmul(attn_weights, values)
+        context_vec = context_vec.transpose(1, 2).reshape(batch_size, num_tokens, self.d_out)
         context_vec = self.out_proj(context_vec)
         
         return context_vec, next_cache

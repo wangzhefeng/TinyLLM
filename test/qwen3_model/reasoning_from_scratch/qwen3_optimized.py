@@ -429,8 +429,14 @@ class KVCache:
 
 def download_qwen3_small(kind="base", tokenizer_only=False, out_dir="."):
     files = {
-        "base": {"model": "qwen3-0.6B-base.pth", "tokenizer": "tokenizer-base.json"},
-        "reasoning": {"model": "qwen3-0.6B-reasoning.pth", "tokenizer": "tokenizer-reasoning.json"},
+        "base": {
+            "model": "qwen3-0.6B-base.pth", 
+            "tokenizer": "tokenizer-base.json"
+        },
+        "reasoning": {
+            "model": "qwen3-0.6B-reasoning.pth", 
+            "tokenizer": "tokenizer-reasoning.json"
+        },
     }
     if kind not in files:
         raise ValueError("kind must be 'base' or 'reasoning'")

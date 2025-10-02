@@ -28,7 +28,7 @@ from utils.args_tools import DotDict
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-CHOOSE_MODEL = "0.6B"
+CHOOSE_MODEL = "30B-A3B"
 
 if CHOOSE_MODEL == "0.6B":
     QWEN3_CONFIG = {
@@ -43,6 +43,7 @@ if CHOOSE_MODEL == "0.6B":
         "n_kv_groups": 8,                # Key-Value groups for grouped-query attention
         "rope_base": 1_000_000.0,        # The base in RoPE's "theta"
         "dtype": torch.bfloat16,         # Lower-precision dtype to reduce memory usage
+        "num_experts": 0,
     }
 elif CHOOSE_MODEL == "1.7B":
     QWEN3_CONFIG = {
@@ -57,6 +58,7 @@ elif CHOOSE_MODEL == "1.7B":
         "n_kv_groups": 8,
         "rope_base": 1_000_000.0,
         "dtype": torch.bfloat16,
+        "num_experts": 0,
     }   
 elif CHOOSE_MODEL == "4B":
     QWEN3_CONFIG = {
@@ -71,6 +73,7 @@ elif CHOOSE_MODEL == "4B":
         "n_kv_groups": 8,
         "rope_base": 1_000_000.0,
         "dtype": torch.bfloat16,
+        "num_experts": 0,
     }  
 elif CHOOSE_MODEL == "8B":
     QWEN3_CONFIG = {
@@ -85,6 +88,7 @@ elif CHOOSE_MODEL == "8B":
         "n_kv_groups": 8,
         "rope_base": 1_000_000.0,
         "dtype": torch.bfloat16,
+        "num_experts": 0,
     } 
 elif CHOOSE_MODEL == "14B":
     QWEN3_CONFIG = {
@@ -99,6 +103,7 @@ elif CHOOSE_MODEL == "14B":
         "n_kv_groups": 8,
         "rope_base": 1_000_000.0,
         "dtype": torch.bfloat16,
+        "num_experts": 0,
     } 
 elif CHOOSE_MODEL == "32B":
     QWEN3_CONFIG = {
@@ -113,6 +118,29 @@ elif CHOOSE_MODEL == "32B":
         "n_kv_groups": 8,
         "rope_base": 1_000_000.0,
         "dtype": torch.bfloat16,
+        "num_experts": 0,
+    }
+elif CHOOSE_MODEL == "30B-A3B":
+    # Same config for
+    # https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct (Qwen3 Coder Flash)
+    # https://huggingface.co/Qwen/Qwen3-30B-A3B-Thinking-2507
+    # https://huggingface.co/Qwen/Qwen3-235B-A22B-Instruct-2507
+    # https://huggingface.co/Qwen/Qwen3-30B-A3B (original Instruct/Thinking hybrid model)
+    QWEN3_CONFIG = {
+        "vocab_size": 151_936,
+        "context_length": 262_144,
+        "embed_dim": 2048,                
+        "n_heads": 32,
+        "n_layers": 48,
+        # TODO "d_ff": 25600,
+        "head_dim": 128,
+        "qk_norm": True,
+        "n_kv_groups": 4,
+        "rope_base": 10_000_000.0,
+        "dtype": torch.bfloat16,
+        "num_experts": 128,
+        "num_experts_per_tok": 8,
+        "moe_intermediate_size": 768,
     }
 else:
     raise ValueError(f"{CHOOSE_MODEL} is not supported.")

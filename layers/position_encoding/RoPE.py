@@ -27,6 +27,57 @@ import torch.nn as nn
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
+# ==============================================================================
+# RoPE implementation summary
+#
+#
+# There are two common styles to implement RoPE, which are
+# mathematically equivalent;
+# they mainly differ in how the rotation matrix pairs dimensions.
+#
+# 1) Split-halves style (this repo, Hugging Face Transformers):
+#
+#   For hidden dim d = 8 (example):
+#
+#       [ x0   x1   x2   x3   x4   x5   x6   x7 ]
+#         │    │    │    │    │    │    │    │
+#         ▼    ▼    ▼    ▼    ▼    ▼    ▼    ▼
+#        cos  cos  cos  cos  sin  sin  sin  sin
+#
+#   Rotation matrix:
+#
+#       [ cosθ   -sinθ    0      0   ... ]
+#       [ sinθ    cosθ    0      0   ... ]
+#       [  0       0    cosθ   -sinθ ... ]
+#       [  0       0    sinθ    cosθ ... ]
+#        ...
+#
+#   Here, the embedding dims are split into two halves and then
+#   each one is rotated in blocks.
+#
+#
+# 2) Interleaved (even/odd) style (original paper, Llama repo):
+#
+#   For hidden dim d = 8 (example):
+#
+#       [ x0   x1   x2   x3   x4   x5   x6   x7 ]
+#         │    │    │    │    │    │    │    │
+#         ▼    ▼    ▼    ▼    ▼    ▼    ▼    ▼
+#        cos  sin  cos  sin  cos  sin  cos  sin
+#
+#   Rotation matrix:
+#       [ cosθ  -sinθ    0      0   ... ]
+#       [ sinθ   cosθ    0      0   ... ]
+#       [  0      0    cosθ   -sinθ ... ]
+#       [  0      0    sinθ    cosθ ... ]
+#        ...
+#
+#   Here, embedding dims are interleaved as even/odd cosine/sine pairs.
+#
+# Both layouts encode the same relative positions; the only difference is how
+# dimensions are paired.
+# ==============================================================================
+
 
 def precompute_rope_params(head_dim, theta_base=10_000, context_length=4096, freq_config=None, dtype=torch.float32):
     assert head_dim % 2 == 0, "Embedding dimension must be even"
@@ -82,6 +133,19 @@ def compute_rope(x, cos, sin, offset=0):
     rotated = torch.cat((-x2, x1), dim=-1)
     x_rotated = (x * cos) + (rotated * sin)
     # It's ok to use lower-precision after applying cos and sin rotation
+    return x_rotated.to(dtype=x.dtype)
+
+
+def compute_rope_with_pos_ids(x, cos, sin, pos_ids):
+    B, H, L, D = x.shape
+    cos_sel = cos[pos_ids]  # (B, L, D)
+    sin_sel = sin[pos_ids]  # (B, L, D)
+    cos_sel = cos_sel.unsqueeze(1)  # (B, 1, L, D)
+    sin_sel = sin_sel.unsqueeze(1)  # (B, 1, L, D)
+    x1 = x[..., : D // 2]
+    x2 = x[..., D // 2:]
+    rotated = torch.cat((-x2, x1), dim=-1)
+    x_rotated = (x * cos_sel) + (rotated * sin_sel)
     return x_rotated.to(dtype=x.dtype)
 
 

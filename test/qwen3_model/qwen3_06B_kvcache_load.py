@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : qwen3_30B_A3B_moe.py
+# * File        : qwen3_06B_kvcache_load.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-10-02
-# * Version     : 1.0.100200
+# * Version     : 1.0.100217
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)

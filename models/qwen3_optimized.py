@@ -6,14 +6,16 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-08-31
 # * Version     : 1.0.083120
-# * Description : description
+# * Description : Qwen3-0.6B
+# *               Qwen3-0.6B-KVCache
+# *               Qwen3-MoE
+# *                 Qwen3-30B-A3B(Coder, Instruct, Thinking)
+# *                 Qwen3-Coder-30B-A3B-Instruct
+# *                 Qwen3 Coder Flash(30B-A3B Mixture of Experts)
+# *               Qwen3-MoE-KVCache
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
-
-__all__ = [
-    "Model"
-]
 
 # python libraries
 import sys
@@ -25,7 +27,7 @@ if ROOT not in sys.path:
 import torch
 import torch.nn as nn
 
-from layers.transformer_block import TransformerBlockQwen3
+from layers.transformer_block import TransformerBlockQwen3_optimized
 from layers.normailzation.rms_norm import RMSNorm_Qwen3
 from layers.position_encoding.RoPE import precompute_rope_params
 
@@ -35,7 +37,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 class Model(nn.Module):
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, exact=False):
         super().__init__()
 
         self.cfg = cfg
@@ -43,7 +45,7 @@ class Model(nn.Module):
         self.tok_embed = nn.Embedding(cfg.vocab_size, cfg.embed_dim, dtype=cfg.dtype)
         # transformer block
         self.trf_blocks = nn.ModuleList(
-            [TransformerBlockQwen3(cfg) for _ in range(cfg.n_layers)]
+            [TransformerBlockQwen3_optimized(cfg) for _ in range(cfg.n_layers)]
         )
         # RMSNorm
         self.final_norm = RMSNorm_Qwen3(cfg.embed_dim)
@@ -62,7 +64,8 @@ class Model(nn.Module):
         )
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
-        self.current_pos = 0
+        self.exact = exact
+        self.current_pos = 0  # Track current position in KV cache
     
     def forward(self, x, cache=None):
         # tokenized text shape
@@ -74,24 +77,30 @@ class Model(nn.Module):
         if cache is not None:
             pos_start = self.current_pos
             pos_end = pos_start + num_tokens
-            self.current_pos = pos_end
+            self.current_pos = pos_end 
             mask = torch.triu(
-                torch.ones(pos_end, pos_end, device=x.device, dtype=torch.bool), 
-                diagonal=1
-            )[pos_start:pos_end, :pos_end]
+                torch.full((num_tokens, num_tokens), -torch.inf, device=x.device, dtype=self.cfg.dtype),
+                diagonal=1 + pos_start,
+            )
         else:
             pos_start = 0  # Not strictly necessary but helps torch.compile
-            mask = torch.triu(torch.ones(num_tokens, num_tokens, device=x.device, dtype=torch.bool), diagonal=1)
+            mask = torch.triu(
+                torch.full((num_tokens, num_tokens), -torch.inf, device=x.device, dtype=self.cfg.dtype),
+                diagonal=1,
+            )
         # Shape (1, 1, num_tokens, num_tokens) to broadcast across batch and heads
         mask = mask[None, None, :, :]
         # transformer block
         for i, block in enumerate(self.trf_blocks):
             if cache is not None:
-                block_cache = cache.get(i)
-                x, new_block_cache = block(x, mask, self.cos, self.sin, start_pos=pos_start, cache=block_cache)
-                cache.update(i, new_block_cache)
-            else:
-                x, new_block_cache = block(x, mask, self.cos, self.sin)
+                cache.allocate(i, x.size(0))
+            x = block(
+                x, mask, self.cos, self.sin, 
+                start_pos=pos_start, 
+                cache=cache, 
+                layer_idx=i,
+                exact=self.exact,
+            )
         # final RMSNorm
         x = self.final_norm(x)
         # linear output layer(head)
@@ -111,3 +120,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
