@@ -980,7 +980,7 @@ class GroupedQueryAttention_Qwen3_batched(nn.Module):
         keys = keys.repeat_interleave(self.group_size, dim=1)
         values = values.repeat_interleave(self.group_size, dim=1)
 
-        # Attention
+        # Attention scores
         attn_scores = torch.matmul(queries.to(torch.float32), keys.transpose(2, 3).to(torch.float32))
         attn_scores = attn_scores / self.head_dim ** 0.5
 

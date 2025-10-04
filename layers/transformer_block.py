@@ -37,8 +37,8 @@ from layers.feed_forward import (
     FeedForwardGELU, 
     FeedForwardSiLU,
     FeedForwardGELU_Gemma3, 
-    MoEFeedForward,
 )
+from layers.moe import MoEFeedForward
 from layers.moe import SparseMoE
 # from layers.normailzation.layer_norm import LayerNorm
 from layers.normailzation.rms_norm import (

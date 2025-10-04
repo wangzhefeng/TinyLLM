@@ -12,7 +12,6 @@
 # ***************************************************
 
 # python libraries
-import os
 import sys
 from pathlib import Path
 ROOT = str(Path.cwd())
@@ -68,7 +67,7 @@ class Model(nn.Module):
         tok_embeds = self.tok_embed(x)
         x = tok_embeds
         # tokenized text shape
-        batch_size, num_tokens = x.shape
+        batch_size, num_tokens = x.shape[0], x.shape[1]
         # Derive pos_start from cache content (layer 0 K length) if present
         if cache is not None and cache.get(0) is not None:
             prev_k0, _ = cache.get(0)    # (batch_size, G_kv, L_prev, D)
@@ -123,11 +122,39 @@ class Model(nn.Module):
 
 
 
-
-
 # 测试代码 main 函数
 def main():
-    pass
+    import torch
+
+    from utils.device import device_setting
+    from utils.model_memory import model_memory_size
+    from config.qwen3.model_cfgs import get_cfgs
+    from utils.log_util import logger
+
+    # random seed
+    torch.manual_seed(123)
+
+    # device
+    device = device_setting(verbose=True)
+
+    # model
+    QWEN3_CONFIG = get_cfgs(CHOOSE_MODEL="0.6B")
+    model = Model(cfg=QWEN3_CONFIG)
+    model.to(device)
+    logger.info(f"model: \n{model}") 
+
+    # model forward
+    input_tensor = torch.tensor([1, 2, 3]).unsqueeze(0)
+    input_tensor = input_tensor.to(device)
+    logger.info(f"input_tensor: {input_tensor}")
+    logger.info(f"input_tensor shape: {input_tensor.shape}")
+
+    output_tensor = model(input_tensor)
+    logger.info(f"output_tensor: \n{output_tensor}")
+    logger.info(f"output_tensor shape: {output_tensor.shape}")
+
+    model_memory_size(model, input_dtype=torch.float32, verbose=True)
+    model_memory_size(model, input_dtype=torch.bfloat16, verbose=True)
 
 if __name__ == "__main__":
     main()

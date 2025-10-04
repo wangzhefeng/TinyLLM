@@ -20,140 +20,17 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-import json
 import warnings
 warnings.filterwarnings("ignore")
 
 import torch
-from safetensors.torch import load_file
-from huggingface_hub import hf_hub_download, snapshot_download
+
+from test.qwen3_model.load_weights import load_weights_into_qwen
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-
-
-def load_weights_into_qwen(model, param_config, params):
-    def assign(left, right, tensor_name="unknown"):
-        if left.shape != right.shape:
-            raise ValueError(f"Shape mismatch in tensor '{tensor_name}'. Left: {left.shape}, Right: {right.shape}")
-        
-        with torch.no_grad():
-            if isinstance(right, torch.Tensor):
-                left.copy_(right)
-            else:
-                left.copy_(torch.as_tensor(right, dtype=left.dtype, device=left.device))
-    
-        return left 
-
-    model.tok_embed.weight = assign(model.tok_embed.weight, params["model.embed_tokens.weight"], "model.embed_tokens.weight")
-
-    for l in range(param_config["n_layers"]):
-        block = model.trf_blocks[l]
-        att = block.att
-
-        # Q, K, V projections
-        att.W_query.weight = assign(
-            att.W_query.weight,
-            params[f"model.layers.{l}.self_attn.q_proj.weight"],
-            f"model.layers.{l}.self_attn.q_proj.weight"
-        )
-        att.W_key.weight = assign(
-            att.W_key.weight,
-            params[f"model.layers.{l}.self_attn.k_proj.weight"],
-            f"model.layers.{l}.self_attn.k_proj.weight"
-        )
-        att.W_value.weight = assign(
-            att.W_value.weight,
-            params[f"model.layers.{l}.self_attn.v_proj.weight"],
-            f"model.layers.{l}.self_attn.v_proj.weight"
-        )
-
-        # Output projection
-        att.out_proj.weight = assign(
-            att.out_proj.weight,
-            params[f"model.layers.{l}.self_attn.o_proj.weight"],
-            f"model.layers.{l}.self_attn.o_proj.weight"
-        )
-
-        # QK norms
-        if hasattr(att, "q_norm") and att.q_norm is not None:
-            att.q_norm.scale = assign(
-                att.q_norm.scale,
-                params[f"model.layers.{l}.self_attn.q_norm.weight"],
-                f"model.layers.{l}.self_attn.q_norm.weight"
-            )
-        if hasattr(att, "k_norm") and att.k_norm is not None:
-            att.k_norm.scale = assign(
-                att.k_norm.scale,
-                params[f"model.layers.{l}.self_attn.k_norm.weight"],
-                f"model.layers.{l}.self_attn.k_norm.weight"
-            )
-
-        # Attention layernorm
-        block.norm1.scale = assign(
-            block.norm1.scale,
-            params[f"model.layers.{l}.input_layernorm.weight"],
-            f"model.layers.{l}.input_layernorm.weight"
-        )
-
-        # Feedforward weights
-        if "num_experts" in param_config and param_config["num_experts"] > 0:
-            # Load router (gating) weights
-            block.ff.gate.weight = assign(
-                block.ff.gate.weight,
-                params[f"model.layers.{l}.mlp.gate.weight"],
-                f"model.layers.{l}.mlp.gate.weight"
-            )
-            # Load expert weights
-            for e in range(param_config["num_experts"]):
-                prefix = f"model.layers.{l}.mlp.experts.{e}"
-                block.ff.fc1[e].weight = assign(
-                    block.ff.fc1[e].weight,
-                    params[f"{prefix}.gate_proj.weight"],
-                    f"{prefix}.gate_proj.weight"
-                )
-                block.ff.fc2[e].weight = assign(
-                    block.ff.fc2[e].weight,
-                    params[f"{prefix}.up_proj.weight"],
-                    f"{prefix}.up_proj.weight"
-                )
-                block.ff.fc3[e].weight = assign(
-                    block.ff.fc3[e].weight,
-                    params[f"{prefix}.down_proj.weight"],
-                    f"{prefix}.down_proj.weight"
-                )
-
-        else:
-            block.ff.fc1.weight = assign(
-                block.ff.fc1.weight,
-                params[f"model.layers.{l}.mlp.gate_proj.weight"],
-                f"model.layers.{l}.mlp.gate_proj.weight"
-            )
-            block.ff.fc2.weight = assign(
-                block.ff.fc2.weight,
-                params[f"model.layers.{l}.mlp.up_proj.weight"],
-                f"model.layers.{l}.mlp.up_proj.weight"
-            )
-            block.ff.fc3.weight = assign(
-                block.ff.fc3.weight,
-                params[f"model.layers.{l}.mlp.down_proj.weight"],
-                f"model.layers.{l}.mlp.down_proj.weight"
-            )
-
-        block.norm2.scale = assign(
-            block.norm2.scale,
-            params[f"model.layers.{l}.post_attention_layernorm.weight"],
-            f"model.layers.{l}.post_attention_layernorm.weight"
-        )
-
-    # Final normalization and output head
-    model.final_norm.scale = assign(model.final_norm.scale, params["model.norm.weight"], "model.norm.weight")
-
-    if "lm_head.weight" in params:
-        model.out_head.weight = assign(model.out_head.weight, params["lm_head.weight"], "lm_head.weight")
-    else:
-        model.out_head.weight = model.tok_embed.weight
-        print("Model uses weight tying.")
+os.environ['LOG_NAME'] = LOGGING_LABEL
+from utils.log_util import logger
 
 
 
@@ -161,67 +38,126 @@ def load_weights_into_qwen(model, param_config, params):
 # 测试代码 main 函数
 def main():
     from utils.device import device_setting
-    from config.qwen3_model_cfg.model_cfgs import CHOOSE_MODEL, QWEN3_CONFIG
-    from models.qwen3 import Model
-    from layers.tokenizers.qwen3_tokenizer import Qwen3Tokenizer
-    from utils.log_util import logger
-    from layers.inference import generate_qwen3
+    from config.qwen3.model_cfgs import get_cfgs
+    from config.qwen3.model_download import download_from_huggingface_from_snapshots
+    from models.qwen3.qwen3 import Model
+    from layers.tokenizers.qwen3.qwen3_tokenizer import Qwen3Tokenizer
+    from layers.inference import generate_qwen3_stream
 
+
+    # random seed
+    torch.manual_seed(0)
+    # ------------------------------
+    # local path
+    # ------------------------------
+    llm_model_dir = "./downloaded_models/qwen3_model"
+
+    # ------------------------------
+    # device
+    # ------------------------------
+    device = device_setting(verbose=True)
+
+    # ------------------------------
+    # Model and text generation settings
+    # ------------------------------
+    # model config
+    CHOOSE_MODEL = "30B-A3B"
+    logger.info(f"Model config name: {CHOOSE_MODEL}")
+    QWEN3_CONFIG = get_cfgs(CHOOSE_MODEL)
+    logger.info(f"Model config: {QWEN3_CONFIG}")
+    
+    # model type
+    model_type = "reasoning"
+    logger.info(f"Model type: {model_type}")
+    # Control base model and the reasoning("thinking") model flag
+    if model_type == "base":
+        # base model
+        USE_REASONING_MODEL = False
+        USE_INSTRUCT_MODEL = False
+    elif model_type == "reasoning":
+        # reasoning("thinking") model
+        USE_REASONING_MODEL = True
+        USE_INSTRUCT_MODEL = False
+    elif model_type == "instruct_without_reasoning":
+        # instruct mode(without reasoning)
+        USE_REASONING_MODEL = True
+        USE_INSTRUCT_MODEL = True
+    logger.info(f"Use reasoning model: {USE_REASONING_MODEL}")
+    logger.info(f"Use instruct model: {USE_INSTRUCT_MODEL}")
+
+    # ------------------------------
+    # text generation settings 
+    # ------------------------------
+    MAX_NEW_TOKENS = 500
+    TEMPERATURE = 0.0
+    TOP_K = 1
+
+    # ------------------------------
+    # Weights download and loding of the 0.6B model
+    # ------------------------------
     # model repo id
-    repo_id = "Qwen/Qwen3-30B-A3B"  # Original Instruct/Thinking hybrind model
-    repo_id = "Qwen/Qwen3-235B-A22B-Instruct-2507"  # New instruct model
-    repo_id = "Qwen/Qwen3-30B-A3B-Thinking-2507"  # New thinking model
-    repo_id = "Qwen/Qwen3-Coder-30B-A3B-Instruct"  # (Qwen3 Coder Flash)
+    if USE_REASONING_MODEL:
+        repo_id = "Qwen/Qwen3-30B-A3B"  # Original Instruct/Thinking hybrind model
+        # repo_id = "Qwen/Qwen3-235B-A22B-Instruct-2507"  # New instruct model
+        # repo_id = "Qwen/Qwen3-30B-A3B-Thinking-2507"  # New thinking model
+        # repo_id = "Qwen/Qwen3-Coder-30B-A3B-Instruct"  # (Qwen3 Coder Flash)
+    else:
+        repo_id = f"Qwen/Qwen3-0.6B-Base"
 
-    local_dir = Path(repo_id).parts[-1]
+    # model local dir
+    local_dir = Path(llm_model_dir).joinpath(Path(repo_id).parts[-1])
 
-    repo_dir = snapshot_download(repo_id=repo_id, local_dir=local_dir)
-    index_path = os.path.join(repo_dir, "model.safetensors.index.json")
-    with open(index_path, "r") as f:
-        index = json.load(f)
-
-    weights_dict = {}
-    for filename in set(index["weight_map"].values()):
-        shard_path = os.path.join(repo_dir, filename)
-        shard = load_file(shard_path)
-        weights_dict.update(shard)
-
-    # model init
+    # load model weights
+    weights_dict, tokenizer_file_path = download_from_huggingface_from_snapshots(
+        repo_id=repo_id, local_dir=local_dir
+    )
+    
+    # model
+    # ---------------
+    # mode init
     model = Model(cfg=QWEN3_CONFIG)
-
     # load pretrained model weights
     load_weights_into_qwen(model, QWEN3_CONFIG, weights_dict)
-
     # move model to devcie
-    device = device_setting(verbose=True)
-    model.to(device);
-    
-    # load tokenizer weights
-    tokenizer_file_path = f"{Path(repo_id).parts[-1]}/tokenizer.json"
+    model.to(device)
+    del weights_dict
+    # model compile
+    # major, minor = map(int, torch.__version__.split(".")[:2])
+    # if torch.cuda.is_available():
+    #     # if (major, minor) > (2, 8):
+    #     #     # This avoids retriggering model recompilations in PyTorch 2.8 and newer
+    #     #     # if the model contains code like self.pos = self.pos + 1
+    #     #     torch._dynamo.config.allow_unspec_int_on_nn_module = True
+    #     model_compiled = torch.compile(model)
 
+    # tokenizer
+    # ---------------
     tokenizer = Qwen3Tokenizer(
         tokenizer_file_path=tokenizer_file_path,
-        repo_id=repo_id,
-        apply_chat_template=True,
-        add_generation_prompt=True,
-        add_thinking=True
+        apply_chat_template=USE_REASONING_MODEL,
+        add_generation_prompt=USE_REASONING_MODEL,
+        add_thinking=not USE_INSTRUCT_MODEL
     )
-    # tokenizer test
+    logger.info(f"tokenizer.pad_token_id: {tokenizer.pad_token_id}")
+    logger.info(f"tokenizer.eos_token_id: {tokenizer.eos_token_id}")
+    # ------------------------------
+    # model inference
+    # ------------------------------
+    # prompt
     # prompt = "Give me a short introduction to large language models."
     prompt = "Implement a binary search function in Python"
     input_token_ids = tokenizer.encode(prompt)
-    text = tokenizer.decode(input_token_ids)
-    logger.info(f"text: \n{text}")
-
-    # model inference
+    # text = tokenizer.decode(input_token_ids)
     input_token_ids_tensor = torch.tensor(input_token_ids, device=device).unsqueeze(0)
 
-    for token in generate_qwen3(
+    for token in generate_qwen3_stream(
         model=model,
-        token_ids=input_token_ids_tensor,
-        max_new_tokens=100,  # Cut-off after 100 tokens because non-kv variant is very slow
-        # eos_token_id=tokenizer.eos_token_id
-        use_cache=False,
+        token_idx=input_token_ids_tensor,
+        max_new_tokens=MAX_NEW_TOKENS,
+        context_length=QWEN3_CONFIG.context_length,
+        temperature=TEMPERATURE,
+        top_k=TOP_K,
+        # eos_token_id=tokenizer.eos_token_id,
     ):
         token_id = token.squeeze(0).tolist()
         print(tokenizer.decode(token_id), end="", flush=True)
