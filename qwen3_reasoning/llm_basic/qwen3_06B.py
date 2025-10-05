@@ -25,10 +25,11 @@ warnings.filterwarnings("ignore")
 
 import torch
 
-from models.qwen3.qwen3 import Model
 from config.qwen3.model_cfgs import get_cfgs
-from models.qwen3_reasoning.qwen3_tokenizer_load import tokenizer
 from config.qwen3.model_download import download_from_huggingface
+from models.qwen3.qwen3_original import Model
+from layers.tokenizers.qwen3.qwen3_tokenizer import Qwen3Tokenizer
+from layers.inference import generate_qwen3_stream
 from utils.device import device_setting
 
 # global variable
@@ -37,35 +38,48 @@ os.environ['LOG_NAME'] = LOGGING_LABEL
 from utils.log_util import logger
 
 
+# lower precision from "highest"(default) which enables Tensor Cores if applicable
+torch.set_float32_matmul_precision("high")
+
 # device
 device = device_setting(verbose=True)
 # device = torch.device("cpu")
 
+# model type
+model_type = "reasoning"
+
+# ------------------------------
+# llm model download
+# ------------------------------
 # llm model path
-llm_model_dir = f"./downloaded_models/qwen3_model/Qwen3-0.6B-base-for-reasoning"
-llm_model_path = Path(llm_model_dir).joinpath("qwen3-0.6B-base.pth")
+model_dir = Path(f"./downloaded_models/qwen3_model/Qwen3-0.6B-{model_type}-for-reasoning")
+llm_model_path = model_dir.joinpath(f"qwen3-0.6B-{model_type}.pth")
+tokenizer_path = model_dir.joinpath(f"tokenizer-{model_type}.json")
 
 # llm model download
-model_file_path = download_from_huggingface(
-    kind="base", 
+llm_model_path, tokenizer_path = download_from_huggingface(
+    kind=model_type, 
     tokenizer_only=False, 
     repo_id="rasbt/qwen3-from-scratch",
     revision="main",
-    local_dir=llm_model_dir,
+    local_dir=model_dir,
 )
-logger.info(f"model_file_path: {model_file_path}")
 
+# ------------------------------
+# model
+# ------------------------------
 # llm model config
 QWEN3_CONFIG = get_cfgs(CHOOSE_MODEL="0.6B")
 
 # llm model
 model = Model(QWEN3_CONFIG)
+
+# load model weights
 model.load_state_dict(torch.load(llm_model_path))
+
+# move model to device
 model.to(device)
-logger.info(f"model: \n{model}")
 
-
-"""
 # model compile
 major, minor = map(int, torch.__version__.split(".")[:2])
 if torch.cuda.is_available():
@@ -74,7 +88,49 @@ if torch.cuda.is_available():
     #     # if the model contains code like self.pos = self.pos + 1
     #     torch._dynamo.config.allow_unspec_int_on_nn_module = True
     model_compiled = torch.compile(model)
-"""
+
+# ------------------------------
+# tokenizer
+# ------------------------------
+tokenizer = Qwen3Tokenizer(tokenizer_file_path=tokenizer_path)
+
+# ------------------------------
+# model inference
+# ------------------------------
+# prompt
+prompt = (
+    r"If $a+b=3$ and $ab=\tfrac{13}{6}$, "
+    r"what is the value of $a^2+b^2$?"
+)
+input_token_ids_tensor = torch.tensor(tokenizer.encode(prompt), device=device).unsqueeze(0)
+
+# model inference
+all_token_ids = []
+for token in generate_qwen3_stream(
+    model=model,
+    token_ids=input_token_ids_tensor,
+    max_new_tokens=521,
+    context_length=QWEN3_CONFIG.context_length,
+    temperature=0.0,
+    top_k=None,
+    eos_token_id=tokenizer.eos_token_id,
+    use_cache=True,
+):
+    token_id = token.squeeze(0)
+    decoded_id = tokenizer.decode(token_id.tolist())
+    print(decoded_id, end="", flush=True)
+    all_token_ids.append(token_id)
+
+all_tokens = tokenizer.decode(all_token_ids)
+
+# from IPython.display import Latex, Math, display
+# display(Latex(all_tokens))
+# display(Math(r"\dfrac{14}{3}"))
+
+
+
+
+
 
 
 
@@ -92,9 +148,10 @@ def main():
     input_token_ids_tensor = torch.tensor(tokenizer.encode(prompt), device=device).unsqueeze(0)
 
     # inference 1
+    # -----------
     output_token_ids_tensor = generate(
         model = model,
-        token_idx = input_token_ids_tensor,
+        token_ids = input_token_ids_tensor,
         max_new_tokens = 100,
         context_length=DotDict(QWEN_CONFIG_06_B).context_length,
     )
@@ -102,9 +159,10 @@ def main():
     logger.info(f"output_text: \n{output_text}")
 
     # inference 2
+    # -----------
     output_token_ids_tensor = generate(
         model = model,
-        token_idx = input_token_ids_tensor,
+        token_ids = input_token_ids_tensor,
         max_new_tokens = 100,
         eos_token_id = tokenizer.eos_token_id,
         context_length=DotDict(QWEN_CONFIG_06_B).context_length,
@@ -113,10 +171,11 @@ def main():
     logger.info(f"output_text: \n{output_text}")
 
     # inference 3
+    # -----------
     start_time = time.time()
     output_token_ids_tensor = generate_qwen3(
         model = model,
-        token_idx = input_token_ids_tensor,
+        token_ids = input_token_ids_tensor,
         max_new_tokens = 100,
         eos_token_id = tokenizer.eos_token_id,
         context_length=DotDict(QWEN3_CONFIG).context_length,
@@ -133,10 +192,11 @@ def main():
     )
 
     # inference 4
+    # -----------
     start_time = time.time()
     output_token_ids_tensor = generate_qwen3(
         model = model,
-        token_idx = input_token_ids_tensor,
+        token_ids = input_token_ids_tensor,
         max_new_tokens = 100,
         context_length = DotDict(QWEN3_CONFIG).context_length,
         eos_token_id = tokenizer.eos_token_id,
@@ -153,10 +213,11 @@ def main():
     )
 
     # inference 5
+    # -----------
     start_time = time.time()
     output_token_ids_tensor = generate_qwen3(
         model = model_compiled,
-        token_idx = input_token_ids_tensor,
+        token_ids = input_token_ids_tensor,
         max_new_tokens = 100,
         context_length = DotDict(QWEN3_CONFIG).context_length,
         eos_token_id = tokenizer.eos_token_id,
@@ -172,7 +233,7 @@ def main():
         end_time = end_time,
     )
     """
-    pass
+    pass 
 
 if __name__ == "__main__":
     main()

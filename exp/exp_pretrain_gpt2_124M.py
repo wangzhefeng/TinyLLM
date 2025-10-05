@@ -492,7 +492,7 @@ class Model_Pretrain(Exp_Basic):
         with torch.no_grad():
             completion_id = generate(
                 model = self.model, 
-                token_idx = start_context_encoded,
+                token_ids = start_context_encoded,
                 max_new_tokens = self.args.max_new_tokens,
                 context_length = context_length,
                 temperature = temperature,

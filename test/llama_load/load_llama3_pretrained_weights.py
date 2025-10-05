@@ -74,7 +74,7 @@ def main():
     # model inference
     token_ids = generate(
         model=model,
-        token_idx=text_to_token_ids("Every effort", tokenizer_model="llama3-8B").to(device),
+        token_ids=text_to_token_ids("Every effort", tokenizer_model="llama3-8B").to(device),
         max_new_tokens=25,
         context_length=LLAMA3_CONFIG_8B.context_length,
         temperature=0.0,
@@ -100,7 +100,7 @@ def main():
     # model inference
     token_ids = generate(
         model=model,
-        token_idx=text_to_token_ids("What do llamas eat?", tokenizer_model=chat_prompt).to(device),
+        token_ids=text_to_token_ids("What do llamas eat?", tokenizer_model=chat_prompt).to(device),
         max_new_tokens=25,
         context_length=LLAMA3_CONFIG_8B.context_length,
         temperature=0.0,

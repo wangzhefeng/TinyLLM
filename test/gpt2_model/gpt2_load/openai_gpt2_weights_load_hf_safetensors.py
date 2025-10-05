@@ -171,7 +171,7 @@ def main():
     torch.manual_seed(123)
     token_ids = generate(
         model=gpt,
-        token_idx=text_to_token_ids("Every effort moves").to(device),
+        token_ids=text_to_token_ids("Every effort moves").to(device),
         max_new_tokens=30,
         context_length=base_config.context_length,
         top_k=1,

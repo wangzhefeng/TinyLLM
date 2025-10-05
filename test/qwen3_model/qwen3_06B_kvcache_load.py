@@ -146,7 +146,7 @@ def main():
 
     for token in generate_qwen3_stream(
         model=model,
-        token_idx=input_token_ids_tensor,
+        token_ids=input_token_ids_tensor,
         max_new_tokens=MAX_NEW_TOKENS,
         context_length=QWEN3_CONFIG.context_length,
         temperature=TEMPERATURE,

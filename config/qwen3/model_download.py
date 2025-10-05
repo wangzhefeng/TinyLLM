@@ -104,6 +104,8 @@ def download_from_huggingface(kind="base", tokenizer_only=False, repo_id="rasbt/
     backup_root = "https://f001.backblazeb2.com/file/reasoning-from-scratch/qwen3-0.6B"
 
     # model download
+    llm_model_path = None
+    tokenizer_path = None
     targets = ["tokenizer"] if tokenizer_only else ["model", "tokenizer"]
     for key in targets:
         # model file name
@@ -113,15 +115,20 @@ def download_from_huggingface(kind="base", tokenizer_only=False, repo_id="rasbt/
         backup_url = f"{backup_root}/{filename}"
         # model file out path
         dest_path = os.path.join(local_dir, filename)
-
+        # model file download
         if os.path.exists(dest_path):
             logger.info(f"File already exists: {dest_path}")
         else:
             logger.info(f"Downloading {url} to {dest_path}...")
             __download_file(primary_url, out_dir=local_dir, backup_url=backup_url)
             # urllib.request.urlretrieve(url, dest_path)
+        # return model and tokenizer file path
+        if key == "model":
+            llm_model_path = dest_path
+        elif key == "tokenizer":
+            tokenizer_path = dest_path
 
-    return dest_path
+    return llm_model_path, tokenizer_path
 
 
 def download_from_huggingface_from_snapshots(repo_id, local_dir):

@@ -243,6 +243,48 @@ class TransformerBlockQwen3(nn.Module):
         return x, next_cache
 
 
+class TransformerBlockQwen3_original(nn.Module):
+    
+    def __init__(self, cfg):
+        super().__init__()
+
+        self.att = GroupedQueryAttention_Qwen3(
+            d_model = cfg.embed_dim,
+            n_heads = cfg.n_heads,
+            num_kv_groups = cfg.n_kv_groups,
+            head_dim = cfg.head_dim,
+            qk_norm = cfg.qk_norm,
+            dtype = cfg.dtype,
+        )
+        if cfg.num_experts > 0:
+            self.ff = MoEFeedForward(cfg)
+        else:
+            self.ff = FeedForwardSiLU(cfg)
+        self.norm1 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
+        self.norm2 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
+    
+    def forward(self, x, mask, cos, sin, start_pos=0, cache=None):
+        # Shortcut connection for attention block
+        shortcut = x
+        x = self.norm1(x)
+        x, next_cache = self.att(
+            x.to(torch.bfloat16), mask, cos, sin, 
+            start_pos=start_pos, 
+            cache=cache, 
+        )  # Shape: [batch_size, num_tokens, emb_size]
+        x = x + shortcut
+
+        # Shortcut connection for feed-forward block
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x.to(torch.bfloat16))
+        x = x + shortcut
+
+        return x, next_cache
+
+
+
+
 class TransformerBlockQwen3_optimized(nn.Module):
     
     def __init__(self, cfg):

@@ -68,7 +68,7 @@ def gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device, temperat
     if temperature and top_k and eos_id:
         out = generate(
             model = model,
-            token_idx = token_ids_tensor,
+            token_ids = token_ids_tensor,
             max_new_tokens = GPT2_124M_CONFIG.max_new_toknes,
             context_length = GPT2_124M_CONFIG.context_length,
             temperature = temperature,
@@ -79,13 +79,13 @@ def gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device, temperat
     else:
         # out = generate_simple(
         #     model = model,
-        #     token_idx = token_ids_tensor,
+        #     token_ids = token_ids_tensor,
         #     max_new_tokens = GPT2_124M_CONFIG.max_new_toknes,
         #     context_length = GPT2_124M_CONFIG.context_length,
         # )
         out = generate_simple_cached(
             model = model,
-            token_idx = token_ids_tensor,
+            token_ids = token_ids_tensor,
             max_new_tokens = GPT2_124M_CONFIG.max_new_toknes,
             context_length = GPT2_124M_CONFIG.context_length,
             use_cache=True,
@@ -259,7 +259,7 @@ def test_todo(model, tokenizer, GPT2_124M_CONFIG):
     model.eval()
     token_ids = generate(
         model = model,
-        token_idx = text_to_token_ids("Every effort moves you"),
+        token_ids = text_to_token_ids("Every effort moves you"),
         max_new_tokens = 25,
         context_length = GPT2_124M_CONFIG.context_length,
     )
@@ -286,7 +286,7 @@ def test_todo(model, tokenizer, GPT2_124M_CONFIG):
     # generating text: v2
     token_ids = generate(
         model = model,
-        token_idx = text_to_token_ids("Every effort moves you"),
+        token_ids = text_to_token_ids("Every effort moves you"),
         max_new_toknes = 15,
         context_length = GPT2_124M_CONFIG.context_length,
         top_k = 25,

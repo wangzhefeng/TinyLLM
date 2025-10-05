@@ -97,7 +97,7 @@ async def main(message: chainlit.Message):
     """
     token_ids = generate(
         model=model,
-        token_idx=text_to_token_ids(
+        token_ids=text_to_token_ids(
             message.content, 
             tokenizer_model=model_config.tokenizer_model
         ).to(device),

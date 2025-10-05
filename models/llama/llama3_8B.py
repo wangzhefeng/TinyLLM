@@ -98,7 +98,7 @@ def main():
     # model generate
     token_ids = generate(
         model = model.to(device),
-        token_idx = text_to_token_ids(input_text, tokenizer_model="llama3-8b").to(device),
+        token_ids = text_to_token_ids(input_text, tokenizer_model="llama3-8b").to(device),
         max_new_tokens = 30,
         context_length = LLAMA3_CONFIG_8B.context_length,
         eos_token_id = 50256,  # TODO
