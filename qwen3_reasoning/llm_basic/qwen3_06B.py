@@ -38,6 +38,9 @@ os.environ['LOG_NAME'] = LOGGING_LABEL
 from utils.log_util import logger
 
 
+# ------------------------------
+# setting
+# ------------------------------
 # lower precision from "highest"(default) which enables Tensor Cores if applicable
 torch.set_float32_matmul_precision("high")
 
@@ -45,16 +48,14 @@ torch.set_float32_matmul_precision("high")
 device = device_setting(verbose=True)
 # device = torch.device("cpu")
 
+# ------------------------------
+# llm model and tokenizer download
+# ------------------------------
 # model type
 model_type = "reasoning"
 
-# ------------------------------
-# llm model download
-# ------------------------------
 # llm model path
 model_dir = Path(f"./downloaded_models/qwen3_model/Qwen3-0.6B-{model_type}-for-reasoning")
-llm_model_path = model_dir.joinpath(f"qwen3-0.6B-{model_type}.pth")
-tokenizer_path = model_dir.joinpath(f"tokenizer-{model_type}.json")
 
 # llm model download
 llm_model_path, tokenizer_path = download_from_huggingface(
@@ -66,70 +67,73 @@ llm_model_path, tokenizer_path = download_from_huggingface(
 )
 
 # ------------------------------
-# model
+# llm model and tokenizer
 # ------------------------------
 # llm model config
 QWEN3_CONFIG = get_cfgs(CHOOSE_MODEL="0.6B")
-
 # llm model
 model = Model(QWEN3_CONFIG)
-
 # load model weights
 model.load_state_dict(torch.load(llm_model_path))
-
 # move model to device
 model.to(device)
-
 # model compile
 major, minor = map(int, torch.__version__.split(".")[:2])
 if torch.cuda.is_available():
-    # if (major, minor) > (2, 8):
-    #     # This avoids retriggering model recompilations in PyTorch 2.8 and newer
-    #     # if the model contains code like self.pos = self.pos + 1
-    #     torch._dynamo.config.allow_unspec_int_on_nn_module = True
+    if (major, minor) > (2, 8):
+        # This avoids retriggering model recompilations in PyTorch 2.8 and newer
+        # if the model contains code like self.pos = self.pos + 1
+        torch._dynamo.config.allow_unspec_int_on_nn_module = True
     model_compiled = torch.compile(model)
 
-# ------------------------------
 # tokenizer
-# ------------------------------
 tokenizer = Qwen3Tokenizer(tokenizer_file_path=tokenizer_path)
 
 # ------------------------------
 # model inference
 # ------------------------------
-# prompt
-prompt = (
-    r"If $a+b=3$ and $ab=\tfrac{13}{6}$, "
-    r"what is the value of $a^2+b^2$?"
+def generate_qwen3_stream_concat(model, tokenizer, prompt, device, max_new_tokens=521, verbose=False, display=False):
+    # input prompt token ids
+    input_ids = torch.tensor(tokenizer.encode(prompt), device=device).unsqueeze(0)
+    # inference
+    generated_ids = []
+    for token in generate_qwen3_stream(
+        model=model,
+        token_ids=input_ids,
+        max_new_tokens=max_new_tokens,
+        context_length=QWEN3_CONFIG.context_length,
+        temperature=0.0,
+        top_k=None,
+        eos_token_id=tokenizer.eos_token_id,
+        use_cache=True,
+    ):
+        next_token_id = token.squeeze(0)
+        generated_ids.append(next_token_id.item())
+        if verbose:
+            print(tokenizer.decode(next_token_id.tolist()), end="", flush=True)
+    # inference result 
+    generated_tokens = tokenizer.decode(generated_ids)
+    if display:
+        from IPython.display import Latex, Math, display
+        display(Latex(generated_tokens))
+        # display(Math(r"\dfrac{14}{3}"))
+    
+    return generated_tokens
+
+
+inference_res = generate_qwen3_stream_concat(
+    model=model, 
+    tokenizer=tokenizer, 
+    prompt=(
+        r"If $a+b=3$ and $ab=\tfrac{13}{6}$, "
+        r"what is the value of $a^2+b^2$?"
+    ), 
+    device=device, 
+    max_new_tokens=521, 
+    verbose=True, 
+    display=False,
 )
-input_token_ids_tensor = torch.tensor(tokenizer.encode(prompt), device=device).unsqueeze(0)
-
-# model inference
-all_token_ids = []
-for token in generate_qwen3_stream(
-    model=model,
-    token_ids=input_token_ids_tensor,
-    max_new_tokens=521,
-    context_length=QWEN3_CONFIG.context_length,
-    temperature=0.0,
-    top_k=None,
-    eos_token_id=tokenizer.eos_token_id,
-    use_cache=True,
-):
-    token_id = token.squeeze(0)
-    decoded_id = tokenizer.decode(token_id.tolist())
-    print(decoded_id, end="", flush=True)
-    all_token_ids.append(token_id)
-
-all_tokens = tokenizer.decode(all_token_ids)
-
-# from IPython.display import Latex, Math, display
-# display(Latex(all_tokens))
-# display(Math(r"\dfrac{14}{3}"))
-
-
-
-
+print(inference_res)
 
 
 
