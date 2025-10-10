@@ -31,6 +31,14 @@ from sympy.core.sympify import SympifyError
 from sympy import simplify
 from datasets import load_dataset
 
+from qwen3_reasoning.llm_basic.qwen3_06B import (
+    device, 
+    QWEN3_CONFIG,
+    model, 
+    tokenizer,
+)
+from layers.inference import generate_qwen3_stream
+
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 os.environ['LOG_NAME'] = LOGGING_LABEL

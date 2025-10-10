@@ -52,7 +52,7 @@ device = device_setting(verbose=True)
 # llm model and tokenizer download
 # ------------------------------
 # model type
-model_type = "reasoning"
+model_type = "base"
 
 # llm model path
 model_dir = Path(f"./downloaded_models/qwen3_model/Qwen3-0.6B-{model_type}-for-reasoning")
@@ -111,7 +111,7 @@ def generate_qwen3_stream_concat(model, tokenizer, prompt, device, max_new_token
         generated_ids.append(next_token_id.item())
         if verbose:
             print(tokenizer.decode(next_token_id.tolist()), end="", flush=True)
-    # inference result 
+    # inference result
     generated_tokens = tokenizer.decode(generated_ids)
     if display:
         from IPython.display import Latex, Math, display
@@ -121,19 +121,19 @@ def generate_qwen3_stream_concat(model, tokenizer, prompt, device, max_new_token
     return generated_tokens
 
 
-inference_res = generate_qwen3_stream_concat(
-    model=model, 
-    tokenizer=tokenizer, 
-    prompt=(
-        r"If $a+b=3$ and $ab=\tfrac{13}{6}$, "
-        r"what is the value of $a^2+b^2$?"
-    ), 
-    device=device, 
-    max_new_tokens=521, 
-    verbose=True, 
-    display=False,
-)
-print(inference_res)
+# inference_res = generate_qwen3_stream_concat(
+#     model=model, 
+#     tokenizer=tokenizer, 
+#     prompt=(
+#         r"If $a+b=3$ and $ab=\tfrac{13}{6}$, "
+#         r"what is the value of $a^2+b^2$?"
+#     ), 
+#     device=device, 
+#     max_new_tokens=521, 
+#     verbose=True, 
+#     display=False,
+# )
+# logger.info(inference_res)
 
 
 
