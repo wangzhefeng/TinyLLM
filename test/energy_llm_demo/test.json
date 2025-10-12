@@ -1,0 +1,31 @@
+{
+    "resp_id": "66666666666",
+    "node_id": "3da72e052a0b48759b0f4633df42235a",
+    "node_name": "深圳某工业设备新材料股份有限公 司",
+    "command_value": 1231,
+    "weights": {
+        "weather": 11.09941,
+        "ch_water_outlet_temperature": -8.03934,
+        "bias": 305.27801
+    },
+    "init_value": {
+        "weather": 22,
+        "ch_water_outlet_temperature": 15,
+        "fixed_load": 1289
+    },
+    "x": [
+        "ch_water_outlet_temperature"
+    ]
+}
+
+{
+    "resp_id": "1710468268001",
+    "node_id": "176c0991f24e30c2b25a9dbf1185b7b9",
+    "node_name": "深圳泰伦广场A座",
+    "command_value": 620.0,
+    "weights": "{"weather":2.70178,"ch_water_outlet_temperature":-1.95691,"bias":74.30967}",
+    "init_value": "{"ch_water_outlet_temperature":0.0,"fixed_load":0.0,"weather":0.0}",
+    "x": [
+        "ch_water_outlet_temperature"
+    ]
+}
