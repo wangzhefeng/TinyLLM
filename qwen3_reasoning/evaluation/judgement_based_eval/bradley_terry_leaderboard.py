@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : leaderboards.py
+# * File        : bradley_terry_leaderboard.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
-# * Date        : 2025-10-05
-# * Version     : 1.0.100516
+# * Date        : 2025-10-12
+# * Version     : 1.0.101216
 # * Description : description
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
