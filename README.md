@@ -3,77 +3,66 @@
 
 
 - [Data Preprocessing](#data-preprocessing)
-
-  - [数据形式](#%E6%95%B0%E6%8D%AE%E5%BD%A2%E5%BC%8F)
-  - [Filtering](#filtering)
-  - [Synthetic Data](#synthetic-data)
-  - [Mixing](#mixing)
-
+    - [数据形式](#数据形式)
+    - [Filtering](#filtering)
+    - [Synthetic Data](#synthetic-data)
+    - [Mixing](#mixing)
 - [Pre-training](#pre-training)
-- [LLM 架构](#llm-%E6%9E%B6%E6%9E%84)
-
-  - [Tokenizers](#tokenizers)
-  - [Embeddings](#embeddings)
-  - [Transformer](#transformer)
-
-    - [Attention](#attention)
-
-      - [Self-Attention](#self-attention)
-      - [Multi-Head Attention(MHA)](#multi-head-attentionmha)
-      - [Grouped-Query Attention(GQA)](#grouped-query-attentiongqa)
-      - [Multi-Query Attention(MQA)](#multi-query-attentionmqa)
-
-    - [Transformer Block](#transformer-block)
-
-  - [Transformer 变体](#transformer-%E5%8F%98%E4%BD%93)
-
-    - [GPT](#gpt)
-    - [Llama](#llama)
-    - [DeepSeek](#deepseek)
-
-  - [计算优化](#%E8%AE%A1%E7%AE%97%E4%BC%98%E5%8C%96)
-
-- [LLM 内容](#llm-%E5%86%85%E5%AE%B9)
-
-  - [Tutorial](#tutorial)
-
-    - [Pretraining](#pretraining)
-
-      - [Transformer](#transformer-1)
-      - [MoE](#moe)
-
-    - [Finetuning](#finetuning)
-
-      - [GRPO](#grpo)
-
-    - [Model Evaluation](#model-evaluation)
-
-      - [Instruction Follow Finetune](#instruction-follow-finetune)
-
-
-  - [Usage](#usage)
-
-    - [Pretraining](#pretraining-1)
-    - [Finetuning](#finetuning-1)
-    - [Agent](#agent)
-
-  - [others](#others)
-
-    - [KV Cache](#kv-cache)
-
-
-- [LLM 推理](#llm-%E6%8E%A8%E7%90%86)
-
-  - [Inference Compute Scaling](#inference-compute-scaling)
-  - [Reinforcement Learning](#reinforcement-learning)
-  - [Knowledge Distillation](#knowledge-distillation)
-
-- [技巧](#%E6%8A%80%E5%B7%A7)
-- [其他资料](#%E5%85%B6%E4%BB%96%E8%B5%84%E6%96%99)
-
+- [LLM 架构](#llm-架构)
+    - [Tokenizers](#tokenizers)
+    - [Embeddings](#embeddings)
+    - [Transformer](#transformer)
+        - [Attention](#attention)
+            - [Self-Attention](#self-attention)
+            - [Multi-Head Attention(MHA)](#multi-head-attentionmha)
+            - [Grouped-Query Attention(GQA)](#grouped-query-attentiongqa)
+            - [Multi-Query Attention(MQA)](#multi-query-attentionmqa)
+        - [Transformer Block](#transformer-block)
+    - [Transformer 变体](#transformer-变体)
+        - [GPT](#gpt)
+        - [Llama](#llama)
+        - [DeepSeek](#deepseek)
+    - [计算优化](#计算优化)
+- [LLM 内容](#llm-内容)
+    - [Tutorial](#tutorial)
+        - [Pretraining](#pretraining)
+            - [Transformer](#transformer-1)
+            - [MoE](#moe)
+        - [Finetuning](#finetuning)
+            - [GRPO](#grpo)
+        - [Model Evaluation](#model-evaluation)
+            - [Instruction Follow Finetune](#instruction-follow-finetune)
+    - [Usage](#usage)
+        - [Pretraining](#pretraining-1)
+        - [Finetuning](#finetuning-1)
+        - [Agent](#agent)
+    - [others](#others)
+        - [KV Cache](#kv-cache)
+- [LLM 推理](#llm-推理)
+    - [Inference Compute Scaling](#inference-compute-scaling)
+    - [Reinforcement Learning](#reinforcement-learning)
+    - [Knowledge Distillation](#knowledge-distillation)
+- [技巧](#技巧)
+- [其他资料](#其他资料)
 
 </p></details><p></p>
 
+
+
+
+ ███████████  ███                        █████       █████       ██████   ██████
+░█░░░███░░░█ ░░░                        ░░███       ░░███       ░░██████ ██████ 
+░   ░███  ░  ████  ████████   █████ ████ ░███        ░███        ░███░█████░███ 
+    ░███    ░░███ ░░███░░███ ░░███ ░███  ░███        ░███        ░███░░███ ░███ 
+    ░███     ░███  ░███ ░███  ░███ ░███  ░███        ░███        ░███ ░░░  ░███ 
+    ░███     ░███  ░███ ░███  ░███ ░███  ░███      █ ░███      █ ░███      ░███ 
+    █████    █████ ████ █████ ░░███████  ███████████ ███████████ █████     █████
+   ░░░░░    ░░░░░ ░░░░ ░░░░░   ░░░░░███ ░░░░░░░░░░░ ░░░░░░░░░░░ ░░░░░     ░░░░░ 
+                               ███ ░███                                         
+                              ░░██████                                          
+                               ░░░░░░                                           
+
+from [ASCII Banner](https://manytools.org/hacker-tools/ascii-banner/)
 
 # Data Preprocessing
 
