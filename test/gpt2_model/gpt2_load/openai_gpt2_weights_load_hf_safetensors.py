@@ -136,7 +136,7 @@ def download_and_load_gpt2_st(gpt_model_names, pretrained_model):
 
 # 测试代码 main 函数
 def main():
-    from models.gpt2_124M import Model
+    from models.gpt2.gpt2_124M import Model
     from layers.inference import generate
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
     from utils.device import device_setting

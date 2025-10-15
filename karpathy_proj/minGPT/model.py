@@ -36,7 +36,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from todo.miniGPT.minigpt_utils import CfgNode as CN
+from karpathy_proj.miniGPT.minigpt_utils import CfgNode as CN
 from utils.log_util import logger
 
 # global variable

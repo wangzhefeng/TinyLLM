@@ -29,7 +29,7 @@ from layers.tokenizers.tokenization import (
     text_to_token_ids,
     token_ids_to_text,
 )
-from models.gpt2_124M import Model
+from models.gpt2.gpt2_124M import Model
 from utils.llm.calc_loss import calc_loss_loader
 
 # global variable

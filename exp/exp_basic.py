@@ -15,6 +15,8 @@
 import os
 import sys
 from pathlib import Path
+
+from models.gpt2 import gpt2_124M
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
@@ -23,7 +25,6 @@ import torch
 import thunder
 
 from models import (
-    gpt2_124M, 
     llama2, 
     llama3_8B,
 )

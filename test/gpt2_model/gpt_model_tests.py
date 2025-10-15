@@ -22,7 +22,7 @@ if ROOT not in sys.path:
 import torch
 
 from layers.transformer_block import TransformerBlockGPT2_124M
-from models.gpt2_124M import Model
+from models.gpt2.gpt2_124M import Model
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

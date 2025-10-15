@@ -29,3 +29,7 @@ $ llama model download --source meta --model-id MODEL_ID
 ```
 
 当脚本需要输入唯一的字定义 URL 时，粘贴 URL `.env/Llama_model_url`。
+
+# Llama 资料
+
+* [jzhang38/TinyLlama](https://github.com/jzhang38/TinyLlama)

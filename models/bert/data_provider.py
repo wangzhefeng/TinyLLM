@@ -1,14 +1,63 @@
-"""
+# -*- coding: utf-8 -*-
 
-"""
+# ***************************************************
+# * File        : data_provider.py
+# * Author      : Zhefeng Wang
+# * Email       : zfwang7@gmail.com
+# * Date        : 2025-10-14
+# * Version     : 1.0.101417
+# * Description : description
+# * Link        : link
+# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
+# ***************************************************
 
+# python libraries
 import os
+import sys
+from pathlib import Path
+ROOT = str(Path.cwd())
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 import re
 import random
 from tqdm import tqdm
 from typing import List
 
 import pandas as pd
+
+from utils.log_util import logger
+
+# global variable
+LOGGING_LABEL = Path(__file__).name[:-3]
+
+
+def data_loader(data_dir: str, output_file: str):
+    # data dir
+    data_dir = Path(data_dir)
+    # output file path
+    output_file_path = data_dir.joinpath(output_file)
+    # data create
+    data = []
+    for file_path in data_dir.glob("*.txt"):
+        # field id
+        file_id = int(file_path.name.split(".")[0])
+        # field content: text data read
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read().strip()
+        # text data collect
+        data.append({"id": file_id, "content": content})
+    # text data to dataframe
+    df = pd.DataFrame(data)
+    df = df.sort_values(by="id").reset_index(drop=True)
+    if not output_file_path.exists():
+        df.to_csv(output_file_path, encoding="utf-8", index=False)
+        logger.info(f"{output_file} have created.")
+
+    return df
+
+
+class DataProcess:
+    pass
 
 
 def read_data(data_dir, file_path):
@@ -156,6 +205,18 @@ def build_word_2_index(data_dir: str, index_2_word_file: str="index_2_word.txt",
         return word_2_index, index_2_word
 
 
-all_text = read_data()
-build_task2_dataset(all_text)
-word_2_index = build_word_2_index(all_text)
+
+
+# 测试代码 main 函数
+def main():
+    data_dir = "./dataset/THUCNews"
+    output_file = "THUCNews.csv"
+
+    data_loader(data_dir, output_file)
+    
+    all_text = read_data(data_dir, file_path=output_file)
+    build_task2_dataset(all_text)
+    word_2_index = build_word_2_index(all_text)
+
+if __name__ == "__main__":
+    main()

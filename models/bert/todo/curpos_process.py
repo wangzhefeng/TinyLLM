@@ -74,6 +74,5 @@ def main():
 
     # 对训练数据集进行分词处理
     
-
 if __name__ == "__main__":
     main()

@@ -24,7 +24,7 @@ import time
 
 import torch
 
-from models.gpt2_124M import Model
+from models.gpt2.gpt2_124M import Model
 from layers.tokenizers.tokenization import (
     text_to_token_ids, 
     token_ids_to_text,
