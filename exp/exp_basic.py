@@ -22,9 +22,8 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch
-import thunder
 
-from models import (
+from models.llama import (
     llama2, 
     llama3_8B,
 )
@@ -51,15 +50,17 @@ class Exp_Basic:
         self.model = self._build_model()
         # model compile
         major, minor = map(int, torch.__version__.split(".")[:2])
-        if self.args.compile and self.args.gpu_type == "cuda":
+        if getattr(self.args, "compile", False) and self.args.gpu_type == "cuda":
             if (major, minor) > (2, 8):
                 # This avoids retriggering model recompilations in PyTorch 2.8 and newer
                 # if the model contains code like self.pos = self.pos + 1
                 torch._dynamo.config.allow_unspec_int_on_nn_module = True
-            if args.compile_type == "torch":
+            if getattr(self.args, "compile_type", "torch") == "torch":
                 self.model = torch.compile(self.model)
-            elif args.compile_type == "thunder":
-                self.model = thunder.compile(self.model) 
+            elif getattr(self.args, "compile_type", "torch") == "thunder":
+                # lightning-thunder is optional, import lazily
+                import thunder
+                self.model = thunder.compile(self.model)
         # model device and dtype
         self.model.to(self.device).to(args.dtype)
 
@@ -74,7 +75,8 @@ class Exp_Basic:
         # GPU type: "cuda", "mps", "xpu"
         self.args.gpu_type = self.args.gpu_type.lower().strip()
         # GPU device ids list(CUDA_VISIBLE_DEVICES)
-        self.args.device_ids = [int(id_) for id_ in os.environ["CUDA_VISIBLE_DEVICES"].replace(" ", "").split(",")]
+        visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "").replace(" ", "")
+        self.args.device_ids = [int(id_) for id_ in visible_devices.split(",") if id_] or [0]
         # device
         if self.args.use_gpu and self.args.gpu_type == "cuda":
             if self.args.use_dp:

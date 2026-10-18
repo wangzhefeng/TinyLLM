@@ -36,11 +36,11 @@ from layers.tokenizers.tokenization import (
 # model
 from exp.exp_basic import Exp_Basic
 # training
-from utils.llm.optimizer import select_optimizer
-from utils.llm.criterion import select_criterion
-from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.llm.learning_rate import adjust_learning_rate
-from utils.llm.early_stopping import EarlyStopping
+from utils.optimizer import select_optimizer
+from utils.criterion import select_criterion
+from utils.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.learning_rate import adjust_learning_rate
+from utils.early_stopping import EarlyStopping
 from utils.plot_losses import plot_losses_llm, plot_losses
 from layers.inference import generate
 # utils
@@ -470,7 +470,7 @@ class Model_Pretrain(Exp_Basic):
 
     def inference(self, epoch, setting: str, load: bool=False, 
                   start_context: str="Every effort moves you", eos_id: int=50256,
-                  temperature: float=0.0, top_k: float=1.0):
+                  temperature: float=0.0, top_k: int=1):
         """
         model inference
         """

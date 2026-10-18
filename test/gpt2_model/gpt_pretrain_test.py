@@ -30,7 +30,7 @@ from layers.tokenizers.tokenization import (
     token_ids_to_text,
 )
 from models.gpt2.gpt2_124M import Model
-from utils.llm.calc_loss import calc_loss_loader
+from utils.calc_loss import calc_loss_loader
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

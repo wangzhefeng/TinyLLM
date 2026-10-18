@@ -182,7 +182,6 @@ minbpe/
 wandb/
 .DS_Store
 localtest/
-utils/
 tokenizers/
 checkpoints/
 .chainlit/
