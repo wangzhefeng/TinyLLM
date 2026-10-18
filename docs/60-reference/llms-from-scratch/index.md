@@ -1,11 +1,12 @@
 # LLMs-from-scratch 分析
 
 > 概要、版本快照与逐章/覆盖度/缺口的分页入口。
+> **历史快照**：本分析基于 2026-10-02 上游快照与合并前的 TinyLLM；当前架构以 [architecture.md](../../00-overview/architecture.md) 为准，覆盖度结论仅作历史参考。
 
-> **分析对象**：<https://github.com/rasbt/LLMs-from-scratch>  
-> **代码快照**：`main` @ `cdbd33e`（2026-10-02），360 个受版本控制文件、68 个 notebook、42 个章节 bonus 子目录  
-> **对照项目**：`/Users/wangzf/projects/llm_proj/TinyLLM`  
-> **分析日期**：2026-10-18  
+> **分析对象**：<https://github.com/rasbt/LLMs-from-scratch>
+> **代码快照**：`main` @ `cdbd33e`（2026-10-02），360 个受版本控制文件、68 个 notebook、42 个章节 bonus 子目录
+> **对照项目**：`/Users/wangzf/projects/llm_proj/TinyLLM`
+> **分析日期**：2026-10-18
 > **结论口径**：以“项目主框架内是否有可运行、可复用、与仓库内容等价的实现”为准，不以 README 中列出的链接为准。
 >
 > **目录说明（2026-10-18 二次整理后）**：本文写作时 `test/llmbox`、`test/minimind`、`apps/`、`distributed_training/` 等仍在主目录。现在仓库已重构为 `pre_training/`、`post_training/`、`inference/` 三个域，并合并了原 `TinyLLMFinetuning`、`TinyLLMInference` 的内容；本文中的旧路径仅作历史参考，当前目录以 [`architecture.md`](../../00-overview/architecture.md) 为准；其中提到的 smolGPT / TinyLlama / MiniMind 参考副本已删除，见 [`reference-projects.md`](../../50-development/reference-projects.md)。
@@ -111,7 +112,5 @@
 - [Ch05](ch05.md)
 - [Ch06–07](ch06-07.md)
 - [附录 A–E、pkg、reasoning 子模块](appendices.md)
-- [TinyLLM 现状](status.md)
 - [覆盖度矩阵](matrix.md)
 - [缺口与落地路线](gaps.md)
-- [关键路径与参考链接](references.md)

@@ -52,3 +52,13 @@
 ### KV Cache
 
 - [图解 KV Cache：解锁 LLM 推理效率的关键](https://mp.weixin.qq.com/s/uWV56N-NeHA57_UeNDE67g)
+
+## 技巧
+
+1. 预训练 LLM 通常不使用 dropout。
+2. 现代 LLM 在 query/key/value 的 `nn.Linear` 中通常不使用 bias（与早期 GPT 不同）。
+
+## 延伸阅读
+
+- [The Big LLM Architecture Comparison](https://magazine.sebastianraschka.com/p/the-big-llm-architecture-comparison)
+- [Reasoning From Scratch ch01](https://mp.weixin.qq.com/s/zQUB9ZXqtSRGJU_YWMoMEw)

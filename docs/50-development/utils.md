@@ -26,8 +26,9 @@ utils/
 └── timestamp_utils.py  # unix 时间戳转换
 ```
 
-> 原先 `utils/llm/` 子包已扁平化到 `utils/` 下，import 路径由
-> `utils.llm.xxx` 改为 `utils.xxx`。
+> **迁移状态**：部分旧脚本仍使用 `utils.llm.xxx` 导入，但当前 `utils/` 下没有
+> `llm/` 子包；这些脚本属于迁移前遗留，需要改为 `utils.xxx` 或补兼容层。
+> 新增代码请直接使用上表的 `utils.<module>` 路径。
 
 ## 来源
 

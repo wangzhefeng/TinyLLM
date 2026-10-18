@@ -3,7 +3,7 @@
 > 所属：[TinyLLM Docs](../README.md) › [Development](index.md)
 
 本地数据统一放在根目录 `dataset/` 下，根 `.gitignore` 忽略整个目录，不进入 git。  
-三套旧项目数据的审计与清理记录见 [datasets-audit.md](datasets-audit.md)。
+清理结果见 [cleanup-log.md](cleanup-log.md)。
 
 ## 当前布局
 
@@ -48,8 +48,21 @@ dataset/
 - MMLU 的 `auxiliary_train`、IMDB 原始 `aclImdb`、DISC-Law QA 子集、CLUENER、旧 THUCNews 副本已删除。
 - 数据不提交 git；迁移/备份时单独处理。
 
+## MMLU 数据
+
+- 位置：`dataset/evaluation/mmlu/{dev,val,test}/`，每套 57 个学科 CSV。
+- `dev` 用于 few-shot priming，`test` 用于评测。
+- 来源：Hendrycks et al., *Measuring Massive Multitask Language Understanding*, ICLR 2021；另包含 ETHICS 相关引用。
+- 原 `auxiliary_train`（RACE/ARC/OBQA 等）已删除；它用于辅助训练，不是评测必需。
+
+## 清理摘要
+
+- 三套旧目录 `dataset/tinyllm*` 从约 76 GB 清理到约 5.8 GB。
+- 删除：重复压缩包、HF arrow cache、MMLU auxiliary_train、IMDB 原始 `aclImdb`、DISC-Law QA 子集、CLUENER、通用 SFT 大语料、mobvoi 原始 JSONL/tar。
+- 保留：`pretrain_data.csv`、THUCNews、SMS、IMDB CSV、sentiment、医疗/数学/SQL/法律 SFT、DPO/GRPO、MMLU、MATH-500。
+
 ## 相关
 
-- [数据集审计](datasets-audit.md)
-- [MMLU 来源说明](datasets-mmlu.md)
+- [清理记录](cleanup-log.md)
 - [预训练数据](../10-pretraining/data.md)
+- [项目架构](../00-overview/architecture.md)
