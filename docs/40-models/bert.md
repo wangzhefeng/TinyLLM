@@ -19,25 +19,36 @@
 
 ## 目录
 
+BERT 代码已按三域架构分布，模型本体只保留在 `models/bert/`：
+
 ```text
+run_bert.py                              # 预训练入口（根目录）：训练循环 / 验证 / 早停 / checkpoint
+
 models/bert/
-├── model.py              # 从零实现 BERT：Embedding / Encoder / Pooler / MLM+NSP
-├── data_loader.py        # BertDataset（input_ids / segment_ids / mask / label）
-├── data_processor.py     # 文本清洗、正负样本构造、词表构建
-├── sentiment/            # 下游情感分类实验（HuggingFace BERT）
-│   ├── model.py          # BertClassifier（BERT + 分类头）
-│   ├── data.py           # 数据（占位）
-│   └── run.py            # 训练入口（占位）
-├── experiments/          # curpos / tokenizer / data_load 等实验性代码
-└── README.md
+└── model.py                             # 从零实现 BERT：Embedding / Encoder / Pooler / MLM+NSP
+
+data_provider/bert/                      # 数据层（共享数据目录）
+├── data_loader.py                       # BertDataset（input_ids / segment_ids / mask / label）
+└── data_processor.py                    # 文本清洗、正负样本构造、词表构建
+
+pre_training/experiments/bert/           # 预训练实验：corpus 加载 / WordPiece 训练 / 编码
+post_training/sft/bert_sentiment/        # 下游情感分类（微调从零 BERT 的 checkpoint）
+inference/examples/bert_fill_mask.py     # 推理示例：fill-mask（MLM）与 NSP 判定
+
+tests/unit/
+├── test_bert.py                         # 模型前向 / loss 反传
+└── test_bert_training.py                # run_bert 训练流水线、checkpoint 保存/加载
 ```
 
 ## 从零 BERT 的结构
 
-- `BertEmbedding`：token embedding + position embedding + segment embedding。
-- `BertEncoder`：多头自注意力 + Add & Norm + FFN。
+- `BertEmbedding`：token + position + segment 三种嵌入相加，LayerNorm + Dropout。
+- `MultiHeadAttention`：按 hidden 维切分 head，`scores / sqrt(head_dim)`，padding mask（从 input_ids 推导），输出投影。
+- `BertEncoder`：标准 Post-LN 结构，`LayerNorm(x + sublayer(x))`；FFN 激活为 GELU。
 - `BertPooler`：取 `[CLS]` 表示。
-- `Model`：在 `BertModel` 上增加 MLM 头（`cls_mask`）与 NSP 头（`cls_next`），训练时返回 `loss = loss_mask + loss_next`。
+- `MaskedLMHead`：transform（Dense+GELU+LayerNorm）+ decoder，decoder 与词嵌入**权重共享**。
+- `Model`：MLM 头（`cls_mask`）+ NSP 头（`cls_next`），训练时返回 `loss = loss_mask + loss_next`。
+- 参数初始化：BERT 标准 `N(0, 0.02)`（`initializer_range`）。权重共享后必须显式初始化，否则 nn.Embedding 默认的 N(0,1) 会让 MLM logits 方差过大、初始 loss 远高于 ln(vocab_size)。
 
 ## 快速验证
 
@@ -59,11 +70,28 @@ model = Model(config)
 - 传入 `batch_mask_val` 与 `batch_label` 时返回 loss；
 - 否则返回 `(MLM 预测, NSP 预测)`。
 
+## 预训练入口（run_bert.py）
+
+数据：`dataset/finetuning/THUCNews/`（`task2.csv` 句子对 + `index_2_word.txt` 词表，由 `data_processor.py` 生成）。
+
+```bash
+# 快速验证（2 千条样本、小模型、CPU 可跑）
+python run_bert.py --max_samples 2000 --train_epochs 2 --hidden_size 64 --feed_num 128
+
+# 完整训练（默认 hidden_size=128 / 2 层 / 4 头 / batch=32 / 10 epochs）
+python run_bert.py
+```
+
+- 流程：加载词表与 `task2.csv` → 末尾 `--dev_size` 条作验证集 → AdamW + 线性 warmup/衰减 → 训练（MLM+NSP 联合 loss）→ 每 epoch 验证输出 `dev loss / acc_mask / acc_next`。
+- 早停按 dev loss 保存最优 checkpoint 到 `--checkpoints`（默认 `./checkpoints/bert/`，gitignored），结束时另存 `bert_pretrain_final.pt`（含 config，可用于恢复模型）。
+- `--resume <ckpt>` 可加载已有权重继续训练。
+
 ## 说明
 
-- `sentiment/` 使用 HuggingFace `transformers.BertModel`，与从零实现是两条线，适合对照学习。
-- `sentiment/run.py`、`sentiment/data.py` 仍是占位，后续补数据与训练循环。
-- `experiments/` 是原 `todo/` 子目录整理出的实验代码，接口尚未统一。
+- `post_training/sft/bert_sentiment/` 是下游情感分类微调：复用 `run_bert.py` 的 checkpoint 作 backbone 加分类头，数据为 `dataset/finetuning/sentiment/`（中文评论二分类）。支持三种对照模式：`--init_mode pretrained`（默认，验证预训练价值）、`--init_mode scratch`（随机初始化对照）、`--freeze_backbone`（冻结 backbone 只训分类头）。入口：`python post_training/sft/bert_sentiment/run.py --help`。
+- `pre_training/experiments/bert/` 是语料加载 / WordPiece 训练 / 编码的实验脚本，导入已修复（`tokenizers`/`transformers`），`main()` 中的路径仍需按本机调整。
+- 推理：`inference/examples/bert_fill_mask.py` 加载 `run_bert.py` 的 checkpoint 做 fill-mask 与 NSP，输入无需手动 padding（模型内部从 input_ids 推导 padding mask）。
+- v2 修正记录（2025-10-18，对照标准 BERT）：多头注意力由「按序列维切分」改为按 hidden 维切分并补 scaling/padding mask/输出投影；`AddNorm` 改为标准残差+LayerNorm；FFN 由 ReLU 改为 GELU；MLM 头补 transform 并与词嵌入权重共享；增加 `N(0, 0.02)` 参数初始化。
 
 ---
 
@@ -111,6 +139,9 @@ BERT 模型广泛应用于各种自然语言处理任务，如文本分类、情
 ## 问题 1: BERT 与微调的关系
 
 ## 问题 2: BERT 与 Embedding 的关系
+
+# 实验
+- [bert-experiments.md](bert-experiments.md)：v1→v2 修正对比、三模式微调对照、DAPT 结论。
 
 # 参考
 

@@ -22,7 +22,7 @@ inference/
 ├── evaluation/  # 指令回答评测
 ├── apps/        # Chainlit UI
 ├── loaders/     # gpt2 / qwen3 / gemma3 / llama
-├── examples/    # GPT-2 生成示例
+├── examples/    # GPT-2 生成示例、BERT fill-mask 示例
 └── scripts/     # UI / 维护脚本
 ```
 
@@ -31,6 +31,7 @@ inference/
 ```bash
 bash inference/scripts/run_app_own.sh
 python inference/loaders/qwen3/qwen3_06B_kvcache_load.py
+python inference/examples/bert_fill_mask.py --text1 '今天天气[MASK]好'
 ```
 
 ## 共享原语

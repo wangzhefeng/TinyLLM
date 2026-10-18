@@ -26,6 +26,9 @@ source .venv/bin/activate
 # 预训练主入口
 python run_gpt2_124M.py --help
 
+# BERT 预训练入口（MLM + NSP）
+python run_bert.py --help
+
 # 单元测试
 python -m unittest discover -s tests -v
 ```
@@ -41,11 +44,13 @@ TinyLLM/
 ├── models/              # gpt2 / llama / qwen3 / gemma3 / bert / deepseek
 ├── layers/              # attention / block / norm / RoPE / MoE / KV cache / tokenizers
 ├── config/              # 模型配置
+├── data_provider/       # 共享数据层（bert 等）
 ├── utils/               # 训练与日志工具
 ├── dataset/             # 本地数据（gitignored）
 ├── tests/               # 单元测试
 ├── docs/                # 全部文档
-├── run_gpt2_124M.py     # 预训练入口
+├── run_gpt2_124M.py     # GPT-2 预训练入口
+├── run_bert.py          # BERT 预训练入口（MLM + NSP）
 └── AGENTS.md            # 文档/修改规则
 ```
 
@@ -62,8 +67,8 @@ TinyLLM/
 
 ## 当前状态
 
-- 预训练主链路：`run_gpt2_124M.py` + `pre_training/experiments/`
-- 单元测试：24 个（`tests/`）
+- 预训练主链路：`run_gpt2_124M.py` + `pre_training/experiments/`；BERT 预训练：`run_bert.py` + `models/bert/`
+- 单元测试：26 个（`tests/`）
 - 历史参考：`docs/60-reference/`（LLMs-from-scratch 分析、迁移记录）
 - 数据说明：`docs/50-development/datasets.md`
 

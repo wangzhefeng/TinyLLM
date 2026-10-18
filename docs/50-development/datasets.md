@@ -18,7 +18,7 @@ dataset/
 │   ├── THUCNews/                    # CSV、text_data、task2.csv、index_2_word.txt
 │   ├── sms_spam_collection/ + sms_spam_collection.zip
 │   ├── imdb_classification/         # IMDB Dataset.csv
-│   ├── sentiment.zip
+│   ├── sentiment/ + sentiment.zip     # 中文情感分类（text\tlabel，train/valid/test）
 │   ├── medical/AI-ModelScope/       # 医疗 reasoning SFT
 │   ├── math/{orca,gsm8k}/
 │   ├── sql/SQL-Create-Context-SFT/
@@ -35,7 +35,8 @@ dataset/
 
 | 代码 | 期望路径 |
 |---|---|
-| `models/bert/data_processor.py` | `dataset/finetuning/THUCNews/task2.csv`、`index_2_word.txt` |
+| `data_provider/bert/data_processor.py` | `dataset/finetuning/THUCNews/task2.csv`、`index_2_word.txt` |
+| `post_training/sft/bert_sentiment/` | `dataset/finetuning/sentiment/sentiment.{train,valid,test}.data` |
 | `post_training/sft/data_provider/text_clf/data_config.py` | `dataset/finetuning/sms_spam_collection[.zip]` |
 | `post_training/peft/model_peft/deepseek_lora/` | `dataset/finetuning/medical/AI-ModelScope/...` |
 | `post_training/preference/model_rlhf/grpo/qwen_gsm8k_grpo/` | `dataset/finetuning/math/gsm8k/...` |

@@ -8,6 +8,8 @@
 |---|---|
 | `pre_training/data/` | [10-pretraining/data.md](../10-pretraining/data.md)、[datasets](../50-development/datasets.md) |
 | `pre_training/experiments/`、`run_gpt2_124M.py` | [10-pretraining/training.md](../10-pretraining/training.md) |
+| `run_bert.py`、`data_provider/bert/`、`pre_training/experiments/bert/`、`inference/examples/bert_fill_mask.py` | [40-models/bert.md](../40-models/bert.md) |
+| `post_training/sft/bert_sentiment/` | [20-post-training/finetuning/index.md](../20-post-training/finetuning/index.md)、[40-models/bert.md](../40-models/bert.md) |
 | `pre_training/examples/` | [10-pretraining/examples.md](../10-pretraining/examples.md) |
 | `pre_training/references/`、`pre_training/legacy/` | [10-pretraining/extras.md](../10-pretraining/extras.md) |
 | `tools/distributed/` | [70-tools/distributed.md](../70-tools/distributed.md) |

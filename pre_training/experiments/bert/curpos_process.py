@@ -21,7 +21,7 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-from layers.tokenizers import BertTokenizerFast
+from transformers import BertTokenizerFast
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]
@@ -37,8 +37,8 @@ def encode_with_truncation(examples, tokenizer):
     return tokenizer(
         examples["text"],
         truncation=True,
-        padding="max_len",
-        max_len=512,
+        padding="max_length",
+        max_length=512,
         return_special_tokens_mask=True
     )
 

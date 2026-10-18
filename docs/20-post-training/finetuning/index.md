@@ -19,9 +19,11 @@
 python post_training/sft/run_sft.py --help
 python post_training/sft/run/run_gpt_instruction_sft.py
 python post_training/sft/run/run_gpt_clf_sft.py
+python post_training/sft/bert_sentiment/run.py --help   # BERT 情感分类微调
 ```
 
 ## 说明
 
 - 代码位于 `post_training/sft/`；共享数据加载在 `post_training/common/data_provider/`。
+- `post_training/sft/bert_sentiment/`：情感分类微调，复用从零 BERT 的预训练 checkpoint（支持 pretrained/scratch/freeze 对照），详见 [BERT](../../40-models/bert.md)。
 - 运行前设置 `PYTHONPATH="$PWD"`。

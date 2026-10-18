@@ -18,7 +18,7 @@ python -m unittest discover -s tests/unit -v
 
 | 目录 | 内容 |
 |---|---|
-| `unit/` | 单模块、无网络、秒级完成：attention、FFN、norm、tokenizer、GPT 前向/反向、BERT MLM/NSP、tools（profiling/checkpoint/data） |
+| `unit/` | 单模块、无网络、秒级完成：attention、FFN、norm、tokenizer、GPT 前向/反向、BERT MLM/NSP、BERT 训练流水线（run_bert）、BERT 情感分类（bert_sentiment）、tools（profiling/checkpoint/data） |
 | `integration/` | 跨模块或需要小模型生成的测试（后续补充） |
 
 ## 说明

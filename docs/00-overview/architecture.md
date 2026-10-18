@@ -16,11 +16,13 @@ TinyLLM/
 ├── models/                # 共享模型定义
 ├── layers/                # 共享层、tokenizer、生成原语
 ├── config/、utils/        # 共享配置与工具
+├── data_provider/         # 共享数据层（bert 等）
 ├── dataset/               # 本地数据（gitignored）
 ├── tests/                 # unit / integration
 ├── docs/                  # 文档中心
 ├── scripts/               # 仓库级工具脚本
-└── run_gpt2_124M.py       # 预训练入口
+├── run_gpt2_124M.py       # GPT-2 预训练入口
+└── run_bert.py            # BERT 预训练入口（MLM + NSP）
 ```
 
 ## 2. 三个主域与工具库

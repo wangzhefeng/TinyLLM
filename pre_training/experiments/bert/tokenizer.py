@@ -22,7 +22,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import json
 
-from layers.tokenizers import BertWordPieceTokenizer
+from tokenizers import BertWordPieceTokenizer
 
 # global variable
 LOGGING_LABEL = __file__.split('/')[-1][:-3]

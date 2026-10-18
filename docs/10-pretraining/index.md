@@ -18,6 +18,7 @@
 
 ```bash
 python run_gpt2_124M.py --help
+python run_bert.py --help            # BERT（MLM + NSP），见 [BERT](../40-models/bert.md)
 bash pre_training/scripts/pretrain_gpt2_124M.sh
 bash pre_training/scripts/pretrain_gpt2_124M_DP.sh
 bash pre_training/scripts/pretrain_gpt2_124M_DDP.sh
@@ -28,7 +29,7 @@ bash pre_training/scripts/pretrain_gpt2_124M_DDP.sh
 ```text
 pre_training/
 ├── data/            # 语料加载、Gutenberg
-├── experiments/     # 实验类、超参搜索
+├── experiments/     # 实验类、超参搜索、bert/ 预训练实验脚本
 ├── examples/        # 书本示例（非测试）
 ├── analysis/        # FLOPs 分析
 ├── references/      # nanotron 参考

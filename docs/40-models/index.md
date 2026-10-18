@@ -12,7 +12,7 @@
 | Llama 2/3 | [llama.md](llama.md) | `models/llama/` |
 | Qwen3 | [qwen3.md](qwen3.md) | `models/qwen3/` |
 | Gemma3 | [gemma3.md](gemma3.md) | `models/gemma3/` |
-| BERT | [bert.md](bert.md) | `models/bert/` |
+| BERT | [bert.md](bert.md)、[实验记录](bert-experiments.md) | `models/bert/` |
 | DeepSeek | [deepseek.md](deepseek.md) | `models/deepseek/` |
 | Tokenizer | [tokenizers.md](tokenizers.md) | `layers/tokenizers/` |
 
