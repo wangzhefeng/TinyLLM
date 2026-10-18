@@ -182,8 +182,8 @@ minbpe/
 wandb/
 .DS_Store
 localtest/
-tokenizers/
+/tokenizers/
 checkpoints/
 .chainlit/
-test/local_test/model.pth
+pretraining/examples/gpt2_book/model.pth
 *.pth

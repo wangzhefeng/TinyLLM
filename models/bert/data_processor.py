@@ -29,10 +29,10 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class DataProcessor:
-    def __init__(self, 
-                 data_dir: str="./dataset/THUCNews", 
-                 output_text_file: str="THUCNews.csv", 
-                 output_task_file: str="task2.csv", 
+    def __init__(self,
+                 data_dir: str="./dataset/finetuning/THUCNews",
+                 output_text_file: str="THUCNews.csv",
+                 output_task_file: str="task2.csv",
                  index_2_word_file: str="index_2_word.txt"):
         self.data_dir = Path(data_dir)
         # 原始语料处理后的 CSV 文件
@@ -41,7 +41,7 @@ class DataProcessor:
         self.output_task_file_path = self.data_dir.joinpath(output_task_file)
         # 构建 tokenizer 数据文件
         self.index_2_word_file_path = self.data_dir.joinpath(index_2_word_file)
-    
+
     def load_data(self):
         if not self.output_text_file_path.exists():
             # data source
@@ -84,7 +84,7 @@ class DataProcessor:
         pattern = r"[，、：；。？]"
         sp_text = re.split(pattern, text)
         new_sp_text = self.__resplit_text(sp_text)
-        
+
         return new_sp_text
 
     def __resplit_text(self, text_list):
@@ -112,7 +112,7 @@ class DataProcessor:
             else:
                 result.append(sentence[:-1] + "。")
                 sentence = text
-        
+
         return result
 
     def __build_neg_pos_data(self, text_list):
@@ -165,8 +165,8 @@ class DataProcessor:
                 all_text2.extend(text2)
                 all_label.extend(label)
             df = pd.DataFrame({
-                "text1": all_text1, 
-                "text2": all_text2, 
+                "text1": all_text1,
+                "text2": all_text2,
                 "label": all_label
             })
             df.to_csv(self.output_task_file_path, encoding="utf-8", index=False)

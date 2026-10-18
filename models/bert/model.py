@@ -118,9 +118,9 @@ class BertEmbedding(nn.Module):
     def forward(self, batch_idx, batch_seg_idx):
         # word embedding: batch_idx.shape: []
         word_emb = self.word_embeddings(batch_idx)
-        # position embedding: pos_idx.shape: []
-        pos_idx = torch.arange(0, self.position_embeddings.weight.data.shape[0], device=batch_idx.device)
-        pos_idx = pos_idx.repeat(batch_idx.shape[0], 1)
+        # position embedding: only use the actual sequence length, not max_position_embeddings
+        pos_idx = torch.arange(0, batch_idx.shape[1], device=batch_idx.device)
+        pos_idx = pos_idx.unsqueeze(0).expand(batch_idx.shape[0], -1)
         pos_emb = self.position_embeddings(pos_idx)
         # token embedding: batch_seg_idx.shape: []
         token_emb = self.token_type_embeddings(batch_seg_idx)

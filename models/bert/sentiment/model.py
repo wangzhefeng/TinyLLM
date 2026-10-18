@@ -26,8 +26,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from transformers import get_linear_schedule_with_warmup
-# from transformers import BertModel
+from transformers import BertModel, get_linear_schedule_with_warmup
 
 from utils.log_util import logger
 

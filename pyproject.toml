@@ -1,7 +1,7 @@
 [project]
 name = "tinyllm"
 version = "0.1.0"
-description = "TinyLLM: minimal LLM implementations and training experiments"
+description = "TinyLLM: pre-training, post-training/reasoning, and inference experiments"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [

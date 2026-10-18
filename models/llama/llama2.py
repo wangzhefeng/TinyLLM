@@ -42,7 +42,7 @@ class Model(nn.Module):
         self.final_norm = RMSNorm(cfg.embed_dim)
         # output head linear
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias = False, dtype=cfg.dtype)
-    
+
     def forward(self, in_idx):
         # in_idx size
         batch_size, seq_len = in_idx.shape
@@ -70,12 +70,12 @@ def main():
         text_to_token_ids,
         token_ids_to_text,
     )
-    from models.gpt2_model_cfg.model_cfgs import LLAMA2_CONFIG_7B
+    from config.llama.model_cfgs import LLAMA2_CONFIG_7B
     from utils.model_memory import model_memory_size
     from utils.device import device_setting
-    from utils.log_util import logger 
+    from utils.log_util import logger
 
-    # model params 
+    # model params
     LLAMA2_CONFIG_7B = DotDict(LLAMA2_CONFIG_7B)
 
     # model

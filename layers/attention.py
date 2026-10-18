@@ -1074,19 +1074,6 @@ class GroupedQueryAttention_Gemma3(nn.Module):
         return context_vec
 
 
-# TODO DeepSeek
-class MultiHeadLatentAttention(nn.Module):
-    """
-    DeepSeek V3 -> DeepSeek R1
-    """
-    
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x):
-        pass
-
-
 
 
 # 测试代码 main 函数

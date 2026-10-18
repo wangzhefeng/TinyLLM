@@ -22,12 +22,12 @@ import argparse
 
 import torch
 
-from exp.exp_pretrain_gpt2_124M import Model_Pretrain
+from pre_training.experiments.exp_pretrain_gpt2_124M import Model_Pretrain
 from utils.args_tools import print_args_llm
 from utils.device import torch_gc
 from utils.random_seed import set_seed_torch
 from utils.ddp_utils import (
-    is_dist, 
+    is_dist,
     init_dist, destory_dist,
     get_world_size, get_global_rank, get_local_rank,
     is_master, print_master_log,
@@ -55,7 +55,7 @@ def args_parse():
     # data params
     parser.add_argument("--data_source", type=str, required=True, default="local", help="data source type")
     parser.add_argument("--data_url", type=str, required=True, default=None, help="data source url")
-    parser.add_argument("--data_path", type=str, required=True, default="./dataset/pretrain/gpt", help="data file path")
+    parser.add_argument("--data_path", type=str, required=True, default="./dataset/pretraining", help="data file path")
     parser.add_argument("--data_file", type=str, required=True, default="file.txt", help="data file")
     parser.add_argument("--data_name", type=str, required=True, default="file", help="data file name")
     parser.add_argument("--train_ratio", type=float, required=True, default=0.9, help="train data ratio")
@@ -91,10 +91,10 @@ def args_parse():
     parser.add_argument("--max_new_tokens", type=int, required=True, default=50, help="max new tokens")
     parser.add_argument("--use_cache", type=int, required=True, default=0, help="max new tokens")
     # model pretrain device params
-    parser.add_argument("--use_gpu", type=int, required=True, default=1, help="user gpu") 
+    parser.add_argument("--use_gpu", type=int, required=True, default=1, help="user gpu")
     parser.add_argument("--gpu_type", type=str, required=True, default="cuda", help="gpu type")
     parser.add_argument("--use_dp", type=int, required=True, default=0, help="use dp")
-    parser.add_argument("--use_ddp", type=int, required=True, default=0, help="use ddp") 
+    parser.add_argument("--use_ddp", type=int, required=True, default=0, help="use ddp")
     # ------------------------------
     # arguments parse
     # ------------------------------
@@ -125,9 +125,9 @@ def run(args, global_rank, world_size, local_rank):
             exp = Exp(args, global_rank, world_size, local_rank)
             # model training
             model = exp.train(
-                training_iter=itr, 
-                setting=setting, 
-                eval_freq=5, 
+                training_iter=itr,
+                setting=setting,
+                eval_freq=5,
                 eval_iter=1,
             )
             # model testing
@@ -135,7 +135,7 @@ def run(args, global_rank, world_size, local_rank):
             #     logger.info(f">>>>>>>testing: iter-{itr} {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
             #     logger.info(f"{180 * '='}")
             #     exp.test(setting)
-    
+
     # TODO 模型推理预测
     if args.is_inference:
         itr = 0
