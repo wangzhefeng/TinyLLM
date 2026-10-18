@@ -39,6 +39,13 @@
 
 * `layers.tokenizer.simple_custom.SimpleTokenizer`
 
+## Tokenizer 扩展
+
+* `layers/tokenizers/extension.py`（LLMs-from-scratch ch05/09）：
+    - `pad_vocab_size`：词表向上对齐（如 50257 → 50304，配合 `--pad_vocab_to_multiple_of`）
+    - `resize_token_embeddings`：扩容 embedding / 输出头，保留旧权重、维持 weight tying
+    - `ExtendedTokenizer`：给任意基础 tokenizer 追加特殊 token（id 从 `n_vocab` 起分配）
+
 ## BPE
 
 > Byte-Pair Encoding, BPE

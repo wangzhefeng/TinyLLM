@@ -131,7 +131,7 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "embed_dim": 2048,                
             "n_heads": 32,
             "n_layers": 48,
-            # TODO "d_ff": 25600,
+            # MoE 模型无 d_ff，FFN 维度见 moe_intermediate_size
             "head_dim": 128,
             "qk_norm": True,
             "n_kv_groups": 4,

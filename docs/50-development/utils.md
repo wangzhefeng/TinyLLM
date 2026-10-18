@@ -16,8 +16,9 @@ utils/
 ├── ddp_utils.py        # 分布式初始化 / rank / DDP
 ├── device.py           # device_setting、torch_gc
 ├── early_stopping.py   # EarlyStopping
-├── learning_rate.py    # adjust_learning_rate / warmup
+├── learning_rate.py    # adjust_learning_rate / warmup_cosine_lr / set_optimizer_lr
 ├── load_save_data.py   # load_local_data / load_hf_data
+├── weight_loading.py   # mmap 内存高效权重加载（ch05/08）
 ├── log_util.py         # logger（控制台 + 按天轮转文件）
 ├── model_memory.py     # 参数量 / 显存估算
 ├── optimizer.py        # select_optimizer
@@ -47,8 +48,11 @@ utils/
    加保护；新增 `ddp_setup` / `ddp_setup_custom`；修复 `USE_LIBUV` 的 KeyError。
 7. `random_seed.py`：同时提供 `set_seed` 与 `set_seed_torch`，CUDA 调用加保护。
 8. `early_stopping.py`：DDP 下仅 rank 0 写 checkpoint。
-9. `learning_rate.py`：未知 `lradj` 时不再触发 `UnboundLocalError`。
-10. 目录扁平化：上游 `utils/llm/*` 移到 `utils/*`，import 路径同步改为 `utils.xxx`。
+9. `learning_rate.py`：未知 `lradj` 时不再触发 `UnboundLocalError`；新增 step 级
+   `warmup_cosine_lr` / `set_optimizer_lr`（附录 D），`learning_rate_warmup` 委托其实现。
+10. `weight_loading.py`：新增；mmap 加载 checkpoint、解包 `model`/`model_state_dict`
+    封装、剥 `module.` 前缀。
+11. 目录扁平化：上游 `utils/llm/*` 移到 `utils/*`，import 路径同步改为 `utils.xxx`。
 
 ## 未纳入的模块
 

@@ -210,8 +210,9 @@ def flops_analysis_automatic_batch_size(cfg, model_cls, device, forward_only=Tru
 # 测试代码 main 函数
 def main():
     from models.gpt2.gpt2_124M import Model
+    from utils.device import device_setting
+    device = device_setting()
     from config.gpt2.model_cfgs import (
-        device, 
         GPT2_124M_CONFIG, 
         GPT2_MEDIUM_CONFIG, 
         GPT2_LARGE_CONFIG, 

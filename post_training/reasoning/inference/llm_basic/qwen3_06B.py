@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 import torch
 
 from config.qwen3.model_cfgs import get_cfgs
-from config.qwen3.model_download import download_from_huggingface
+from inference.loaders.qwen3.model_download import download_from_huggingface
 from models.qwen3.qwen3_original import Model
 from layers.tokenizers.qwen3.qwen3_tokenizer import Qwen3Tokenizer
 from layers.inference import generate_qwen3_stream

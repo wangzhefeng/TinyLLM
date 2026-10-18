@@ -25,7 +25,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from models.bert.model import Model
-from data_provider.bert.data_loader import BertDataset
+from pre_training.data_provider.bert.data_loader import BertDataset
 from utils.device import device_setting, torch_gc
 from utils.log_util import logger
 from utils.random_seed import set_seed, set_seed_worker

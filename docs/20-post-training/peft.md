@@ -31,3 +31,7 @@ python post_training/peft/run_peft.py
 - [SFT / Fine-tuning](finetuning/index.md)
 - [LoRA 与 QLoRA](finetuning/lora-qlora.md)
 - [distillation.md](distillation.md)
+
+## 已知问题
+
+- [ ] `model_peft/lora_qlora/scratch_exps/lora_dora_from_scratch.py` import 不存在的 `data_provider.lora`（2026-10-18 数据层合并后仍为 stale import）

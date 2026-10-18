@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from models.gpt2 import gpt2_124M
+from models.qwen3 import qwen3
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
@@ -41,6 +42,7 @@ class Exp_Basic:
             "gpt2_124M": gpt2_124M,
             "llama2": llama2,
             "llama3_8B": llama3_8B,
+            "qwen3": qwen3,
         }
         # device
         self.device = self._acquire_device(local_rank)

@@ -12,13 +12,15 @@
 | [training.md](training.md) | 训练循环、实验类、DP/DDP、超参 |
 | [examples.md](examples.md) | 书本 walkthrough、GPT-2 示例 |
 | [gutenberg.md](gutenberg.md) | Gutenberg 语料准备 |
-| [extras.md](extras.md) | nanotron 参考、legacy 入口 |
+| [extras.md](extras.md) | nanotron 参考等扩展 |
 
 ## 代码入口
 
 ```bash
 python run_gpt2_124M.py --help
 python run_bert.py --help            # BERT（MLM + NSP），见 [BERT](../40-models/bert.md)
+python run_llama.py --help           # Llama2 / Qwen3 入口（tiny 演示配置）
+python run_qwen.py --help
 bash pre_training/scripts/pretrain_gpt2_124M.sh
 bash pre_training/scripts/pretrain_gpt2_124M_DP.sh
 bash pre_training/scripts/pretrain_gpt2_124M_DDP.sh
@@ -28,12 +30,10 @@ bash pre_training/scripts/pretrain_gpt2_124M_DDP.sh
 
 ```text
 pre_training/
-├── data/            # 语料加载、Gutenberg
+├── data_provider/   # 语料加载、Gutenberg 数据准备、bert/ 数据层
 ├── experiments/     # 实验类、超参搜索、bert/ 预训练实验脚本
-├── examples/        # 书本示例（非测试）
-├── analysis/        # FLOPs 分析
+├── examples/        # 书本示例（非测试）、FLOPs 分析、Gutenberg 独立训练
 ├── references/      # nanotron 参考
-├── legacy/          # 失修入口
 └── scripts/         # 启动脚本
 ```
 

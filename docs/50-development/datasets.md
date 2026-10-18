@@ -35,7 +35,7 @@ dataset/
 
 | 代码 | 期望路径 |
 |---|---|
-| `data_provider/bert/data_processor.py` | `dataset/finetuning/THUCNews/task2.csv`、`index_2_word.txt` |
+| `pre_training/data_provider/bert/data_processor.py` | `dataset/finetuning/THUCNews/task2.csv`、`index_2_word.txt` |
 | `post_training/sft/bert_sentiment/` | `dataset/finetuning/sentiment/sentiment.{train,valid,test}.data` |
 | `post_training/sft/data_provider/text_clf/data_config.py` | `dataset/finetuning/sms_spam_collection[.zip]` |
 | `post_training/peft/model_peft/deepseek_lora/` | `dataset/finetuning/medical/AI-ModelScope/...` |

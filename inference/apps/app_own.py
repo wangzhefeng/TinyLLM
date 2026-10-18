@@ -52,7 +52,7 @@ def get_model_and_tokenizer():
     model_config = {
         "vocab_size": 50257,     # Vocabular size
         "context_length": 256,  # Context length
-        "max_new_toknes": 50,   # Maximum new tokens to generate
+        "max_new_tokens": 50,   # Maximum new tokens to generate
         "embed_dim": 768,        # Embedding dimension
         "d_ff": 4 * 768,         # Hidden dimension
         "n_heads": 12,           # Number of attention heads
@@ -101,7 +101,7 @@ async def main(message: chainlit.Message):
             message.content, 
             tokenizer_model=model_config.tokenizer_model
         ).to(device),
-        max_new_tokens=model_config.max_new_toknes,
+        max_new_tokens=model_config.max_new_tokens,
         context_length=model_config.context_length,
         temperature=model_config.temperature,
         top_k=model_config.top_k,

@@ -21,6 +21,14 @@
 - [LLM 架构笔记](architecture.md)：Transformer/注意力/位置编码/变体
 - [Karpathy 来源分析](karpathy-provenance.md)：nanoGPT/nanochat/minGPT 对照（副本已删除）
 
+## 待补（2026-10-18 盘点，对照 LLMs-from-scratch bonus）
+
+- [ ] **MLA**：`models/deepseek/mla.py` 是空类（ch04/05）
+- [ ] **独立 SWA** + 显存估算：目前只有 Gemma3 内嵌 local mask（ch04/06）
+- [ ] **Gated DeltaNet**（ch04/08）、**DSA**（ch04/09）、**跨层 KV 共享**（ch04/10）：均无实现
+- [ ] 模型 zoo：**OLMo3 / Tiny Aya / Qwen3.5 / Gemma4**（ch05/13、15、16、17）
+- 验收口径：KV cache 与无 cache greedy 输出逐 token 一致；显存估算与公式一致；能与 HF 权重对齐前向 logits
+
 ## 相关
 
 - [预训练](../10-pretraining/index.md)

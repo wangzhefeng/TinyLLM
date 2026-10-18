@@ -27,7 +27,7 @@ run_bert.py                              # 预训练入口（根目录）：训�
 models/bert/
 └── model.py                             # 从零实现 BERT：Embedding / Encoder / Pooler / MLM+NSP
 
-data_provider/bert/                      # 数据层（共享数据目录）
+pre_training/data_provider/bert/         # 数据层（原根级 data_provider/bert/）
 ├── data_loader.py                       # BertDataset（input_ids / segment_ids / mask / label）
 └── data_processor.py                    # 文本清洗、正负样本构造、词表构建
 

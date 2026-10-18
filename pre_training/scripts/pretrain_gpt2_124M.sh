@@ -35,6 +35,13 @@ python -u run_gpt2_124M.py \
     --min_lr 1e-6 \
     --weight_decay 0.1 \
     --lradj type1 \
+    --lr_schedule warmup_cosine \
+    --warmup_ratio 0.2 \
+    --grad_clip 1.0 \
+    --grad_accum_steps 1 \
+    --pad_vocab_to_multiple_of 64 \
+    --save_every_steps 0 \
+    --resume "" \
     --seed 42 \
     --itrs 1 \
     --train_epochs 100 \

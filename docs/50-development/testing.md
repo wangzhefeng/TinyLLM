@@ -18,7 +18,7 @@ python -m unittest discover -s tests/unit -v
 
 | 目录 | 内容 |
 |---|---|
-| `unit/` | 单模块、无网络、秒级完成：attention、FFN、norm、tokenizer、GPT 前向/反向、BERT MLM/NSP、BERT 训练流水线（run_bert）、BERT 情感分类（bert_sentiment）、tools（profiling/checkpoint/data） |
+| `unit/` | 单模块、无网络、秒级完成：attention、FFN、norm、tokenizer、GPT 前向/反向、BERT MLM/NSP、BERT 训练流水线（run_bert）、BERT 情感分类（bert_sentiment）、tools（profiling/checkpoint/data）、**预训练**（pretraining：LR 调度、梯度累积、词表 padding/扩容、特殊 token 扩展、滑动窗口数据集、checkpoint 恢复、legacy 入口导入） |
 | `integration/` | 跨模块或需要小模型生成的测试（后续补充） |
 
 ## 说明
@@ -30,3 +30,8 @@ python -m unittest discover -s tests/unit -v
   - `pre_training/analysis/`：FLOPs 分析；
   - `inference/loaders/gpt2/`：GPT-2 权重加载；
   - `pre_training/examples/gpt2_book/`：书本 ch05 的 standalone 训练示例。
+
+## 待办（2026-10-18 盘点）
+
+- [ ] `pre_training/experiments/bert/`（DAPT/curpos 等 4 个脚本）无测试覆盖，未验证可运行
+- [ ] 预训练主链路的端到端集成测试未固化：tiny 模型 + tiny 语料跑通 `exp.train`（warmup_cosine + 累积 + checkpoint + resume）应入 `tests/integration/`

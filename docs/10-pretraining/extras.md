@@ -2,14 +2,14 @@
 
 # 预训练扩展（extras）
 
-书本之外的预训练参考与失修入口，未接入主链路。分布式的独立内容已移到 [工具库](../70-tools/distributed.md)。
+书本之外的预训练参考，未接入主链路。分布式的独立内容已移到 [工具库](../70-tools/distributed.md)。
+原 `legacy/` 的 Llama/Qwen 入口已修复并提升为根目录 `run_llama.py` / `run_qwen.py`（2026-10-18）。
 
 ## 内容
 
 | 子目录 | 内容 | 状态 |
 |---|---|---|
-| `references/nanotron/` | nanotron 配置与启动脚本 | 参考 |
-| `legacy/` | `run_llama.py`、`run_qwen.py` | 失修：与 `Model_Pretrain` 签名不匹配 |
+| `references/nanotron/` | nanotron 配置与启动脚本 | 参考；**待定**：vendor 配置放代码树属灰色地带，可迁 `docs/assets/` |
 
 ## nanotron
 

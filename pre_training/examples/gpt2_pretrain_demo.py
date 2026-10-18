@@ -22,8 +22,8 @@ if ROOT not in sys.path:
 import torch
 import torch.nn as nn
 
-from pre_training.data.data_loader import load_local_data
-from pre_training.data.data_loader import create_dataloader
+from pre_training.data_provider.data_loader import load_local_data
+from pre_training.data_provider.data_loader import create_dataloader
 from layers.tokenizers.tokenization import (
     choose_tokenizer,
     text_to_token_ids,
@@ -209,7 +209,11 @@ def test_training(tokenizer, GPT2_CONFIG, device):
 
 # 测试代码 main 函数
 def main():
-    from config.gpt2.model_cfgs import device, tokenizer, GPT2_124M_CONFIG
+    from utils.device import device_setting
+    import tiktoken
+    device = device_setting()
+    tokenizer = tiktoken.get_encoding("gpt2")
+    from config.gpt2.model_cfgs import GPT2_124M_CONFIG
 
     # text_generation(GPT2_124M_CONFIG, device)
 

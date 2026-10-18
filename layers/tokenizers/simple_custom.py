@@ -107,8 +107,12 @@ def main():
     input_text_4 = "Hello, do you like tea. Is this-- a test?"
 
     # corpus
-    from data_provider.data_loader import data_load
-    raw_text = data_load(data_path = "./dataset/pretraining", data_file = "the-verdict.txt")
+    from utils.load_save_data import load_local_data
+    raw_text = load_local_data(
+        url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt",
+        data_path = "./dataset/pretraining",
+        data_file = "the-verdict.txt",
+    )
 
     # simple tokenizer
     tokenizer = SimpleTokenizer(text=raw_text)

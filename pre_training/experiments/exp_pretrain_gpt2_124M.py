@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
+import contextlib
 import time
 import warnings
 warnings.filterwarnings("ignore")
@@ -26,7 +27,7 @@ import torch.nn as nn
 from torch.utils.data.distributed import DistributedSampler
 
 # data
-from pre_training.data.data_loader import create_dataloader
+from pre_training.data_provider.data_loader import create_dataloader
 # tokenizer
 from layers.tokenizers.tokenization import (
     choose_tokenizer,
@@ -39,8 +40,10 @@ from pre_training.experiments.exp_basic import Exp_Basic
 from utils.optimizer import select_optimizer
 from utils.criterion import select_criterion
 from utils.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.learning_rate import adjust_learning_rate
+from utils.learning_rate import adjust_learning_rate, warmup_cosine_lr, set_optimizer_lr
 from utils.early_stopping import EarlyStopping
+from tools.checkpoint import CheckpointManager, load_checkpoint
+from layers.tokenizers.extension import pad_vocab_size
 from utils.plot_losses import plot_losses_llm, plot_losses
 from layers.inference import generate
 # utils
@@ -110,10 +113,33 @@ class Model_Pretrain(Exp_Basic):
         
         return train_loader, valid_loader 
 
+    @staticmethod
+    def _unwrap_model(model):
+        """
+        剥掉 DP/DDP 的 module 与 torch.compile 的 _orig_mod 包装，返回原始模型。
+        """
+        while True:
+            if hasattr(model, "_orig_mod"):
+                model = model._orig_mod
+            elif hasattr(model, "module"):
+                model = model.module
+            else:
+                return model
+
     def _build_model(self):
         """
         模型构建
         """
+        # 词表对齐 padding（ch05/10）：提升 matmul 效率，0/1 表示不 padding
+        pad_multiple = getattr(self.args, "pad_vocab_to_multiple_of", 0) or 0
+        if pad_multiple > 1:
+            padded_vocab_size = pad_vocab_size(self.args.vocab_size, pad_multiple)
+            if padded_vocab_size != self.args.vocab_size:
+                logger.info(
+                    f"Pad vocab size: {self.args.vocab_size} -> {padded_vocab_size} "
+                    f"(multiple of {pad_multiple})"
+                )
+                self.args.vocab_size = padded_vocab_size
         # 模型实例化
         logger.info(f"Initializing model {self.args.model_name}...")
         model = self.model_dict[self.args.model_name].Model(self.args)
@@ -202,19 +228,49 @@ class Model_Pretrain(Exp_Basic):
             scaler = torch.amp.GradScaler(device = self.device)
             logger.info(f"Train auto mix precision instance has builded...") 
         # ------------------------------
-        # TODO learning rate
+        # learning rate schedule（附录 D：step 级 warmup + cosine）
         # ------------------------------
-        """
-        track_lrs = []
-        # 从优化器中获取最大学习率
-        peak_lr = 0.001  # peak_lr = optimizer.param_groups[0]["lr"]
-        # 计算训练过程中总的迭代次数
-        total_training_steps = len(train_loader) * self.args.train_epochs
-        # warmup steps
-        warmup_steps = int(0.2 * total_training_steps) 
-        # 计算 warmup 阶段的迭代次数
-        lr_increment = (peak_lr - self.args.initial_lr) / warmup_steps
-        """
+        lr_schedule = getattr(self.args, "lr_schedule", "warmup_cosine")
+        total_training_steps = train_steps * self.args.train_epochs
+        warmup_steps = int(getattr(self.args, "warmup_ratio", 0.2) * total_training_steps)
+        peak_lr = self.args.learning_rate
+        current_lr = peak_lr
+        # 梯度累积与梯度裁剪
+        grad_accum_steps = max(1, getattr(self.args, "grad_accum_steps", 1))
+        grad_clip = getattr(self.args, "grad_clip", 1.0) or 0.0
+        if grad_accum_steps > 1:
+            logger.info(f"Gradient accumulation enabled: {grad_accum_steps} micro-batches per optimizer step "
+                        f"(effective batch size = {self.args.batch_size * grad_accum_steps * self.world_size})")
+        logger.info(f"LR schedule: {lr_schedule}, total steps: {total_training_steps}, "
+                    f"warmup steps: {warmup_steps}, peak lr: {peak_lr}, grad clip: {grad_clip}")
+        # ------------------------------
+        # resume from checkpoint
+        # ------------------------------
+        ckpt_manager = None
+        save_every_steps = getattr(self.args, "save_every_steps", 0) or 0
+        if save_every_steps > 0 or getattr(self.args, "resume", ""):
+            ckpt_manager = CheckpointManager(
+                Path(model_checkpoint_path).parent / "steps",
+                keep_last=getattr(self.args, "keep_last_checkpoints", 3),
+            )
+        start_epoch, resume_batch = 0, 0
+        resume_arg = getattr(self.args, "resume", "") or ""
+        if resume_arg:
+            resume_path = ckpt_manager.latest() if resume_arg == "latest" else Path(resume_arg)
+            if resume_path is None or not Path(resume_path).exists():
+                raise FileNotFoundError(f"resume checkpoint not found: {resume_arg}")
+            raw_model = self._unwrap_model(self.model)
+            payload = load_checkpoint(
+                resume_path, model=raw_model, optimizer=optimizer,
+                map_location=self.device, strict=True,
+            )
+            extra = payload.get("extra", {})
+            start_epoch = extra.get("epoch", 0)
+            resume_batch = extra.get("batch", 0)
+            if self.args.use_amp and extra.get("scaler"):
+                scaler.load_state_dict(extra["scaler"])
+            logger.info(f"Resumed from {resume_path}: epoch {start_epoch}, batch {resume_batch}, "
+                        f"global step {extra.get('global_step', -1)}")
         # ------------------------------
         # training data collactor
         # ------------------------------
@@ -226,6 +282,10 @@ class Model_Pretrain(Exp_Basic):
         track_tokens_seen, total_tokens_seen, last_tokens = [], 0, 0
         # Variables for cumulative average tokens/sec
         cumulative_tokens, cumulative_time = 0.0, 0.0
+        if resume_arg:
+            global_step = extra.get("global_step", -1)
+            total_tokens_seen = extra.get("total_tokens_seen", 0)
+            last_tokens = total_tokens_seen
         # ------------------------------
         # CUDA-specific timing setup
         # ------------------------------
@@ -245,7 +305,7 @@ class Model_Pretrain(Exp_Basic):
         train_start_time = time.time()
         logger.info(f"Train start time: {from_unix_time(train_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
         # main training loop
-        for epoch in range(self.args.train_epochs):            
+        for epoch in range(start_epoch, self.args.train_epochs):
             # epoch 模型训练开始时间
             epoch_start_time = time.time()
             logger.info(f"\t\tEpoch {epoch + 1}: start time: {from_unix_time(epoch_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
@@ -263,73 +323,104 @@ class Model_Pretrain(Exp_Basic):
             # model training
             # ------------------------------
             for batch, (input_batch, target_batch) in enumerate(train_loader):
+                # resume: skip batches already finished in the start epoch
+                if epoch == start_epoch and batch < resume_batch:
+                    continue
                 # update train iter global step
                 global_step += 1
                 # update epoch iter count
-                iter_count += 1 
-                
-                # reset loss gradients from previous batch iteration
-                optimizer.zero_grad()
-                
-                """
-                # TODO learning rate warmup
-                # ------------------------
-                # 根据当前阶段（预热或余弦衰减）调整学习率
-                if global_step < warmup_steps:
-                    # 线性预热
-                    lr = self.args.initial_lr + global_step * lr_increment
+                iter_count += 1
+
+                # learning rate: step-level linear warmup + cosine decay (appendix D)
+                if lr_schedule == "warmup_cosine":
+                    current_lr = warmup_cosine_lr(
+                        global_step=global_step,
+                        total_steps=total_training_steps,
+                        warmup_steps=warmup_steps,
+                        peak_lr=peak_lr,
+                        initial_lr=self.args.initial_lr,
+                        min_lr=self.args.min_lr,
+                    )
+                    set_optimizer_lr(optimizer, current_lr)
+
+                # gradient accumulation: only step on the last micro-batch
+                is_step_batch = ((batch + 1) % grad_accum_steps == 0) or (batch + 1 == train_steps)
+                # DDP: skip gradient all-reduce on non-step micro-batches
+                if self.args.use_ddp and not is_step_batch and hasattr(self.model, "no_sync"):
+                    sync_context = self.model.no_sync()
                 else:
-                    # 预热后余弦衰减
-                    progress = (global_step - warmup_steps) / (total_training_steps - warmup_steps)
-                    lr = self.args.min_lr + (peak_lr - self.args.min_lr) * 0.5 * (1 + math.cos(math.pi * progress))
-                # 将计算出的学习率应用到优化器中
-                for param_group in optimizer.param_groups:
-                    param_group["lr"] = lr
-                # 记录当前学习率
-                track_lrs.append(lr)
-                """
-                
-                # forward
-                # ------------------------
-                # calculate train loss
-                if self.args.use_amp:
-                    with torch.amp.autocast(device_type=self.args.gpu_type):
+                    sync_context = contextlib.nullcontext()
+
+                with sync_context:
+                    # forward
+                    # ------------------------
+                    # calculate train loss
+                    if self.args.use_amp:
+                        with torch.amp.autocast(device_type=self.args.gpu_type):
+                            loss = calc_loss_batch(
+                                task_name=self.args.task_name,
+                                input_batch=input_batch,
+                                target_batch=target_batch,
+                                model=self.model,
+                                criterion=criterion,
+                                device=self.device,
+                            )
+                    else:
                         loss = calc_loss_batch(
-                            task_name=self.args.task_name, 
+                            task_name=self.args.task_name,
                             input_batch=input_batch,
                             target_batch=target_batch,
-                            model=self.model, 
+                            model=self.model,
                             criterion=criterion,
                             device=self.device,
                         )
-                else:
-                    loss = calc_loss_batch(
-                        task_name=self.args.task_name, 
-                        input_batch=input_batch,
-                        target_batch=target_batch,
-                        model=self.model, 
-                        criterion=criterion,
-                        device=self.device,
-                    )
+                    # normalize loss over accumulation steps
+                    loss = loss / grad_accum_steps
 
-                # backward
+                    # backward
+                    # ------------------------
+                    if self.args.use_amp:
+                        scaler.scale(loss).backward()
+                    else:
+                        loss.backward()
+
+                # optimizer step (with gradient clipping, appendix D)
                 # ------------------------
-                if self.args.use_amp:
-                    scaler.scale(loss).backward()
-                    # TODO 在预热阶段后应用梯度裁剪，防止梯度爆炸
-                    # if global_step > warmup_steps:
-                    #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm = 1.0)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    # calculate loss gradient
-                    loss.backward()
-                    # TODO 在预热阶段后应用梯度裁剪，防止梯度爆炸
-                    # if global_step > warmup_steps:
-                    #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm = 1.0)
-                    # update model weights using loss gradients
-                    optimizer.step()
-                
+                if is_step_batch:
+                    if self.args.use_amp:
+                        if grad_clip > 0:
+                            scaler.unscale_(optimizer)
+                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=grad_clip)
+                        scaler.step(optimizer)
+                        scaler.update()
+                    else:
+                        if grad_clip > 0:
+                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=grad_clip)
+                        optimizer.step()
+                    # reset loss gradients for the next accumulation window
+                    optimizer.zero_grad()
+
+                # periodic resume checkpoint (rank 0 only)
+                # ------------------------
+                if (
+                    ckpt_manager is not None and save_every_steps > 0
+                    and is_step_batch and global_step % save_every_steps == 0
+                    and self.global_rank == 0
+                ):
+                    ckpt_path = ckpt_manager.save(
+                        step=global_step,
+                        model=self._unwrap_model(self.model),
+                        optimizer=optimizer,
+                        extra={
+                            "epoch": epoch,
+                            "batch": batch + 1,
+                            "global_step": global_step,
+                            "total_tokens_seen": total_tokens_seen + input_batch.numel(),
+                            "scaler": scaler.state_dict() if self.args.use_amp else None,
+                        },
+                    )
+                    logger.info(f"\t\tCheckpoint saved: {ckpt_path}")
+
                 # update tokens seen
                 # ------------------------
                 total_tokens_seen += input_batch.numel()
@@ -384,7 +475,7 @@ class Model_Pretrain(Exp_Basic):
                     if self.global_rank == 0:
                         speed = (time.time() - train_start_time) / iter_count
                         left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch)
-                        logger.info(f'\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f} | Speed: {speed:.4f}s/batch; left time: {left_time:.2f}seconds.')
+                        logger.info(f'\t\tEpoch {epoch + 1}: Batch {batch + 1} (Step {global_step:06d}): Train loss: {train_loss:.3f}, Val loss {valid_loss:.3f}, LR {current_lr:.2e} | Speed: {speed:.4f}s/batch; left time: {left_time:.2f}seconds.')
                         if self.args.use_ddp:
                             # Only print logs once per GPU (choosing the rank 0 GPU)
                             logger.info(f'\t\tEpoch {epoch + 1}, Batch {batch + 1} (Step {global_step:06d}):, Step tok/sec: {round(global_tps)}, Global avg tok/sec: {round(global_avg_tps)}')
@@ -396,12 +487,14 @@ class Model_Pretrain(Exp_Basic):
             # ------------------------------
             # 早停机制、模型保存
             # ------------------------------
-            early_stopping(epoch=epoch + 1, val_loss=valid_loss, model=self.model, model_path=model_checkpoint_path)
+            early_stopping(epoch=epoch + 1, val_loss=valid_loss, model=self.model,
+                           optimizer=optimizer, model_path=model_checkpoint_path)
             if early_stopping.early_stop:
                 logger.info(f"\t\tEpoch {epoch + 1}: Early stopping...")
                 break
-            # 学习率调整
-            adjust_learning_rate(optimizer=optimizer, epoch=epoch + 1, args=self.args)
+            # 学习率调整（epoch 级策略；warmup_cosine 已在 step 级调整）
+            if lr_schedule == "epoch":
+                adjust_learning_rate(optimizer=optimizer, epoch=epoch + 1, args=self.args)
             # ------------------------------
             # model inference
             # ------------------------------
@@ -432,7 +525,24 @@ class Model_Pretrain(Exp_Basic):
         
         # model load
         logger.info("Loading best model...")
-        self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"])
+        self._unwrap_model(self.model).load_state_dict(
+            torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"]
+        )
+        # final resume checkpoint
+        if ckpt_manager is not None and save_every_steps > 0 and self.global_rank == 0:
+            ckpt_path = ckpt_manager.save(
+                step=global_step,
+                model=self._unwrap_model(self.model),
+                optimizer=optimizer,
+                extra={
+                    "epoch": self.args.train_epochs,
+                    "batch": 0,
+                    "global_step": global_step,
+                    "total_tokens_seen": total_tokens_seen,
+                    "scaler": scaler.state_dict() if self.args.use_amp else None,
+                },
+            )
+            logger.info(f"Final checkpoint saved: {ckpt_path}")
         
         # return model and train results
         logger.info("Return training results...")
@@ -469,7 +579,7 @@ class Model_Pretrain(Exp_Basic):
         return train_loss, valid_loss
 
     def inference(self, epoch, setting: str, load: bool=False, 
-                  start_context: str="Every effort moves you", eos_id: int=50256,
+                  start_context: str="Every effort moves you", eos_id: int=None,
                   temperature: float=0.0, top_k: int=1):
         """
         model inference
@@ -477,15 +587,21 @@ class Model_Pretrain(Exp_Basic):
         logger.info(f"\t\tModel start inference...")
         # load model
         if load:
-            logger.info(f"Pretrained model has loaded from: {model_checkpoint_path}")
             model_checkpoint_path = self._get_model_path(setting)
-            self.model.load_state_dict(torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"])
+            logger.info(f"Pretrained model has loaded from: {model_checkpoint_path}")
+            self._unwrap_model(self.model).load_state_dict(
+                torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"]
+            )
         # inference mode
         self.model.eval()
-        # context size
-        context_length = self.model.module.pos_embed.weight.shape[0] \
-            if isinstance(self.model, nn.parallel.DistributedDataParallel) \
-            else self.model.pos_embed.weight.shape[0]
+        # eos: 优先取参数，其次 args，默认 GPT-2 的 50256
+        if eos_id is None:
+            eos_id = getattr(self.args, "eos_token_id", 50256)
+        # context size: 优先 args（RoPE 模型没有 pos_embed）
+        context_length = getattr(self.args, "context_length", None)
+        if context_length is None:
+            raw_model = self._unwrap_model(self.model)
+            context_length = raw_model.pos_embed.weight.shape[0]
         # start context tokenization
         start_context_encoded = text_to_token_ids(start_context, self.tokenizer).to(self.device)
         # generate text
@@ -500,6 +616,10 @@ class Model_Pretrain(Exp_Basic):
                 eos_token_id = eos_id,
                 use_cache = self.args.use_cache,
             )
+            # 词表 padding 后可能采到未训练的 padding id，解码前过滤掉
+            n_vocab = getattr(self.tokenizer, "n_vocab", None)
+            if n_vocab is not None:
+                completion_id = completion_id[completion_id < n_vocab]
             completion = token_ids_to_text(completion_id, self.tokenizer).replace("\n", " ")
             logger.info(f"\t\tEpoch {epoch}: Model inference [start context]: {start_context}, [completion]: {completion}")
         # train mode

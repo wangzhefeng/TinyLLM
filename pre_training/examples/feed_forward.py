@@ -41,7 +41,11 @@ from utils.log_util import logger
 
 # 测试代码 main 函数
 def main():
-    from config.gpt2.model_cfgs import device, tokenizer, GPT2_124M_CONFIG
+    from utils.device import device_setting
+    import tiktoken
+    device = device_setting()
+    tokenizer = tiktoken.get_encoding("gpt2")
+    from config.gpt2.model_cfgs import GPT2_124M_CONFIG
 
     # feed forward layer
     ffn_relu = FeedForwardReLU(GPT2_124M_CONFIG)

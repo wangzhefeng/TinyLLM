@@ -19,26 +19,15 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch
-import tiktoken
 
 from utils.args_tools import DotDict
-from utils.device import device_setting
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-# ##############################
-# device
-# ##############################
-device = device_setting()
-
-
-# ##############################
-# model random seed
-# ##############################
-torch.manual_seed(123)
-
+# 注意：本模块只放静态配置，import 时不允许有副作用
+# （device 探测 / 随机种子 / tokenizer 下载请在调用方获取）。
 
 # ##############################
 # GPT2 
@@ -68,7 +57,7 @@ gpt2_huggingface_models = {
 GPT2_124M_CONFIG = {
     "vocab_size": 50257,     # Vocabular size
     "context_length": 1024,  # Context length
-    "max_new_toknes": 200,   # Maximum new tokens to generate
+    "max_new_tokens": 200,   # Maximum new tokens to generate
     "embed_dim": 768,        # Embedding dimension
     "d_ff": 4 * 768,         # Hidden dimension
     "n_heads": 12,           # Number of attention heads
@@ -86,7 +75,7 @@ GPT2_124M_CONFIG= DotDict(GPT2_124M_CONFIG)
 GPT2_MEDIUM_CONFIG = {
     "vocab_size": 50257,     # Vocabular size
     "context_length": 1024,  # Context length
-    "max_new_toknes": 10,    # Maximum new tokens to generate
+    "max_new_tokens": 10,    # Maximum new tokens to generate
     "embed_dim": 1024,       # Embedding dimension
     "d_ff": 4 * 1024,        # Hidden dimension
     "n_heads": 16,           # Number of attention heads
@@ -102,7 +91,7 @@ GPT2_MEDIUM_CONFIG= DotDict(GPT2_MEDIUM_CONFIG)
 GPT2_LARGE_CONFIG = {
     "vocab_size": 50257,     # Vocabular size
     "context_length": 1024,  # Context length
-    "max_new_toknes": 10,    # Maximum new tokens to generate
+    "max_new_tokens": 10,    # Maximum new tokens to generate
     "embed_dim": 1280,       # Embedding dimension
     "d_ff": 4 * 1280,        # Hidden dimension
     "n_heads": 20,           # Number of attention heads
@@ -119,7 +108,7 @@ GPT2_LARGE_CONFIG= DotDict(GPT2_LARGE_CONFIG)
 GPT2_XL_CONFIG = {
     "vocab_size": 50257,     # Vocabular size
     "context_length": 1024,  # Context length
-    "max_new_toknes": 10,    # Maximum new tokens to generate
+    "max_new_tokens": 10,    # Maximum new tokens to generate
     "embed_dim": 1600,       # Embedding dimension
     "d_ff": 4 * 1600,        # Hidden dimension
     "n_heads": 25,           # Number of attention heads
@@ -130,12 +119,6 @@ GPT2_XL_CONFIG = {
     "kv_window_size": 1024,  # KV cache window size
 }
 GPT2_XL_CONFIG= DotDict(GPT2_XL_CONFIG)
-
-
-# ##############################
-# tokenizer
-# ##############################
-tokenizer = tiktoken.get_encoding("gpt2")
 
 
 

@@ -148,7 +148,7 @@ def real_data_embedding():
     tokenizer = tiktoken.get_encoding("gpt2")
 
     # dataloader
-    from pre_training.data.data_loader import create_dataloader
+    from pre_training.data_provider.data_loader import create_dataloader
     batch_size = 8
     max_len = 4  # 1024
     train_dataset, train_dataloader = create_dataloader(

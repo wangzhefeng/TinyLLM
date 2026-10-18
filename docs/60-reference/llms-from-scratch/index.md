@@ -2,6 +2,7 @@
 
 > 概要、版本快照与逐章/覆盖度/缺口的分页入口。
 > **历史快照**：本分析基于 2026-10-02 上游快照与合并前的 TinyLLM；当前架构以 [architecture.md](../../00-overview/architecture.md) 为准，覆盖度结论仅作历史参考。
+> **待刷新（2026-10-18）**：附录 D 接入、梯度累积/词表 padding/resume、tokenizer 扩展、内存高效权重加载、Llama/Qwen 入口修复均已完成；matrix.md / gaps.md 的路径口径（`exp/`、`test/` 等）与完成状态已失真，刷新前请以各域页面为准。
 
 > **分析对象**：<https://github.com/rasbt/LLMs-from-scratch>
 > **代码快照**：`main` @ `cdbd33e`（2026-10-02），360 个受版本控制文件、68 个 notebook、42 个章节 bonus 子目录

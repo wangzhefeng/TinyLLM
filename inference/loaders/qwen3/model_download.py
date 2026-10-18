@@ -93,7 +93,7 @@ def download_from_huggingface(kind="base", tokenizer_only=False, repo_id="rasbt/
         },
         "instruction": {
             "model": "",
-            "model": "",
+            "tokenizer": "",
         },
     }
     if kind not in files:

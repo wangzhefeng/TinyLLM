@@ -21,7 +21,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import argparse
 
-from data_provider.bert.data_processor import DataProcessor
+from pre_training.data_provider.bert.data_processor import DataProcessor
 from post_training.sft.bert_sentiment.data import load_sentiment_file
 from utils.log_util import logger
 

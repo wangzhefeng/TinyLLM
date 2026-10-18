@@ -27,8 +27,8 @@
 
 ## 代码位置
 
-- 语料加载：`pre_training/data/data_loader.py`
-- 数据准备：`pre_training/data/`
+- 语料加载：`pre_training/data_provider/data_loader.py`
+- 数据准备：`pre_training/data_provider/`
 - tokenizer：`layers/tokenizers/`（见 [tokenizers](../40-models/tokenizers.md)）
 
 ## 相关
@@ -36,3 +36,9 @@
 - [datasets](../50-development/datasets.md)
 - [training](training.md)
 - [Gutenberg](gutenberg.md)
+
+## 待办（2026-10-18 盘点）
+
+- [ ] **多语料混合配比**：Filtering/Mixing/Synthetic 目前只是上方策略笔记，无实现
+- [ ] **bin/memmap 预 tokenize**：`LLMDataset` 仍是整文本 `tokenizer.encode()` 进内存，Gutenberg 全量级别不可用
+- [ ] **文档级 packing / EOS 分隔**：`tools/data/packing.py` 有雏形，未接入预训练链路

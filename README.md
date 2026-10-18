@@ -29,6 +29,10 @@ python run_gpt2_124M.py --help
 # BERT 预训练入口（MLM + NSP）
 python run_bert.py --help
 
+# 其他模型的预训练入口（tiny 演示配置）
+python run_llama.py --help
+python run_qwen.py --help
+
 # 单元测试
 python -m unittest discover -s tests -v
 ```
@@ -37,14 +41,13 @@ python -m unittest discover -s tests -v
 
 ```text
 TinyLLM/
-├── pre_training/        # 预训练：data、experiments、examples、references、legacy
+├── pre_training/        # 预训练：data_provider、experiments、examples、references、scripts
 ├── post_training/       # 后训练：sft、peft、preference、reasoning、common
 ├── inference/           # 推理：serving、api、evaluation、loaders、apps、examples
 ├── tools/               # 独立工具库：distributed、profiling、checkpoint、data
 ├── models/              # gpt2 / llama / qwen3 / gemma3 / bert / deepseek
 ├── layers/              # attention / block / norm / RoPE / MoE / KV cache / tokenizers
 ├── config/              # 模型配置
-├── data_provider/       # 共享数据层（bert 等）
 ├── utils/               # 训练与日志工具
 ├── dataset/             # 本地数据（gitignored）
 ├── tests/               # 单元测试

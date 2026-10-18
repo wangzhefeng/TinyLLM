@@ -17,7 +17,8 @@
 | `gpt2_model_check.py` | GPT-2 前向/参数量检查 |
 | `gpt2_pretrain_demo.py` | 小数据训练演示 |
 | `gpt2_book/` | LLMs-from-scratch ch05 standalone 训练 |
-| `../analysis/flops_analysis.py` | FLOPs / 性能分析 |
+| `flops_analysis.py` | FLOPs / 性能分析（thop；可复用实现见 [tools/profiling](../../tools/profiling/)） |
+| `pgcorpus_pretraining_simple.py` | Gutenberg 独立预训练示例（依赖上游 PyPI 包 `llms_from_scratch`） |
 
 ## 权重加载
 

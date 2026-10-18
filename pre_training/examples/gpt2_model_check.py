@@ -90,9 +90,11 @@ def gpt2_model_test(tokenizer, GPT2_CONFIG, device):
 
 # 测试代码 main 函数
 def main():
+    from utils.device import device_setting
+    import tiktoken
+    device = device_setting()
+    tokenizer = tiktoken.get_encoding("gpt2")
     from config.gpt2.model_cfgs import (
-        device, 
-        tokenizer, 
         GPT2_124M_CONFIG,
         GPT2_MEDIUM_CONFIG,
         GPT2_LARGE_CONFIG,
