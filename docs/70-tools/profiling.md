@@ -2,7 +2,7 @@
 
 > 所属：[TinyLLM Docs](../README.md) › [Tools](index.md)
 
-`tools/profiling/` 提供训练/推理通用的轻量 profiling 能力，不依赖具体模型。
+`tools/profiling/` 提供训练/推断通用的轻量 profiling 能力，不依赖具体模型。
 
 ## API
 

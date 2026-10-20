@@ -1,6 +1,6 @@
-> 所属：[TinyLLM Docs](../README.md) › [Inference](index.md)
+> 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
-# LLM 推理与 Reasoning
+# 推断时的推理增强（Reasoning Scaling）
 
 > LLM Reasoning
 
@@ -8,7 +8,7 @@
 
 > 推断计算增强
 
-推断时间计算扩展（也叫推断计算增强、测试时增强等）包含一系列在推理阶段（即用户输入提示词时）提升模型推理能力的方法，
+推断时计算扩展（也叫推断计算增强、测试时增强等）包含一系列在推断阶段（即用户输入提示词时）提升模型推理能力的方法，
   
 这些方法无需对底层模型权重进行训练或修改。其核心思想是通过增加计算资源来换取性能提升，
   
@@ -23,7 +23,7 @@
 - 广义奖励：如任务完成度或启发式评分
 - 精准可验证奖励：如数学问题正确答案或编程任务通过率
 
-与推断时间计算增强（inference-time compute scaling）不同，
+与推断时计算扩展（inference-time compute scaling）不同，
   
 RL 通过动态调整模型参数（weights updating）实现能力提升。
   

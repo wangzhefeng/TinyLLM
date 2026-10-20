@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import torch
 
-from layers.inference import generate, generate_qwen3, sample_next_token
+from inference.generate_core import generate, generate_qwen3, sample_next_token
 from models.gpt2.gpt2_124M import Model
 
 

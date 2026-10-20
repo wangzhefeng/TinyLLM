@@ -14,11 +14,7 @@
 # ***************************************************
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 
 import torch
 import torch.nn as nn
@@ -67,8 +63,8 @@ class _NoisyTopkRouter(nn.Module):
         logits = self.topk_route_linear(mh_output)
         # nose logits
         noise_logits = self.noise_linear(mh_output)
-        # add scaled uint gaussian noise to logits
-        noise = torch.rand_like(logits) * F.softplus(noise_logits)
+        # add scaled gaussian noise to logits（Noisy Top-k Gating 用标准正态噪声）
+        noise = torch.randn_like(logits) * F.softplus(noise_logits)
         noisy_logits = logits + noise
         # 获取前 k 大的值和索引
         top_k_logits, indices = torch.topk(noisy_logits, self.top_k, dim=-1)
@@ -93,7 +89,12 @@ class SparseMoE(nn.Module):
             for _ in range(cfgs.num_experts)
         ])
         self.top_k = cfgs.top_k
-        self.capacity_factor = cfgs.capacity_factor = 1.0
+        # 尊重调用方配置；未提供时才使用默认值 1.0（不要回写覆盖 cfgs）。
+        # 注意 DotDict 缺键抛 KeyError，不能直接用 getattr 默认值。
+        try:
+            self.capacity_factor = cfgs["capacity_factor"] if isinstance(cfgs, dict) else cfgs.capacity_factor
+        except (AttributeError, KeyError, TypeError):
+            self.capacity_factor = 1.0
         self.num_experts = cfgs.num_experts
     
     def forward(self, x):

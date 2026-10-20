@@ -2,8 +2,6 @@
 
 # 文档维护规范
 
-> 所属：[TinyLLM Docs](../README.md) › [Development](index.md)
-
 ## 1. 基本原则
 
 1. **唯一文档中心**：项目级文档全部放 `docs/`；代码目录只放代码。
@@ -11,6 +9,7 @@
 3. **单页单主题**：每页尽量 ≤ 150 行；超过就拆页。
 4. **链接优先**：不复制内容，用相对链接指向唯一来源。
 5. **根 README 是总索引**：只放项目定位、三域入口、快速开始和文档入口。
+6. **术语统一**：`inference` 用“模型推断/推断”，`reasoning` 用“逻辑推理/推理”；详见 [术语约定](../00-overview/terminology.md)。
 
 ## 2. 目录约定
 
@@ -20,7 +19,7 @@ docs/
 ├── 00-overview/           # 项目概览、架构、环境、代码→文档映射
 ├── 10-pretraining/        # 预训练
 ├── 20-post-training/      # 后训练 / reasoning
-├── 30-inference/          # 推理
+├── 30-inference/          # 模型推断
 ├── 40-models/             # 模型与 tokenizer
 ├── 50-development/        # 测试、数据、清理、维护
 ├── 60-reference/          # 书本分析、迁移、学习资料

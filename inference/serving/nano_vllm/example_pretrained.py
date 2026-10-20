@@ -45,7 +45,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 # 测试代码 main 函数
 def main():
-    parser = argparse.ArgumentParser(description="nano_vllm 真实权重推理示例")
+    parser = argparse.ArgumentParser(description="nano_vllm 真实权重推断示例")
     parser.add_argument("--model-path", type=str, required=True, help="HF 模型目录")
     parser.add_argument("--max-tokens", type=int, default=64)
     parser.add_argument("--temperature", type=float, default=0.6)

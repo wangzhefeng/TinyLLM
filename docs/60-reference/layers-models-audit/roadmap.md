@@ -5,17 +5,14 @@
 基于 [缺失主题清单](gaps.md) 与 [代码问题清单](bugs.md) 的三阶段路线。
 原则：**先修后学**——所有学习都建立在正确代码之上；每步同步更新文档并验证可运行。
 
-## Phase 0：修 P0 + 回归测试（约 2–3 天）
+## Phase 0：修 P0 + 回归测试（约 2–3 天）✅ 已完成（2026-10-20）
 
-1. 修复 [bugs.md](bugs.md) 中全部 P0（#1–#11）。
-2. 同步修低成本 P1：moe 噪声类型与链式赋值（#12/#13）、cache dtype（#17）、RMSNorm fp32 上转（#14）。
-3. 补最小回归测试（`tests/unit/`）：
-   - **cache 一致性**：同一模型 cache vs no-cache 的 greedy 输出逐 token 一致；
-   - **前向形状**：每个模型用自带 config 构造 + 前向 + 生成一步不报错；
-   - **tokenizer 互逆**：simple_bpe 的 encode→decode 恒等；
-   - **数值**：`MultiHeadAttentionCombinedQKV` 与 `MultiHeadAttention` 同权重输出一致（防 #1 回归）。
+1. ~~修复 [bugs.md](bugs.md) 中全部 P0（#1–#11）~~ ✅
+2. ~~同步修低成本 P1：moe 噪声类型与链式赋值（#12/#13）、cache dtype（#17）、RMSNorm fp32 上转（#14）~~ ✅；另修复 `KVCache_optimized.append` 自动分配与溢出检查、`FeedForwardSiLU` 的 d_ff/hidden_dim 回退（兼容 DotDict 的 KeyError 语义）、SwiGLU 空壳。
+3. ~~补最小回归测试（`tests/unit/test_layers_regression.py`，16 项）~~ ✅
 
-**验收**：`python -m unittest discover -s tests -v` 全绿；`python scripts/check_docs.py` 无新增告警。
+**验收结果**：`python -m unittest discover -s tests` 83 项全绿；`scripts/check_docs.py` 通过；
+冒烟验证 Llama2/3 自带 config 构造、Gemma3 tying、Qwen3 original/optimized cache 生成均正常。
 
 ## Phase 1：结构整改（约 1 周）
 
@@ -35,15 +32,15 @@
 | 顺序 | 主题 | 域 | 最小验证 |
 |---|---|---|---|
 | 1 | MLA 完整实现（DeepSeek） | 预训练 | 与 GQA 做 KV cache 显存对比；前向形状正确 |
-| 2 | beam search + repetition penalty | 推理 | 与 greedy 输出对比用例 |
+| 2 | beam search + repetition penalty | 推断 | 与 greedy 输出对比用例 |
 | 3 | ALiBi | 预训练 | 与 RoPE 同配置前向对照 |
-| 4 | 独立 SWA 层 + KV cache 窗口截断 | 预训练×推理 | 窗口外 token 不影响输出 |
-| 5 | 推理时扩展脚手架（self-consistency / self-refinement / Best-of-N） | 推理 | MATH-500 小子集准确率提升 |
+| 4 | 独立 SWA 层 + KV cache 窗口截断 | 预训练×推断 | 窗口外 token 不影响输出 |
+| 5 | 推断时推理增强（self-consistency / self-refinement / Best-of-N） | 推断×推理 | MATH-500 小子集准确率提升 |
 | 6 | MoE aux loss + shared expert | 预训练 | 路由分布可视化、aux loss 下降 |
 | 7 | GRPO from scratch（reasoning ch06/07） | 后训练 | GSM8K 小子集 reward 上升 |
 | 8 | 蒸馏（reasoning ch08） | 后训练 | 教师-学生 loss 下降 |
 | 9 | layers/ 通用 LoRA 层 | 后训练 | 任意 models/ 模型即插即用、可合并 |
-| 10 | RoPE NTK / YaRN 外推 | 预训练×推理 | 超长上下文不退化 |
+| 10 | RoPE NTK / YaRN 外推 | 预训练×推断 | 超长上下文不退化 |
 | 11 | 模型 zoo：Mistral → OLMo3 → Qwen3.5 / Gemma4 | 预训练 | 与 HF 权重前向对齐（容差内） |
 
 **完成标准**（沿用 AGENTS.md）：代码可运行 + 相关文档已更新 + 链接可跳转 + 索引已更新。

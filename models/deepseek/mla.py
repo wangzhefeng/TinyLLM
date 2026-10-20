@@ -3,7 +3,7 @@
 """Multi-Head Latent Attention (MLA) placeholder.
 
 MLA 最早由 DeepSeek-V2 提出，并被 DeepSeek-V3 / R1 沿用。
-核心思想：把 K/V 压缩到低维 latent，推理时只缓存 latent，再反投影出 K/V，
+核心思想：把 K/V 压缩到低维 latent，推断时只缓存 latent，再反投影出 K/V，
 从而显著降低 KV cache 显存。
 
 本文件当前只是骨架，避免主仓库出现“藏在 layers/attention.py 里的空类”。

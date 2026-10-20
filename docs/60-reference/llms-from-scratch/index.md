@@ -19,7 +19,7 @@
 1. **该仓库已经不只是“一本书的配套代码”**。它现在有三层内容：
    - **第一层：书的主线闭环**（ch02–ch07 + 附录 A/D/E），从分词、注意力、GPT、预训练、分类微调一直走到指令微调。
    - **第二层：大量前沿扩展**（42 个 bonus 子目录），包括 KV cache、GQA、MLA、SWA、MoE、DeltaNet、DSA、跨层 KV 共享，以及 Qwen3、Gemma3、OLMo3、Tiny Aya、Qwen3.5、Gemma4 等模型 zoo。
-   - **第三层：独立第二本书** `reasoning-from-scratch` 子模块（8 章 + 附录），覆盖推理模型评测、推理时扩展、GRPO、蒸馏，另有可安装的 PyPI 包与 CI。
+   - **第三层：独立第二本书** `reasoning-from-scratch` 子模块（8 章 + 附录），覆盖推理模型评测、推断时扩展、GRPO、蒸馏，另有可安装的 PyPI 包与 CI。
 2. **TinyLLM 的强项在“预训练主线 + 架构横切面”**：GPT-2 预训练闭环、KV cache、GQA、MoE、Qwen3/Gemma3、Llama、DDP/FSDP/TP 等都已具备，部分内容（分布式训练、BERT、Qwen3 30B-A3B、Chainlit）甚至超出原书。
 3. **最大的缺口集中在“微调/对齐”这一半本书**：
    - ch06 的 GPT 分类微调（SMS/IMDb）基本没有；

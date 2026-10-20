@@ -1,8 +1,8 @@
-> 所属：[TinyLLM Docs](../README.md) › [Inference](index.md)
+> 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
 # 权重加载
 
-> 所属：[TinyLLM Docs](../README.md) › [Inference](index.md)
+> 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
 权重加载统一在 `inference/loaders/`。
 

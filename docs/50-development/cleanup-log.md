@@ -25,7 +25,7 @@
     - `config/qwen3/model_download.py` 移到 `inference/loaders/qwen3/model_download.py`（下载是 loader 职责），
       并修复 `"instruction"` 分支重复 `"model"` 键的 bug；
     - 全仓修复 `max_new_toknes` 拼写（含 `inference/examples/gpt2_inference.py` 一处运行即 TypeError 的调用）。
-- 2026-10-20 推理域清理（P1）：
+- 2026-10-20 推断域清理（P1）：
     - 删除死文件：`inference/loaders/qwen3/load_weights_moe.py`（与 load_weights.py 逐行重复且无引用）、
       `inference/scripts/update_codes.sh`（旧仓子模块时代遗物）、`inference/scripts/rm_pyc.sh`（sudo 删除危险且冗余）；
     - 修复 10 处 bug：app_orig 缺 import/None 下标、app_own decode 参数错、openai_evaluate stale import
@@ -35,13 +35,13 @@
     - `openai_gpt2_weights_load.py` 的 tensorflow 改为懒加载（未安装不影响其他加载路径）；
     - `run_app_*.sh` 修复相对路径（脚本内 cd 到 inference/）；
     - 修复断链调用方 `post_training/sft/exp/exp_finetune_gpt_instruction_flow_evaluate.py` 的双 stale import。
-- 2026-10-20 推理域合并（P2）：
+- 2026-10-20 推断域合并（P2）：
     - LLM judge 合并：新增 `inference/evaluation/judge.py`（`backend="ollama"|"openai"` 统一入口），
       `ollama_evaluate.py` / `openai_evaluate.py` 改为兼容 shim（原签名不变，内部委托 judge.py）；
     - Chainlit app 合并：新增 `inference/apps/app.py`（`GPT2_WEIGHTS=orig|own` 选择权重来源），
       `app_orig.py` / `app_own.py` 改为兼容 shim（设置环境变量后 import app 注册 handler）；
     - 启动脚本合并：`run_app_orig.sh` / `run_app_own.sh` 合并为 `run_app.sh`（接受 orig|own 参数），旧脚本已删除。
-- 2026-10-20 推理域通用化（P3）：
+- 2026-10-20 推断域通用化（P3）：
     - 新增公共 API：`inference/registry.py`（MODEL_REGISTRY）、`inference/loading.py`（`load_model` 统一加载）、
       `inference/generation.py`（`generate_text`/`generate_text_stream` 统一生成 facade）、
       `inference/__init__.py`（PEP 562 懒加载导出）；

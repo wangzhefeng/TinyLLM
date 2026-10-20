@@ -169,7 +169,7 @@ def run(args):
             # empty cache
             torch.cuda.empty_cache()
     # ------------------------------
-    # 模型推理预测
+    # 模型推断
     # ------------------------------
     if args.is_inference:
         # before finetune

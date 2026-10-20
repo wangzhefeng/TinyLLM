@@ -15,11 +15,7 @@ __all__ = []
 
 # python libraries
 import os
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import requests
 from tqdm import tqdm
 import warnings
@@ -37,19 +33,18 @@ def download_vocab(model_file_path, model_name="117M"):
         file = model_file_path.joinpath(filename)
         if not file.exists():
             # download
-            r = requests.get(
-                f"https://openaipublic.blob.core.windows.net/gpt-2/models/{model_name}/{filename}", 
-                stream=True
-            )
+            url = f"https://openaipublic.blob.core.windows.net/gpt-2/models/{model_name}/{filename}"
+            r = requests.get(url, stream=True)
+            r.raise_for_status()  # 404 等错误直接抛出，而不是写入错误页内容
             # save
             with open(file, 'wb') as f:
-                file_size = int(r.headers["content-length"])
+                file_size = int(r.headers.get("content-length", 0))
                 chunk_size = 1000
                 with tqdm(ncols=100, desc="Fetching " + filename, total=file_size, unit_scale=True) as pbar:
                     # 1k for chunk_size, since Ethernet packet size is around 1500 bytes
                     for chunk in r.iter_content(chunk_size=chunk_size):
                         f.write(chunk)
-                        pbar.update(chunk_size)
+                        pbar.update(len(chunk))
 
 
 

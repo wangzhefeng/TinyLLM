@@ -19,6 +19,6 @@
 
 ## 相关
 
-- [推理 loaders](../30-inference/loaders.md)
+- [推断 loaders](../30-inference/loaders.md)
 - [LLMs-from-scratch ch05](../60-reference/llms-from-scratch/ch05.md)
 - [MoE 实现](../../layers/moe.py)

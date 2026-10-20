@@ -41,7 +41,7 @@ resume checkpoint（`step_*.pt`，默认保留最近 3 个）相互独立。
 
 - 内存高效权重加载（mmap）：`utils/weight_loading.py`（ch05/08）
 - tokenizer 扩展 / embedding 扩容：`layers/tokenizers/extension.py`（ch05/09）
-- 生成采样：`layers/inference.py`；KV cache 见 [architecture](../40-models/architecture.md)
+- 生成采样：`inference/generate_core.py`；KV cache 见 [architecture](../40-models/architecture.md)
 
 ## 启动
 

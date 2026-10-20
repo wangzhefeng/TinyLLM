@@ -6,7 +6,7 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-10-18
 # * Version     : 1.0.101800
-# * Description : BERT 推理示例：加载 run_bert.py 训练的 checkpoint，做 fill-mask（MLM）与句子对（NSP）推理
+# * Description : BERT 推断示例：加载 run_bert.py 训练的 checkpoint，做 fill-mask（MLM）与句子对（NSP）推断
 # * Link        : docs/40-models/bert.md
 # * Requirement : torch
 # ***************************************************

@@ -12,11 +12,7 @@
 # ***************************************************
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -24,7 +20,7 @@ import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockQwen3_batched
-from layers.normailzation.rms_norm import RMSNorm_Qwen3
+from layers.normalization.rms_norm import RMSNorm_Qwen3
 from layers.position_encoding.RoPE import precompute_rope_params
 
 # global variable

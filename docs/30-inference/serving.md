@@ -1,110 +1,98 @@
-> 所属：[TinyLLM Docs](../README.md) › [Inference](index.md)
+> 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
-# LLM 推理
+# LLM 模型推断
 
 > LLM Inference
 
-## 什么是 LLM 推理
+## 什么是模型推断
 
-LLM 推理是指使用训练好的 LLM，如 GPT-4、Llama 4 和 DeepSeek-V3，
+模型推断是指使用训练好的 LLM（如 GPT-4、Llama 4、DeepSeek-V3），
 根据用户输入（通常以自然语言提示的形式提供）生成有意义的输出。
-在推理过程中，模型通过其庞大的参数集处理提示，以生成文本、代码片段、摘要和翻译等响应。
+在推断过程中，模型通过其参数处理提示，生成文本、代码片段、摘要和翻译等响应。
 
-## LLM 训练与推理的区别
+## 训练与推断的区别
 
-LM 训练和推理是模型生命周期中的两个不同阶段。
+训练和推断是模型生命周期中的两个不同阶段。
 
 ### Training
 
 > Training: Building the model’s understanding
 
-在构建 LLM 时，训练是初始阶段。它涉及教会模型如何识别模式并做出准确预测。
-这是通过让模型接触大量数据并根据其遇到的数据调整其参数来完成的。
+训练是构建 LLM 的初始阶段，目标是让模型识别模式并做出准确预测。
+训练通过让模型接触大量数据并调整参数来完成。
 
-LLM 训练中常用的技术包括：
+常用的训练技术包括：
 
 * Supervised learning
     - 监督学习：向模型展示输入与正确输出配对的示例。
 * Reinforcement learning
-    - 强化学习：允许模型通过试错学习，根据反馈或奖励进行优化。
+    - 强化学习：允许模型通过试错学习，根据反馈或奖励优化。
 * Self-supervised learning
     - 自监督学习：通过预测数据中缺失或损坏的部分来学习，无需显式标签。
 
-训练计算密集，通常需要大量的 GPU 或 TPU 集群。虽然初始成本可能非常高，但基本上是一次性支出。
-一旦模型达到所需精度，通常只需要定期更新或改进模型才需要重新训练。
+训练计算密集，通常需要大量 GPU 或 TPU；但基本是一次性支出。
 
 ### Inference
 
 > Inference: Using the model in real-time
 
-LLM 推理是指将训练好的模型应用于新数据以进行预测。与训练不同，推理是持续且实时发生的，
+模型推断是将训练好的模型应用于新数据以产生输出。与训练不同，推断是持续、实时发生的，
 能够立即响应用户输入或传入数据。这是模型被积极“使用”的阶段。
-训练更好、更精细调整的模型通常能提供更准确和有用的推理。
+训练更充分、微调更精细的模型通常能提供更准确的推断结果。
 
-推理计算需求是持续的，并且可能会变得非常高，尤其是在用户交互和流量增长时。
-每个推理请求都会消耗 GPU 等计算资源。虽然单独的每个推理步骤可能比训练小，
-但随时间的累积需求可能导致显著的运营成本。
+推断计算需求持续存在，可能非常高，尤其是用户交互和流量增长时。
+每个推断请求都会消耗 GPU 等资源；单次推断步骤可能比训练小，
+但随时间的累积需求会带来显著运营成本。
 
-## LLM 推理原理
+## 模型推断原理
 
-在推理过程中，LLM 会利用其内部的注意力机制以及对先前上下文的知识，LLM 会逐个生成文本标记，。
+在推断过程中，LLM 利用内部注意力机制和上下文知识，逐个生成文本 token。
 
 ### Tokens 和 Tokenization
 
-Token 是 LLMs 处理文本时使用的语言最小单位。它可以是一个词、一个词的一部分，甚至是一个字符，
-具体取决于分词器(tokenizer)。每个 LLM 都有自己的分词器(tokenizer)，采用不同的分词算法(tokenization algorithms)。
+Token 是 LLM 处理文本时使用的最小单位，可以是一个词、词的一部分，甚至一个字符。
+每个 LLM 有自己的 tokenizer 和分词算法。
 
-分词(Tokenization)是将输入文本（如一个句子或段落）转换为 token 的过程。
-分词后的输入会被转换为 ID，这些 ID 在推理过程中被传递给模型。
+分词（Tokenization）将输入文本转换为 token；分词后的输入再转换为 ID，在推断过程中传给模型。
 
-对于输出，LLMs 会自回归地生成新的 token。从一组初始 token 开始，
-模型根据它到目前为止所看到的一切预测下一个 token。这个过程会一直重复，直到达到停止标准。
+输出阶段，LLM 自回归地生成新 token：从初始 token 开始，模型根据已看到的内容预测下一个 token，
+重复直到达到停止条件。
 
-### LLM 推理的两个阶段
+### 模型推断的两个阶段
 
-对于基于 Transformer 的模型如 GPT-4，整个过程分为两个阶段：prefill 和 decode。
+基于 Transformer 的模型（如 GPT-4）通常分为 prefill 和 decode 两个阶段。
 
 #### Prefill
 
-当用户发送查询时，LLM 的 tokenizer 将 Prompt 转换为一系列 tokens。在分词后，prefill 阶段开始：
+用户发送查询后，tokenizer 将 prompt 转换为 tokens；随后进入 prefill：
 
-1. 这些 tokens（或 tokens ID）被嵌入(Embedded)为 LLM 可以理解的数值向量。
-2. 这些向量通过多个 Transformer 层，每个层都包含自注意力机制。在这里，
-   为每个 token 计算 Query(Q)、Key(K)和 Value(V) 向量。这些向量决定了 tokens 如何相互关注(attend)，
-   从而捕捉上下文意义(contextual meaning)。
-3. 随着模型处理提示，它构建一个 KV Cache（KV 缓存）来存储每个层中每个 token 的 key 和 value 向量。
-   它充当内部内存，在 decoding 期间进行更快的查找。
-
-
-
+1. tokens/ID 被嵌入为模型可理解的数值向量。
+2. 向量通过多个 Transformer 层；每层包含自注意力，为每个 token 计算 Q/K/V。
+3. 模型在处理提示时构建 KV Cache，存储每层每个 token 的 key/value，供 decode 阶段快速查找。
 
 #### Decode
 
-prefill 完成后进入 decode 阶段，模型自回归地逐个生成 token：
+prefill 完成后进入 decode，模型自回归地逐个生成 token：
 
-1. 每一步只把**上一步新生成的 1 个 token** 输入模型，而不是重新输入整个序列。
-2. 注意力计算直接读取 prefill 阶段写入的 KV Cache，只为新 token 计算 Q/K/V，
-   把每步的计算量从 O(n²) 降到 O(n)。
+1. 每步只输入上一步新生成的 1 个 token，而不是重新输入整个序列。
+2. 注意力计算直接读取 prefill 写入的 KV Cache，只为新 token 计算 Q/K/V，
+   把每步计算量从 O(n²) 降到 O(n)。
 3. 对最后一个位置的 logits 应用解码策略（greedy、temperature、top-k、top-p），
-   采样出下一个 token，直到命中 EOS 或达到长度上限。
+   采样下一个 token，直到命中 EOS 或达到长度上限。
 
-decode 阶段是显存带宽密集型（memory-bound）：每步都要读完全部权重和 KV Cache，
+decode 是显存带宽密集型（memory-bound）：每步读取全部权重和 KV Cache，
 但计算量很小，因此吞吐主要取决于显存带宽而非算力。
 
 #### Collocating Prefill 和 Decode
 
 * **混合部署（collocated）**：prefill 与 decode 跑在同一批 GPU 上，通过连续批处理
-  （continuous batching）把不同请求的 prefill/decode 步骤混排在同一批次中，
-  实现简单、资源利用率高，但长 prompt 的 prefill 会阻塞 decode（head-of-line blocking）。
-* **分离部署（disaggregated，P/D 分离）**：prefill 和 decode 分别部署在独立的 GPU 池，
-  prefill 完成后把 KV Cache 传输给 decode 节点。两阶段可独立扩缩容，
+  （continuous batching）把不同请求的 prefill/decode 步骤混排在同一批次，
+  实现简单、资源利用率高；但长 prompt 的 prefill 会阻塞 decode（head-of-line blocking）。
+* **分离部署（disaggregated，P/D 分离）**：prefill 和 decode 部署在独立 GPU 池，
+  prefill 完成后把 KV Cache 传给 decode 节点。两阶段可独立扩缩容，
   延迟更稳定，代价是 KV 传输开销与系统复杂度。
 
 教学级实现见 [nano_vllm](nano-vllm.md)（分页 KV + 连续批处理）。
-
-
-
-
 
 ## 模型文件格式
 
@@ -112,9 +100,9 @@ decode 阶段是显存带宽密集型（memory-bound）：每步都要读完全�
 
 ## 模型量化格式
 
-* 4-bit(GGUF)
+* 4-bit（GGUF）
 * 8-bit
-* 16-bit(original)
+* 16-bit（original）
 
 ## 模型运行方式
 
@@ -132,10 +120,9 @@ decode 阶段是显存带宽密集型（memory-bound）：每步都要读完全�
 * vLLM
 * llama.cpp
 
-
 # 资料
 
 * [LLM Inference in Production](https://bentoml.com/llm/)
 * [nano-vllm](https://github.com/GeeeekExplorer/nano-vllm/tree/main)
-* [从零实现 vLLM (1.1）：并行词嵌入](https://mp.weixin.qq.com/s?__biz=MzU4MTgyOTk1Mw==&mid=2247484630&idx=1&sn=215458fd1c45540a379ba710d9b8fc3a&scene=21&poc_token=HC0Lh2ijWjBD1fD5j0m8-T2b7ic7nqx01zG2Uxgz)
-* [从零实现 vLLM (1.2）：如何实现张量并行](https://mp.weixin.qq.com/s?__biz=MzU4MTgyOTk1Mw==&mid=2247484710&idx=1&sn=34ec37dc82d4c1c559c7d33fff593a52&chksm=fd40d108ca37581e95ce318fd1e6434da0eb4ba35372dd6ba27f5b490745a62960d4902ab68e&cur_album_id=4092515450351730699&scene=189#wechat_redirect)
+* [从零实现 vLLM (1.1)：并行词嵌入](https://mp.weixin.qq.com/s?__biz=MzU4MTgyOTk1Mw==&mid=2247484630&idx=1&sn=215458fd1c45540a379ba710d9b8fc3a&scene=21&poc_token=HC0Lh2ijWjBD1fD5j0m8-T2b7ic7nqx01zG2Uxgz)
+* [从零实现 vLLM (1.2)：如何实现张量并行](https://mp.weixin.qq.com/s?__biz=MzU4MTgyOTk1Mw==&mid=2247484710&idx=1&sn=34ec37dc82d4c1c559c7d33fff593a52&chksm=fd40d108ca37581e95ce318fd1e6434da0eb4ba35372dd6ba27f5b490745a62960d4902ab68e&cur_album_id=4092515450351730699&scene=189#wechat_redirect)

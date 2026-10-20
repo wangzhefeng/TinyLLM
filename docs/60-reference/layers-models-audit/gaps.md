@@ -2,7 +2,7 @@
 
 > 所属：[TinyLLM Docs](../../README.md) › [参考与分析](../index.md) › [layers/models 审查](index.md)
 
-按预训练 / 推理 / 后训练三个视角，列出 `layers/` 与 `models/` 相对
+按预训练 / 推断 / 后训练三个视角，列出 `layers/` 与 `models/` 相对
 [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) 与
 [reasoning-from-scratch](https://github.com/rasbt/reasoning-from-scratch) 缺失的主题。
 ✅ = 已具备；❌ = 缺失；🟡 = 有零件但未闭环。
@@ -42,17 +42,17 @@
 | OLMo3 / Tiny Aya / Qwen3.5 / Gemma4 / GPT-OSS | ❌ | 上游 ch05 bonus 模型 |
 | T5（encoder-decoder） | ❌ | 已有 encoder-only（BERT）与 decoder-only，缺中间形态 |
 
-## 2. 推理视角
+## 2. 推断视角
 
 | 主题 | 状态 | 说明 |
 |---|---|---|
-| greedy / temperature / top-k / top-p | ✅ | `layers/inference.py:sample_next_token` |
+| greedy / temperature / top-k / top-p | ✅ | `inference/generate_core.py:sample_next_token` |
 | beam search | ❌ | 无 |
 | repetition / frequency / presence penalty、min-p | ❌ | 无 |
 | KV cache（朴素 + 预分配） | ✅ | 两种实现，但接口互不兼容 |
 | batched 生成 + 逐序列 early stop | ✅ | `generate_text_basic_batched_*_stop` |
 | streaming | ✅ | yield 式 |
-| 推理时扩展（reasoning ch04/05） | ❌ | CoT 脚手架、self-consistency 投票、self-refinement、Best-of-N 均为占位 |
+| 推断时扩展（reasoning ch04/05） | ❌ | CoT 脚手架、self-consistency 投票、self-refinement、Best-of-N 均为占位 |
 | KV cache × SWA 窗口截断 / ×MLA latent | ❌ | cache 无窗口与 latent 概念 |
 | 量化（int8/FP8/GGUF）、投机解码 | ❌ | 无 |
 | paged KV cache | 🟡 | `inference/serving` 的 nano-vllm 与 layers/ 的 cache 是两套无关联实现 |
@@ -73,9 +73,9 @@
 
 1. **MLA 完整实现**（预训练）：DeepSeek 骨架已占位，与 GQA 做 KV cache 显存对比实验，教学价值最高。
 2. **GRPO from scratch**（后训练）：reasoning-from-scratch 的核心，纯 PyTorch 实现与现有 unsloth 版对照。
-3. **推理时扩展脚手架**（推理）：self-consistency / self-refinement 只需组合现有 generate，成本低。
-4. **独立 SWA 层 + KV cache 窗口截断**（预训练×推理交叉）。
-5. **beam search + repetition penalty**（推理）：小补全，性价比最高。
+3. **推断时扩展脚手架**（推断时推理）：self-consistency / self-refinement 只需组合现有 generate，成本低。
+4. **独立 SWA 层 + KV cache 窗口截断**（预训练×推断交叉）。
+5. **beam search + repetition penalty**（推断）：小补全，性价比最高。
 6. **ALiBi**（预训练）：极低成本。
 7. **MoE aux loss / shared expert**（预训练）。
 8. **模型 zoo 扩张**（Mistral → OLMo3 → …）：排在接口统一之后，避免复制出更多 drift。

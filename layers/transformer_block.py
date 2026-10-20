@@ -14,11 +14,7 @@
 __all__ = []
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 
 import torch
 import torch.nn as nn
@@ -40,8 +36,8 @@ from layers.feed_forward import (
 )
 from layers.moe import MoEFeedForward
 from layers.moe import SparseMoE
-from layers.normailzation.layer_norm import LayerNorm
-from layers.normailzation.rms_norm import (
+from layers.normalization.layer_norm import LayerNorm
+from layers.normalization.rms_norm import (
     RMSNorm, 
     RMSNorm_Qwen3,
     RMSNorm_Gemma3,

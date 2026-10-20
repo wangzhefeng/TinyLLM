@@ -35,7 +35,7 @@ from post_training.reasoning.inference.llm_basic.qwen3_06B import (
     model, 
     tokenizer,
 )
-from layers.inference import generate_qwen3_stream
+from inference.generate_core import generate_qwen3_stream
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

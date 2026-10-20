@@ -17,7 +17,7 @@
 | 7 | ch03/03 buffers | `SharedBuffers` | ✅ | 缓存 mask/RoPE |
 | 8 | ch04 主线：GPT 模型 | `models/gpt2/gpt2_124M.py` | ✅ | 124M 配置 + 生成 |
 | 9 | ch04/02 性能分析 | `test/flops_analysis.py`、`utils/model_memory.py` | ✅ | thop + 显存估算 |
-| 10 | ch04/03 KV cache | `layers/kv_cache.py`、`layers/inference.py` | ✅ | naive + optimized + batched/streaming |
+| 10 | ch04/03 KV cache | `layers/kv_cache.py`、`inference/generate_core.py` | ✅ | naive + optimized + batched/streaming |
 | 11 | ch04/04 GQA | `layers/attention.py` | ✅ | 含 Qwen3/Gemma3 变体 |
 | 12 | ch04/05 MLA | `MultiHeadLatentAttention` | ❌ | 空类；DeepSeek 模型空壳 |
 | 13 | ch04/06 SWA | Gemma3 local mask | 🟡 | 只有模型内 mask，无独立实现/显存估算 |

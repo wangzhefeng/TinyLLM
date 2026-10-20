@@ -14,11 +14,7 @@
 __all__ = []
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import math
 import contextlib
 from packaging.version import parse as parse_version
@@ -31,7 +27,7 @@ from layers.position_encoding.RoPE import (
     compute_rope,
     compute_rope_with_pos_ids,
 )
-from layers.normailzation.rms_norm import (
+from layers.normalization.rms_norm import (
     RMSNorm_Qwen3,
     RMSNorm_Gemma3,
 )

@@ -9,7 +9,7 @@
 |---|---|---|
 | 预训练 | [10-pretraining/index.md](10-pretraining/index.md) | 数据、训练、示例、Gutenberg、extras |
 | 后训练 / reasoning | [20-post-training/index.md](20-post-training/index.md) | SFT、PEFT、DPO、RLHF、蒸馏、reasoning |
-| 推理 | [30-inference/index.md](30-inference/index.md) | loaders、nano_vllm、评测、UI、reasoning scaling |
+| 模型推断 | [30-inference/index.md](30-inference/index.md) | loaders、nano_vllm、评测、UI、reasoning scaling |
 
 ## 横切主题
 
@@ -32,6 +32,7 @@
 
 ## 常用入口
 
+- [术语约定：推断 vs 推理](00-overview/terminology.md)
 - [环境搭建](00-overview/environment.md)
 - [仓库架构](00-overview/architecture.md)
 - [代码→文档映射](00-overview/repo-map.md)

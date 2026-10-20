@@ -14,11 +14,7 @@
 __all__ = []
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 
 import torch
 import torch.nn as nn
@@ -33,6 +29,22 @@ from layers.activation import (
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+
+
+def _cfg_get(cfg, *names, default=None):
+    """从 dict / DotDict / SimpleNamespace 风格配置中安全取第一个存在的键。
+
+    注意：本项目的 DotDict 缺键时抛 KeyError（而非 AttributeError），
+    因此不能直接用 ``getattr(cfg, name, None)``。
+    """
+    for name in names:
+        try:
+            value = cfg[name] if isinstance(cfg, dict) else getattr(cfg, name)
+        except (AttributeError, KeyError, TypeError):
+            continue
+        if value is not None:
+            return value
+    return default
 
 
 class FeedForwardReLU(nn.Module):
@@ -108,7 +120,7 @@ class FeedForwardSiLU(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
-        d_ff = getattr(cfg, "d_ff", None) or getattr(cfg, "hidden_dim", None)
+        d_ff = _cfg_get(cfg, "d_ff", "hidden_dim")
         if d_ff is None:
             raise ValueError("cfg must define `d_ff` or `hidden_dim`")
         self.fc1 = nn.Linear(cfg.embed_dim, d_ff, dtype=cfg.dtype, bias=False)

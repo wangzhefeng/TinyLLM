@@ -33,7 +33,7 @@ pre_training/data_provider/bert/         # 数据层（原根级 data_provider/b
 
 pre_training/experiments/bert/           # 预训练实验：corpus 加载 / WordPiece 训练 / 编码
 post_training/sft/bert_sentiment/        # 下游情感分类（微调从零 BERT 的 checkpoint）
-inference/examples/bert_fill_mask.py     # 推理示例：fill-mask（MLM）与 NSP 判定
+inference/examples/bert_fill_mask.py     # 推断示例：fill-mask（MLM）与 NSP 判定
 
 tests/unit/
 ├── test_bert.py                         # 模型前向 / loss 反传
@@ -90,7 +90,7 @@ python run_bert.py
 
 - `post_training/sft/bert_sentiment/` 是下游情感分类微调：复用 `run_bert.py` 的 checkpoint 作 backbone 加分类头，数据为 `dataset/finetuning/sentiment/`（中文评论二分类）。支持三种对照模式：`--init_mode pretrained`（默认，验证预训练价值）、`--init_mode scratch`（随机初始化对照）、`--freeze_backbone`（冻结 backbone 只训分类头）。入口：`python post_training/sft/bert_sentiment/run.py --help`。
 - `pre_training/experiments/bert/` 是语料加载 / WordPiece 训练 / 编码的实验脚本，导入已修复（`tokenizers`/`transformers`），`main()` 中的路径仍需按本机调整。
-- 推理：`inference/examples/bert_fill_mask.py` 加载 `run_bert.py` 的 checkpoint 做 fill-mask 与 NSP，输入无需手动 padding（模型内部从 input_ids 推导 padding mask）。
+- 推断：`inference/examples/bert_fill_mask.py` 加载 `run_bert.py` 的 checkpoint 做 fill-mask 与 NSP，输入无需手动 padding（模型内部从 input_ids 推导 padding mask）。
 - v2 修正记录（2025-10-18，对照标准 BERT）：多头注意力由「按序列维切分」改为按 hidden 维切分并补 scaling/padding mask/输出投影；`AddNorm` 改为标准残差+LayerNorm；FFN 由 ReLU 改为 GELU；MLM 头补 transform 并与词嵌入权重共享；增加 `N(0, 0.02)` 参数初始化。
 
 ---

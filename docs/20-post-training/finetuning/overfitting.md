@@ -53,20 +53,20 @@
 你也可以使用自动评估工具，如 EleutherAI 的 [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)。
 要注意的是，自动化工具可能无法完全符合你的评估标准。
 
-## 模型推理和保存
+## 模型推断和保存
 
-### 模型推理
+### 模型推断
 
 现在让我们在完成训练过程后运行模型！你可以编辑黄色下划线部分！实际上，
 因为我们创建了一个多轮聊天机器人，我们现在也可以像它过去看到一些对话那样调用模型，如下所示：
 
-提醒 Unsloth 本身也提供了原生 2 倍的推理速度，所以永远不要忘记调用 `FastLanguageModel.for_inference(model)`。
+提醒 Unsloth 本身也提供了原生 2 倍的推断速度，所以永远不要忘记调用 `FastLanguageModel.for_inference(model)`。
 如果你想让模型输出更长的响应，将 `max_new_tokens = 128` 设置为 256 或 1024 等更大的数字。
 请注意，你也需要等待更长时间才能得到结果！
 
 ### 模型保存
 
-为了在 Ollama、vLLM、Open WebUI 等期望的推理引擎中保存和使用您的模型，我们这里可以提供更多信息：
+为了在 Ollama、vLLM、Open WebUI 等期望的推断引擎中保存和使用您的模型，我们这里可以提供更多信息：
 
 * https://docs.unsloth.ai/basics/running-and-saving-models
 
@@ -74,4 +74,4 @@
 如果您想上传您的模型，也可以将其推送到 Hugging Face Hub！
 记得通过 https://huggingface.co/settings/tokens 获取 Hugging Face 令牌并添加您的令牌！
 
-保存模型后，我们再次可以使用 Unsloth 来运行模型！使用 `FastLanguageModel` 再次调用它进行推理！
+保存模型后，我们再次可以使用 Unsloth 来运行模型！使用 `FastLanguageModel` 再次调用它进行推断！

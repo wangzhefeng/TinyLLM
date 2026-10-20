@@ -204,11 +204,7 @@ class OpenaiGPT2BPE:
 
 # 测试代码 main 函数
 def main():
-    import sys
     from pathlib import Path
-    ROOT = str(Path.cwd())
-    if ROOT not in sys.path:
-        sys.path.append(ROOT)
     from utils.log_util import logger
 
 

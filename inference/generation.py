@@ -7,7 +7,7 @@
 # * Date        : 2026-10-20
 # * Version     : 1.0.102020
 # * Description : 统一文本生成入口 generate_text()。
-# *               按模型族分派到 layers/inference.py 的教材实现
+# *               按模型族分派到 inference/generate_core.py 的教材实现
 # *               （gpt2/llama → generate；qwen3 → generate_qwen3[_stream]），
 # *               屏蔽 generate / generate_qwen3 的接口分裂。
 # *               重依赖（torch、tokenizer、模型）全部懒加载。
@@ -63,7 +63,7 @@ def generate_text(model, prompt: str, family: str = "gpt2", tokenizer_model: str
                   eos_token_id: int | None = None, use_cache: bool = False,
                   device: str = "cpu") -> str:
     """
-    统一文本生成入口（批量/流式见 generate_text_stream 与 layers.inference）。
+    统一文本生成入口（批量/流式见 generate_text_stream 与 inference.generate_core）。
 
     Args:
         model: 已加载权重的模型（见 inference.loading.load_model）
@@ -72,8 +72,10 @@ def generate_text(model, prompt: str, family: str = "gpt2", tokenizer_model: str
         tokenizer_model: layers.tokenizers 的 tokenizer 名（gpt2/llama 必填）
         tokenizer_file_path: Qwen3 tokenizer.json 路径（family="qwen3" 必填，
             即 load_model 返回 extras["tokenizer_file_path"]）
-        use_cache: KV cache（仅 qwen3 族支持；gpt2/llama 的 GPT 注意力未实现 cache）
+        use_cache: KV cache（gpt2/qwen3 族支持；llama 族仍为 nn.Sequential 堆叠，不支持）
     """
+    if use_cache and family not in ("gpt2", "qwen3"):
+        raise ValueError(f"{family} 族未实现 KV cache，请用 use_cache=False")
     tokenizer_model = tokenizer_model or ("tiktoken_gpt2_bpe" if family == "gpt2" else family)
     token_ids, tokenizer = _encode(prompt, family, tokenizer_model, tokenizer_file_path, device)
     if context_length is None:
@@ -83,7 +85,7 @@ def generate_text(model, prompt: str, family: str = "gpt2", tokenizer_model: str
     ctx = context_length
 
     if family == "qwen3":
-        from layers.inference import generate_qwen3
+        from inference.generate_core import generate_qwen3
         out = generate_qwen3(
             model, token_ids, max_new_tokens=max_new_tokens, context_length=ctx,
             temperature=temperature, top_k=top_k, top_p=top_p,
@@ -92,13 +94,11 @@ def generate_text(model, prompt: str, family: str = "gpt2", tokenizer_model: str
         # generate_qwen3 只返回新生成部分
         return tokenizer.decode(out.squeeze(0).tolist())
 
-    if use_cache:
-        raise ValueError(f"{family} 族的 GPT 注意力未实现 KV cache，请用 use_cache=False")
-    from layers.inference import generate
+    from inference.generate_core import generate
     out = generate(
         model, token_ids, max_new_tokens=max_new_tokens, context_length=ctx,
         temperature=temperature, top_k=top_k, top_p=top_p,
-        eos_token_id=eos_token_id, use_cache=False,
+        eos_token_id=eos_token_id, use_cache=use_cache,
     )
     return _decode(out, family, tokenizer_model, tokenizer)
 
@@ -115,6 +115,6 @@ def generate_text_stream(model, prompt: str, family: str = "qwen3", **kwargs):
     token_ids, tokenizer = _encode(prompt, family, None, tokenizer_file_path, device)
     ctx = kwargs.pop("context_length", None) or model.cfg.context_length
 
-    from layers.inference import generate_qwen3_stream
+    from inference.generate_core import generate_qwen3_stream
     for token in generate_qwen3_stream(model, token_ids, context_length=ctx, **kwargs):
         yield tokenizer.decode(token.squeeze(0).tolist())

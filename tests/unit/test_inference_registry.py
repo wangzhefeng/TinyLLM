@@ -70,10 +70,19 @@ class TestGenerateTextFacade(unittest.TestCase):
         self.assertIsInstance(text, str)
         self.assertTrue(text.startswith("Hello, I am"))
 
-    def test_gpt2_facade_rejects_cache(self):
+    def test_gpt2_facade_supports_cache(self):
+        # 2026-10-20 起 GPT-2 的 MultiHeadAttention 支持 KV cache，facade 不再拒绝
+        from inference import generate_text
+        text = generate_text(self.model, "hi", family="gpt2", max_new_tokens=2,
+                             context_length=32, use_cache=True)
+        self.assertIsInstance(text, str)
+        self.assertTrue(text.startswith("hi"))
+
+    def test_llama_facade_rejects_cache(self):
+        # llama 族仍是 nn.Sequential 堆叠，不支持 KV cache
         from inference import generate_text
         with self.assertRaises(ValueError):
-            generate_text(self.model, "hi", family="gpt2", max_new_tokens=2,
+            generate_text(self.model, "hi", family="llama", max_new_tokens=2,
                           context_length=32, use_cache=True)
 
 

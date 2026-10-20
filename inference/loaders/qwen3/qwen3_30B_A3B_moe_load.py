@@ -42,7 +42,7 @@ def main():
     from inference.loaders.qwen3.model_download import download_from_huggingface_from_snapshots
     from models.qwen3.qwen3 import Model
     from layers.tokenizers.qwen3.qwen3_tokenizer import Qwen3Tokenizer
-    from layers.inference import generate_qwen3_stream
+    from inference.generate_core import generate_qwen3_stream
 
 
     # random seed

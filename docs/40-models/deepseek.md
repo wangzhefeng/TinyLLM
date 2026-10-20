@@ -23,7 +23,7 @@ models/deepseek/
 | `layers/moe.py` | SparseMoE / MoE FeedForward，注释引用 DeepSeek MoE | ❌ 保留共享 | DeepSeekMoE 的 shared/routed expert 可在此基础上扩展，但通用 MoE 仍服务 Qwen3 等模型 |
 | `post_training/peft/model_peft/deepseek_lora/` | DeepSeek-R1-Distill-Qwen-7B 的 LoRA SFT / 评测 | ❌ 留在后训练 | 它实际是 Qwen2 架构的蒸馏模型，不是 DeepSeek V3 架构 |
 | `docs/00-overview/architecture.md`、`README.md` | DeepSeek 架构索引/链接 | ❌ 文档 | 仅引用 |
-| `docs/30-inference/serving.md` | 提到 DeepSeek-V3 作为推理对象 | ❌ 文档 | 无代码 |
+| `docs/30-inference/serving.md` | 提到 DeepSeek-V3 作为推断对象 | ❌ 文档 | 无代码 |
 
 ## 尚未覆盖、需要补的内容
 
@@ -34,7 +34,7 @@ DeepSeek V3/R1 的完整实现至少包含：
 3. **Multi-Token Prediction（MTP）**：训练时的多 token 预测头（V3 引入）。
 4. **RMSNorm + SwiGLU + RoPE**：可与 `layers/` 现有组件复用。
 5. **权重加载与配置**：V3/R1 的 HuggingFace 权重映射、tokenizer。
-6. **推理**：MLA 的 KV cache 与 `inference/` 的 serving 逻辑。
+6. **推断**：MLA 的 KV cache 与 `inference/` 的 serving 逻辑。
 
 ## 实现顺序建议
 

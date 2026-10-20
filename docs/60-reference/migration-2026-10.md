@@ -39,7 +39,7 @@
 | `todo/finetuning/datasets/THUCNews` | `dataset/finetuning/THUCNews/` |
 | `models/bert`（原 `todo/finetuning/bert`） | `models/bert/` |
 
-### 2.3 推理
+### 2.3 模型推断
 
 | 原位置 | 新位置 |
 |---|---|

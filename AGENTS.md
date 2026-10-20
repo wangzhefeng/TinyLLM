@@ -79,7 +79,15 @@ python scripts/check_docs.py
 
 若文档与代码冲突，以**代码 + 测试**为准，并立即修正文档；不要保留“过期但看起来正确”的描述。
 
-## 6. 禁止事项
+## 6. 术语
+
+- **inference = 模型推断 / 推断**：训练完成的模型接收输入并产生输出的过程。
+- **reasoning = 逻辑推理 / 推理**：模型的多步分析、推导、验证等认知过程。
+- `inference-time scaling` 写作“推断时扩展”或“测试时扩展”，不要写“推理时扩展”。
+- 代码标识符 `inference/`、`reasoning/` 保持英文；中文说明按上述规则。
+- 详见 [术语约定](docs/00-overview/terminology.md)。
+
+## 7. 禁止事项
 
 - 禁止在 `pre_training/`、`post_training/`、`inference/`、`models/` 等代码目录新增长 README；
 - 禁止复制整段文档到多个页面；

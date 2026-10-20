@@ -14,11 +14,7 @@
 __all__ = []
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import json
 from typing import List
 from collections import Counter, deque
@@ -240,26 +236,19 @@ class BPETokenizerSimple:
 
         # If we haven't loaded OpenAI's GPT-2 merges, use my approach
         if not self.bpe_ranks:
-            can_merge = True
-            while can_merge and len(token_ids) > 1:
-                can_merge = False
-                new_tokens = []
-                i = 0
-                while i < len(token_ids) - 1:
-                    pair = (token_ids[i], token_ids[i + 1])
-                    if pair in self.bpe_merges:
-                        merged_token_id = self.bpe_merges[pair]
-                        new_tokens.append(merged_token_id)
-                        # Uncomment for educational purposes:
-                        # print(f"Merged pair {pair} -> {merged_token_id} ('{self.vocab[merged_token_id]}')")
-                        i += 2  # Skip the next token as it's merged
-                        can_merge = True
-                    else:
-                        new_tokens.append(token_ids[i])
-                        i += 1
-                if i < len(token_ids):
-                    new_tokens.append(token_ids[i])
-                token_ids = new_tokens
+            # 自训练 merges：bpe_merges 的插入顺序即训练时的合并优先级（rank）。
+            # 与 GPT-2 路径一致：每轮合并当前序列中优先级最高（rank 最小）的 pair，
+            # 而不是从左到右贪心合并——后者与训练时的合并顺序不一致。
+            merge_rank = {pair: rank for rank, pair in enumerate(self.bpe_merges)}
+            while len(token_ids) > 1:
+                best_pair, best_rank = None, None
+                for pair in zip(token_ids, token_ids[1:]):
+                    rank = merge_rank.get(pair)
+                    if rank is not None and (best_rank is None or rank < best_rank):
+                        best_pair, best_rank = pair, rank
+                if best_pair is None:
+                    break
+                token_ids = self.replace_pair(token_ids, best_pair, self.bpe_merges[best_pair])
             return token_ids
 
         # Otherwise, do GPT-2-style merging with the ranks:
@@ -322,11 +311,7 @@ class BPETokenizerSimple:
             if token_id not in self.vocab:
                 raise ValueError(f"Token ID {token_id} not found in vocab.")
             token = self.vocab[token_id]
-            if token == "\n":
-                if decoded_string and not decoded_string.endswith(" "):
-                    decoded_string += " "  # Add space if not present before a newline
-                decoded_string += token
-            elif token.startswith("Ġ"):
+            if token.startswith("Ġ"):
                 decoded_string += " " + token[1:]
             else:
                 decoded_string += token
@@ -414,6 +399,7 @@ class SimpleBPE:
                  load_openai: bool=False,
                  name: str="bpe",
                  corpus: str=None, 
+                 vocab_size: int=1000,
                  allowed_special={"<|endoftext|>"}):
         # tokenizer init
         self.tokenizer = BPETokenizerSimple()
@@ -425,7 +411,9 @@ class SimpleBPE:
         bpe_merge_path = model_file_path.joinpath("vocab.bpe")
 
         if train:
-            vocab_size = len(corpus)
+            if corpus is None:
+                raise ValueError("train=True 时必须提供 corpus")
+            # vocab_size 是目标词表大小（如 1000），不是语料长度
             self.tokenizer.train(
                 text=corpus, 
                 vocab_size=vocab_size, 
@@ -439,7 +427,7 @@ class SimpleBPE:
             # model file download
             from layers.tokenizers.bpe.vocab_download import download_vocab
             # model file download
-            download_vocab(model_file_path=model_file_path, model_name="124")
+            download_vocab(model_file_path=model_file_path, model_name="124M")
             # model load
             self.tokenizer.load_vocab_and_merges_from_openai(
                 vocab_path=str(vocab_file_path),

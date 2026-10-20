@@ -29,7 +29,7 @@ from config.qwen3.model_cfgs import get_cfgs
 from inference.loaders.qwen3.model_download import download_from_huggingface
 from models.qwen3.qwen3_original import Model
 from layers.tokenizers.qwen3.qwen3_tokenizer import Qwen3Tokenizer
-from layers.inference import generate_qwen3_stream
+from inference.generate_core import generate_qwen3_stream
 from utils.device import device_setting
 
 # global variable
@@ -144,7 +144,7 @@ def main():
     import time
 
     from utils.args_tools import DotDict
-    from layers.inference import generate, generate_qwen3, generate_stats
+    from inference.generate_core import generate, generate_qwen3, generate_stats
 
 
     # input

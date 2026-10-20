@@ -12,17 +12,13 @@
 # ***************************************************
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 
 import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockLlama3
-from layers.normailzation.rms_norm import RMSNorm
+from layers.normalization.rms_norm import RMSNorm
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -66,7 +62,7 @@ class Model(nn.Module):
 def main():
     import torch
     from utils.args_tools import DotDict
-    from layers.inference import generate
+    from inference.generate_core import generate
     from layers.tokenizers.tokenization import (
         text_to_token_ids,
         token_ids_to_text,
@@ -101,7 +97,7 @@ def main():
         token_ids = text_to_token_ids(input_text, tokenizer_model="llama3-8b").to(device),
         max_new_tokens = 30,
         context_length = LLAMA3_CONFIG_8B.context_length,
-        eos_token_id = 50256,  # TODO
+        eos_token_id = 128001,  # Llama-3 的 <|end_of_text|>（GPT-2 的 50256 不适用）
     )
     generated_text = token_ids_to_text(token_ids, tokenizer_model="llama3-8b")
     logger.info(f"generated_text:\n{generated_text}")

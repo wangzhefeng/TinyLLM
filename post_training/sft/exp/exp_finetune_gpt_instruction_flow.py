@@ -426,7 +426,7 @@ class ModelFinetuningInstructionFlow:
 
     def load_finetuned_model(self, setting, train_iter, prompt):
         """
-        加载微调好的模型，并使用模型进行推理
+        加载微调好的模型，并使用模型进行推断
 
         Args:
             setting (_type_): _description_

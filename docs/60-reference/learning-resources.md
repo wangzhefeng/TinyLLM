@@ -51,7 +51,7 @@
 
 ### KV Cache
 
-- [图解 KV Cache：解锁 LLM 推理效率的关键](https://mp.weixin.qq.com/s/uWV56N-NeHA57_UeNDE67g)
+- [图解 KV Cache：解锁 LLM 推断效率的关键](https://mp.weixin.qq.com/s/uWV56N-NeHA57_UeNDE67g)
 
 ## 技巧
 

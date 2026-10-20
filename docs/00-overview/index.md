@@ -10,7 +10,7 @@ TinyLLM 是一个以“从零实现 + 小型实验”为主的 LLM 学习仓库�
 |---|---|---|
 | 预训练 | 数据、tokenizer、GPT/Llama 等模型、训练循环、分布式参考 | [10-pretraining](../10-pretraining/index.md) |
 | 后训练 / reasoning | SFT、PEFT、DPO/RLHF、蒸馏、reasoning-from-scratch | [20-post-training](../20-post-training/index.md) |
-| 推理 | 权重加载、生成、nano_vllm、评测、UI | [30-inference](../30-inference/index.md) |
+| 模型推断 | 权重加载、生成、nano_vllm、评测、UI | [30-inference](../30-inference/index.md) |
 
 ## 共享资产
 

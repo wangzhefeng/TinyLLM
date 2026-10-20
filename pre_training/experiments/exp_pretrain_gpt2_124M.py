@@ -45,7 +45,7 @@ from utils.early_stopping import EarlyStopping
 from tools.checkpoint import CheckpointManager, load_checkpoint
 from layers.tokenizers.extension import pad_vocab_size
 from utils.plot_losses import plot_losses_llm, plot_losses
-from layers.inference import generate
+from inference.generate_core import generate
 # utils
 from utils.model_memory import model_memory_size
 from utils.timestamp_utils import from_unix_time

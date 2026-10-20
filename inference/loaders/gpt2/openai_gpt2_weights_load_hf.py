@@ -80,7 +80,7 @@ def main():
 
     from models.gpt2.gpt2_124M import Model
     from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
-    from layers.inference import generate
+    from inference.generate_core import generate
     from utils.device import device_setting
     from utils.args_tools import DotDict
     from utils.log_util import logger

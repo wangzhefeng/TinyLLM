@@ -2,8 +2,8 @@ import unittest
 
 import torch
 
-from layers.normailzation.layer_norm import LayerNorm, LayerNormPyTorch
-from layers.normailzation.rms_norm import RMSNorm
+from layers.normalization.layer_norm import LayerNorm, LayerNormPyTorch
+from layers.normalization.rms_norm import RMSNorm
 
 
 class TestNormalization(unittest.TestCase):

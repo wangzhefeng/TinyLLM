@@ -181,7 +181,7 @@ def load_models():
         device_map = "auto",
     )
 
-    # 合并 LoRA 权重到基础模型（提升推理速度，但会失去再次训练的能力）
+    # 合并 LoRA 权重到基础模型（提升推断速度，但会失去再次训练的能力）
     lora_model = lora_model.merge_and_unload()
 
     # 设置为评估模式

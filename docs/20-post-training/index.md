@@ -60,10 +60,10 @@ python post_training/preference/model_rlhf/dpo/run_gpt_dpo.py
 
 - 运行前确保仓库根在 `PYTHONPATH`：`export PYTHONPATH="$PWD"`。
 - 旧脚本中仍存在 `utils.llm`、`models.gpt` 等历史依赖缺失，属于原有失修代码，不是本次移动引入。
-- `reasoning/` 中训练部分属于后训练；推理时扩展与评测更接近推理域，见 [reasoning.md](reasoning.md)。
+- `reasoning/` 中训练部分属于后训练；推断时扩展与评测更接近推断域，见 [reasoning.md](reasoning.md)。
 
 ## 相关
 
-- [推理域](../30-inference/index.md)
+- [模型推断](../30-inference/index.md)
 - [测试](../50-development/testing.md)
 - [清理记录](../50-development/cleanup-log.md)

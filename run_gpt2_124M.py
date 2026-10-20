@@ -164,7 +164,7 @@ def run(args, global_rank, world_size, local_rank):
             #     logger.info(f"{180 * '='}")
             #     exp.test(setting)
 
-    # TODO 模型推理预测
+    # TODO 模型推断
     if args.is_inference:
         itr = 0
         setting = f"{args.task_name}_{args.model_name}_dt{args.data_name}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}_itr{itr}"

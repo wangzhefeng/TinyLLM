@@ -3,7 +3,7 @@
 # TinyLLM 架构与目录边界
 
 > 更新时间：2026-10-18（第三次整理：三个域内部按职责再分层）  
-> 目标：**预训练 → 后训练 / reasoning → 推理** 三域分离，域内按“数据 / 实验 / 入口 / 扩展”分层。
+> 目标：**预训练 → 后训练 / 逻辑推理 → 模型推断** 三域分离，域内按“数据 / 实验 / 入口 / 扩展”分层。
 
 ## 1. 顶层结构
 
@@ -11,7 +11,7 @@
 TinyLLM/
 ├── pre_training/          # 预训练
 ├── post_training/         # 后训练：SFT / PEFT / preference / reasoning
-├── inference/             # 推理：serving / api / evaluation / loaders / apps
+├── inference/             # 模型推断：serving / api / evaluation / loaders / apps
 ├── tools/                 # 独立工具库：distributed
 ├── models/                # 共享模型定义
 ├── layers/                # 共享层、tokenizer、生成原语
@@ -40,7 +40,7 @@ TinyLLM/
 
 入口约定：**预训练主入口放根目录**（`run_gpt2_124M.py`、`run_bert.py`、`run_llama.py`、`run_qwen.py`，
 均复用 `run_gpt2_124M.py` 的 parser 与 `pre_training.experiments.exp_pretrain_gpt2_124M` 主流程）；
-后训练与推理的入口放域内（如 `post_training/sft/run_sft.py`）。
+后训练与推断的入口放域内（如 `post_training/sft/run_sft.py`）。
 
 ### 2.2 `post_training/`
 
@@ -66,7 +66,7 @@ python post_training/preference/model_rlhf/dpo/run_gpt_dpo.py
 
 | 目录 | 职责 |
 |---|---|
-| `registry.py`、`loading.py`、`generation.py` | 通用推理 API：模型注册表、统一加载 `load_model`、统一生成 `generate_text` |
+| `registry.py`、`loading.py`、`generation.py` | 通用推断 API：模型注册表、统一加载 `load_model`、统一生成 `generate_text` |
 | `serving/` | `nano_vllm` serving 级实现 |
 | `api/` | Ollama / OpenAI 客户端 |
 | `evaluation/` | 指令回答评测（judge.py 统一入口） |
@@ -103,7 +103,7 @@ python inference/loaders/qwen3/qwen3_06B_load.py   # USE_CACHE=True 即 KV cache
 | `config/` | canonical 模型超参表（gpt2/llama/qwen3），供权重加载与示例使用；训练入口走 argparse 不经 config/。config 模块禁止 import 副作用（device/种子/tokenizer 在调用方获取）；权重下载在 `inference/loaders/qwen3/model_download.py` |
 | `utils/` | optimizer、LR、loss、logging、device、DDP、checkpoint |
 
-`layers/inference.py`、`layers/kv_cache.py` 留在共享层：既是教材实现，也是预训练采样所需；`inference/serving/nano_vllm` 负责 serving 优化。
+`inference/generate_core.py`（生成）与 `layers/kv_cache.py` 是教材实现，前者已从 layers/ 归位 inference/ 域；`inference/serving/nano_vllm` 负责 serving 优化。
 
 ## 4. 测试
 

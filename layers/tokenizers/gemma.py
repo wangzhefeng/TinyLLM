@@ -15,11 +15,7 @@ __all__ = []
 
 # python libraries
 import os
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -54,10 +50,12 @@ class Gemma3Tokenizer:
     def __init__(self, tokenizer_file_path: str):
         tok_file = Path(tokenizer_file_path)
         self._tok = Tokenizer.from_file(str(tok_file))
-        # Attempt to identify EOS and padding tokens
-        eos_token = "<end_of_turn>"
-        self.pad_token_id = eos_token
-        self.eos_token_id = eos_token
+        # EOS / PAD 需要是 token id（int），不是字符串。
+        # base 模型的 eos 是 <eos>（id 1）；instruct 模型的回合结束符是 <end_of_turn>（id 106）。
+        # pad 复用 <pad>（id 0）；取不到时回退 None。
+        self.eos_token_id = self._tok.token_to_id("<eos>")
+        self.eot_token_id = self._tok.token_to_id("<end_of_turn>")
+        self.pad_token_id = self._tok.token_to_id("<pad>")
 
     def encode(self, text: str) -> list[int]:
         return self._tok.encode(text).ids

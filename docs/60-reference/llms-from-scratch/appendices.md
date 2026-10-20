@@ -20,13 +20,13 @@
 
 - **Ch2**：用预训练 LLM 生成文本、多轮对话、`torch.compile` 优化。
 - **Ch3**：推理模型评测（MATH-500、答案解析、验证器）。
-- **Ch4**：推理时扩展（CoT、self-consistency、batched 版本）。
-- **Ch5**：self-refinement、best-of-n、更多推理时策略。
+- **Ch4**：推断时扩展（CoT、self-consistency、batched 版本）。
+- **Ch5**：self-refinement、best-of-n、更多推断时策略。
 - **Ch6**：RLVR + GRPO（原始版、batched、FSDP）。
 - **Ch7**：GRPO 改进（tracking、clip ratio、KL、format reward）。
 - **Ch8**：推理蒸馏（Ollama/OpenRouter 生成数据 + 蒸馏训练）。
 - **附录 C–G**：Qwen3 源码、更大 LLM、batching/throughput、评测方法（MMLU、Elo/Bradley-Terry、LLM judge）、聊天界面。
 
-**对本项目**：`qwen3_reasoning/` 的目录命名与这本书高度对应（评测、推理时、RL、蒸馏），但只有数学验证器、选择题评测、leaderboard 骨架与 Qwen3 推理 demo 是真实代码，RL/蒸馏/推理时扩展/LLM judge 等主线仍是空壳。如果项目想继续“推理模型”方向，这是一条清晰的补全路线。
+**对本项目**：`qwen3_reasoning/` 的目录命名与这本书高度对应（评测、推断时、RL、蒸馏），但只有数学验证器、选择题评测、leaderboard 骨架与 Qwen3 推断 demo 是真实代码，RL/蒸馏/推断时扩展/LLM judge 等主线仍是空壳。如果项目想继续“推理模型”方向，这是一条清晰的补全路线。
 
 ---

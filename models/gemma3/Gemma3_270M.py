@@ -14,11 +14,7 @@
 __all__ = []
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -26,7 +22,7 @@ import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockGemma3
-from layers.normailzation.rms_norm import RMSNorm_Gemma3
+from layers.normalization.rms_norm import RMSNorm_Gemma3
 from layers.position_encoding.RoPE import precompute_rope_params, compute_rope
 
 # global variable
@@ -48,6 +44,9 @@ class Model(nn.Module):
         ])
         self.final_norm = RMSNorm_Gemma3(cfg.embed_dim, eps=1e-6)
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False, dtype=cfg.dtype)
+        # 权重共享：官方 Gemma3-270M tie_word_embeddings=True，
+        # out_head 与 tok_embed 共享权重（不共享则无法正确加载官方权重）
+        self.out_head.weight = self.tok_embed.weight
         # reusable utilities
         cos_local, sin_local = precompute_rope_params(
             head_dim=cfg.head_dim,

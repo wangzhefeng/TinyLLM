@@ -1,8 +1,8 @@
-> 所属：[TinyLLM Docs](../README.md) › [Inference](index.md)
+> 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
 # 评测
 
-> 所属：[TinyLLM Docs](../README.md) › [Inference](index.md)
+> 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
 ## 指令回答评测
 
@@ -10,7 +10,7 @@
 - `inference/evaluation/ollama_evaluate.py` / `openai_evaluate.py`：兼容 shim，保留原签名并委托 judge.py
 - `inference/api/`：Ollama/OpenAI 客户端封装
 
-## Reasoning 评测
+## 推理评测
 
 - `post_training/reasoning/evaluation/benchmark_based_eval/`：MATH-500、选择题
 - `post_training/reasoning/evaluation/judgement_based_eval/`：LLM judge、Elo/Bradley-Terry、leaderboard

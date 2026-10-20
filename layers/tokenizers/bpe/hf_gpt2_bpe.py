@@ -14,11 +14,7 @@
 __all__ = []
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 from typing import List
 import warnings
 warnings.filterwarnings("ignore")
@@ -47,7 +43,8 @@ class HuffingFaceGPT2BPE:
     
     @property
     def n_vocab(self):
-        return self.tokenizer.total_vocab_size()
+        # total_vocab_size 是 property，不能加括号调用
+        return self.tokenizer.total_vocab_size
 
     def encode(self, text: str, fast: bool=True):
         """
@@ -62,12 +59,12 @@ class HuffingFaceGPT2BPE:
     
     def decode(self, tokens: List, fast: bool=True):
         """
-        token IDs decode to text
+        token IDs decode to text（调用 tokenizer 的 decode，而非 __call__）
         """
         if fast:
-            text = self.tokenizer_fast(tokens=tokens)
+            text = self.tokenizer_fast.decode(tokens)
         else:
-            text = self.tokenizer(tokens=tokens)
+            text = self.tokenizer.decode(tokens)
         
         return text
 

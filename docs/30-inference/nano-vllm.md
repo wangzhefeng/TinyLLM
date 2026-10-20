@@ -1,6 +1,6 @@
-> 所属：[TinyLLM Docs](../README.md) › [Inference](index.md)
+> 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
-# nano_vllm：迷你 vLLM 推理引擎
+# nano_vllm：迷你 vLLM 推断引擎
 
 教学级 vLLM 复刻，移植自 [GeeeekExplorer/nano-vllm](https://github.com/GeeeekExplorer/nano-vllm)，
 改造为**纯 PyTorch、CPU 可跑**（triton / flash-attn 替换为 SDPA，CUDA 专用路径做守卫式保留）。
@@ -22,7 +22,7 @@ inference/serving/nano_vllm/
 │   └── llm_engine.py    # LLMEngine：add_request / step / generate，tp>1 时 spawn worker
 ├── utils/               # Context（调度元信息）、权重加载/随机初始化
 ├── example.py           # 随机权重微型 Qwen3 + 伪 tokenizer 的闭环演示
-├── example_pretrained.py# 加载真实 HF 格式 Qwen3 权重推理
+├── example_pretrained.py# 加载真实 HF 格式 Qwen3 权重推断
 └── bench.py             # 吞吐基准（随机小模型或真实权重）
 ```
 
@@ -41,7 +41,7 @@ from inference.serving.nano_vllm import LLM, Config, SamplingParams
 .venv/bin/python inference/serving/nano_vllm/bench.py --num-seqs 32
 .venv/bin/python inference/serving/nano_vllm/bench.py --model-path ~/huggingface/Qwen3-0.6B/
 
-# 真实权重推理（HF 格式目录，可用 inference/loaders/qwen3/model_download.py 下载）
+# 真实权重推断（HF 格式目录，可用 inference/loaders/qwen3/model_download.py 下载）
 .venv/bin/python inference/serving/nano_vllm/example_pretrained.py \
     --model-path ~/huggingface/Qwen3-0.6B/ "你好"
 ```
@@ -76,5 +76,5 @@ config = Config(vocab_size=64, hidden_size=128, num_hidden_layers=2,
 
 ## 相关
 
-- [serving](serving.md)：推理原理与部署形态
+- [serving](serving.md)：推断原理与部署形态
 - [loaders](loaders.md)：真实 Qwen3 权重加载（教材版模型）

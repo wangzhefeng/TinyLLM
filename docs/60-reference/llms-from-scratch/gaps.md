@@ -18,7 +18,7 @@
 
 | 优先级 | 缺口 | 关键实现点 | 建议落点 | 工作量 |
 |---|---|---|---|---|
-| P1-1 | MLA | 压缩 K/V latent、cache 只存 latent、推理时反投影 | `layers/attention.py` + `models/deepseek/` | M |
+| P1-1 | MLA | 压缩 K/V latent、cache 只存 latent、推断时反投影 | `layers/attention.py` + `models/deepseek/` | M |
 | P1-2 | 独立 SWA + 显存估算 | local mask、KV cache 窗口截断、5:1 混合 | `layers/attention.py`、`layers/kv_cache.py` | S–M |
 | P1-3 | 跨层 KV 共享 | 后层复用前层 K/V，减少 cache 层数 | `layers/kv_cache.py` + 模型组装 | S–M |
 | P1-4 | Gated DeltaNet | 线性注意力/RNN 状态更新、门控 | `layers/attention.py` 或新文件 | M |
@@ -72,7 +72,7 @@
 ### Phase 4：模型 zoo 与推理书（按兴趣）
 
 - 先补 OLMo3（post-norm + SWA）与 Tiny Aya（并行 block），再做 Qwen3.5（线性注意力混合）与 Gemma4（KV 共享组合）。
-- 若继续推理方向，按 `reasoning-from-scratch` 的 Ch3→Ch8 顺序补：评测 → 推理时扩展 → GRPO → 蒸馏。
+- 若继续推理方向，按 `reasoning-from-scratch` 的 Ch3→Ch8 顺序补：评测 → 推断时扩展 → GRPO → 蒸馏。
 
 ---
 

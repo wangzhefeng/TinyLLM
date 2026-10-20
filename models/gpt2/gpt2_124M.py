@@ -16,17 +16,13 @@ __all__ = [
 ]
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 
 import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockGPT2_124M
-from layers.normailzation.layer_norm import LayerNorm
+from layers.normalization.layer_norm import LayerNorm
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

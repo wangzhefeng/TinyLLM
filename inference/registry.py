@@ -6,7 +6,7 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2026-10-20
 # * Version     : 1.0.102020
-# * Description : MODEL_REGISTRY：通用推理模块的模型注册表。
+# * Description : MODEL_REGISTRY：通用推断模块的模型注册表。
 # *               每个条目声明模型族（family）、配置来源、权重来源（sources）、
 # *               默认 tokenizer 与 eos，供 inference.loading.load_model 统一加载。
 # *               本模块只放静态元数据，import 时无任何副作用（不下载、不 import torch）。

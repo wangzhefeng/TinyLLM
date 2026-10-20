@@ -212,7 +212,7 @@ def train(args):
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     total_steps = len(train_dataloader) * args.train_epochs
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda_factory(total_steps, args.warmup_ratio))
-    # early stopping（最优 dev loss 存 checkpoint，统一格式便于推理脚本加载）
+    # early stopping（最优 dev loss 存 checkpoint，统一格式便于推断脚本加载）
     Path(args.checkpoints).mkdir(parents=True, exist_ok=True)
     ckpt_path = str(Path(args.checkpoints) / "bert_pretrain_best.pt")
     best_val_loss = float("inf")

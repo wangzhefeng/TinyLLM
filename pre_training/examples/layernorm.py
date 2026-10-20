@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore")
 
 import torch
 
-from layers.normailzation.layer_norm import LayerNorm, LayerNormPyTorch
+from layers.normalization.layer_norm import LayerNorm, LayerNormPyTorch
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

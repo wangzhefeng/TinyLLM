@@ -14,11 +14,7 @@
 __all__ = []
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -72,8 +68,16 @@ class KVCache_optimized:
             self.len[layer_idx] = 0
 
     def append(self, layer_idx, k_new, v_new):
+        # 未分配时按首个输入自动分配，避免依赖调用方先调 allocate 的隐式约定
+        if self.k[layer_idx] is None:
+            self.allocate(layer_idx, k_new.shape[0])
         L = self.len[layer_idx]
         T = k_new.shape[2]
+        if L + T > self.max_len:
+            raise ValueError(
+                f"KV cache overflow at layer {layer_idx}: "
+                f"current length {L} + new {T} > max_len {self.max_len}"
+            )
         self.k[layer_idx][:, :, L:L+T, :].copy_(k_new)
         self.v[layer_idx][:, :, L:L+T, :].copy_(v_new)
         self.len[layer_idx] = L + T

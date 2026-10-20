@@ -31,7 +31,7 @@ from post_training.preference.data_provider.dpo import data_loader
 from post_training.common.data_provider import instruction_format
 # model
 from models.gpt import Model
-from layers.inference import generate
+from inference.generate_core import generate
 # tokenzier
 from layers.tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
 from inference.loaders.gpt2.load_gpt2_pretrained_weights import (

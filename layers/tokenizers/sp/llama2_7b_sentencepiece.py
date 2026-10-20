@@ -16,11 +16,7 @@ __all__ = []
 
 # python libraries
 import os
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 try:
     from dotenv import find_dotenv, load_dotenv
 except ImportError:  # python-dotenv is optional
@@ -79,7 +75,9 @@ class Llama27bTokenizer:
         return self.tokenizer.encode_as_ids(text)
     
     def decode(self, ids):
-        return self.tokenizer.decode_pieces(ids)
+        # ids 是 int 列表，应使用 decode（等价于 decode_ids）；
+        # decode_pieces 只接受 string pieces
+        return self.tokenizer.decode(ids)
 
 
 
