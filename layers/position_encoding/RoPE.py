@@ -16,6 +16,7 @@ __all__ = []
 
 # python libraries
 from pathlib import Path
+import math
 
 import torch
 import torch.nn as nn
@@ -75,8 +76,36 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 # ==============================================================================
 
 
-def precompute_rope_params(head_dim, theta_base=10_000, context_length=4096, freq_config=None, dtype=torch.float32):
+def yarn_attention_mscale(factor: float) -> float:
+    """YaRN 的注意力温度补偿：推断时对 q、k 各乘 mscale。
+
+    使用 NTK-by-parts 插值后，attention logits 尺度变化，
+    需乘以 ``mscale = 0.1·ln(factor) + 1`` 恢复对比度（YaRN §3.3）。
+    """
+    return 0.1 * math.log(factor) + 1.0
+
+
+def precompute_rope_params(head_dim, theta_base=10_000, context_length=4096,
+                           freq_config=None, dtype=torch.float32,
+                           ntk_factor=None, yarn_config=None):
+    """预计算 RoPE 的 cos/sin。
+
+    频率调整（互斥，择一）：
+    - ``freq_config``：Llama-3 式分段缩放（低频降频 + 中频平滑过渡）
+    - ``ntk_factor``：NTK-aware 外推——放大 theta_base
+      ``θ' = θ · factor^(d/(d-2))``，等效降频，支持长上下文
+    - ``yarn_config``：YaRN NTK-by-parts——按波长分带：
+      短波长（高频）不变、长波长（低频）除以 factor、中带按 ramp 混合；
+      需配合 ``yarn_attention_mscale(factor)`` 缩放 q/k。
+
+    Returns:
+        (cos, sin)，各 (context_length, head_dim)
+    """
     assert head_dim % 2 == 0, "Embedding dimension must be even"
+
+    # NTK-aware：先放大 theta_base
+    if ntk_factor is not None:
+        theta_base = theta_base * (ntk_factor ** (head_dim / (head_dim - 2)))
 
     # Compute the inverse frequencies
     inv_freq = 1.0 / (theta_base ** (torch.arange(0, head_dim, 2, dtype=dtype)[: (head_dim // 2)].float() / head_dim))
@@ -95,6 +124,26 @@ def precompute_rope_params(head_dim, theta_base=10_000, context_length=4096, fre
         is_medium_freq = (wavelen <= low_freq_wavelen) & (wavelen >= high_freq_wavelen)
         inv_freq_llama = torch.where(is_medium_freq, smoothed_inv_freq, inv_freq_llama)
         inv_freq = inv_freq_llama
+
+    if yarn_config is not None:
+        # YaRN NTK-by-parts（按波长分带）
+        factor = yarn_config["factor"]
+        orig_ctx = yarn_config["original_context_length"]
+        beta_fast = yarn_config.get("beta_fast", 32)    # 高频带边界
+        beta_slow = yarn_config.get("beta_slow", 1)     # 低频带边界
+        wavelen = 2 * torch.pi / inv_freq
+        high_wavelen = orig_ctx / beta_fast             # 短波长：不缩放
+        low_wavelen = orig_ctx / beta_slow              # 长波长：完全插值
+        ramp = ((orig_ctx / wavelen) - beta_slow) / (beta_fast - beta_slow)
+        ramp = ramp.clamp(0.0, 1.0)
+        inv_freq = torch.where(
+            wavelen < high_wavelen, inv_freq,
+            torch.where(
+                wavelen > low_wavelen, inv_freq / factor,
+                (1 - ramp) * inv_freq / factor + ramp * inv_freq,
+            ),
+        )
+
     # Generate position indices
     positions = torch.arange(context_length, dtype=dtype)
     # Compute the angles, shape: (context_length, head_dim//2)

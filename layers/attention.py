@@ -1081,6 +1081,85 @@ class GroupedQueryAttention_Gemma3(nn.Module):
 
 
 
+class SlidingWindowAttention(nn.Module):
+    """滑动窗口注意力（SWA，Mistral/Gemma3-local 层式）的独立可复用实现。
+
+    每个 token 只能 attend 最近 ``window_size`` 个 token（含自身）。
+    与锁死在 Gemma3 block 内的实现不同，本类可独立用于任意模型做 SWA 消融。
+
+    KV cache：只保留最近 ``window_size`` 个 K/V（窗口左移丢弃更早的），
+    显存 O(batch · heads · window_size · head_dim)，与序列长度无关。
+
+    与 ``MultiHeadAttention`` 的关系：后者已有 cache 窗口截断逻辑，
+    但其无 cache 路径的 mask 是纯因果的；本类两条路径都施加完整
+    因果 + 远距离屏蔽的 SWA mask。
+    """
+
+    def __init__(self, d_model: int, d_out: int, n_heads: int,
+                 context_length: int, window_size: int,
+                 dropout: float=0.0, qkv_bias: bool=False):
+        super().__init__()
+
+        assert d_out % n_heads == 0, "d_out must be divisible by n_heads"
+        self.d_out = d_out
+        self.n_heads = n_heads
+        self.head_dim = d_out // n_heads
+        self.window_size = window_size
+        self.W_query = nn.Linear(d_model, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_model, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_model, d_out, bias=qkv_bias)
+        self.out_proj = nn.Linear(d_out, d_out)
+        self.dropout = nn.Dropout(dropout)
+        self.register_buffer("cache_k", None, persistent=False)
+        self.register_buffer("cache_v", None, persistent=False)
+        self.ptr_cur = 0
+
+    def forward(self, x, use_cache=False):
+        batch_size, num_tokens, _ = x.shape
+        queries = self.W_query(x).view(batch_size, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
+        keys = self.W_key(x).view(batch_size, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
+        values = self.W_value(x).view(batch_size, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
+
+        if use_cache:
+            if self.cache_k is None or self.cache_k.size(0) != batch_size:
+                self.cache_k = torch.zeros(batch_size, self.n_heads, self.window_size,
+                                           self.head_dim, device=x.device, dtype=x.dtype)
+                self.cache_v = torch.zeros_like(self.cache_k)
+                self.ptr_cur = 0
+            # 溢出则窗口左移（丢弃最早），cache 恒为最近 window_size 个 token
+            if self.ptr_cur + num_tokens > self.window_size:
+                overflow = self.ptr_cur + num_tokens - self.window_size
+                self.cache_k[:, :, :-overflow, :] = self.cache_k[:, :, overflow:, :].clone()
+                self.cache_v[:, :, :-overflow, :] = self.cache_v[:, :, overflow:, :].clone()
+                self.ptr_cur -= overflow
+            self.cache_k[:, :, self.ptr_cur:self.ptr_cur + num_tokens, :] = keys
+            self.cache_v[:, :, self.ptr_cur:self.ptr_cur + num_tokens, :] = values
+            self.ptr_cur += num_tokens
+            keys = self.cache_k[:, :, :self.ptr_cur, :]
+            values = self.cache_v[:, :, :self.ptr_cur, :]
+
+        # SWA mask：未来屏蔽 + 距离 >= window_size 屏蔽（带 cache offset）
+        total_len = keys.shape[2]
+        offset = total_len - num_tokens if use_cache else 0
+        row_idx = torch.arange(offset, offset + num_tokens, device=x.device).unsqueeze(1)
+        col_idx = torch.arange(total_len, device=x.device).unsqueeze(0)
+        dist = row_idx - col_idx                                       # i - j
+        mask = (dist < 0) | (dist >= self.window_size)                 # True = 屏蔽
+
+        attn_scores = (queries @ keys.transpose(2, 3)) / (self.head_dim ** 0.5)
+        attn_scores = attn_scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), -torch.inf)
+        attn_weights = torch.softmax(attn_scores, dim=-1)
+        attn_weights = self.dropout(attn_weights)
+        context_vec = (attn_weights @ values).transpose(1, 2).reshape(batch_size, num_tokens, self.d_out)
+        return self.out_proj(context_vec)
+
+    def reset_cache(self):
+        self.cache_k, self.cache_v = None, None
+        self.ptr_cur = 0
+
+
+
+
 # 测试代码 main 函数
 def main():
     x = torch.randn(2, 6, 2, 3)

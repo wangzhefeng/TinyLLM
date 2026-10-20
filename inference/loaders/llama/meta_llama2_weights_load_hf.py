@@ -75,7 +75,7 @@ def load_weights_into_llama(model, params, param_config):
             return torch.nn.Parameter(torch.tensor(right))
     
     # embedding
-    model.tok_emb.weight = assign(model.tok_emb.weight, params["tok_embeddings.weight"])
+    model.tok_embed.weight = assign(model.tok_embed.weight, params["tok_embeddings.weight"])
     # other layers
     for l in range(param_config["n_layers"]):
         # Load attention weights

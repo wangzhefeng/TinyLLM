@@ -27,7 +27,8 @@ import torch
 
 from config.qwen3.model_cfgs import get_cfgs
 from inference.loaders.qwen3.model_download import download_from_huggingface
-from models.qwen3.qwen3_original import Model
+from inference.loaders.qwen3.load_weights import remap_book_state_dict
+from models.qwen3.qwen3 import Model
 from layers.tokenizers.qwen3.qwen3_tokenizer import Qwen3Tokenizer
 from inference.generate_core import generate_qwen3_stream
 from utils.device import device_setting
@@ -73,8 +74,8 @@ llm_model_path, tokenizer_path = download_from_huggingface(
 QWEN3_CONFIG = get_cfgs(CHOOSE_MODEL="0.6B")
 # llm model
 model = Model(QWEN3_CONFIG)
-# load model weights
-model.load_state_dict(torch.load(llm_model_path))
+# load model weights（书本 checkpoint 用 tok_emb/att 命名，重映射到本仓库命名）
+model.load_state_dict(remap_book_state_dict(torch.load(llm_model_path)))
 # move model to device
 model.to(device)
 # model compile

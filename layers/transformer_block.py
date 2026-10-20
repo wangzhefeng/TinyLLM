@@ -175,6 +175,9 @@ class TransformerBlockLlama3(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
+        # 计算精度跟随 cfg.dtype（修复：原先硬编码 bfloat16，fp32 训练被静默降精度）
+        self._compute_dtype = cfg.dtype
+
         self.attn = GroupedQueryAttention(
             d_model = cfg.embed_dim,
             d_out = cfg.embed_dim,
@@ -193,12 +196,12 @@ class TransformerBlockLlama3(nn.Module):
         # Shortcut connection for attention block
         shortcut = x
         x = self.norm1(x)
-        x = self.attn(x.to(torch.bfloat16))  # Shape: [batch_size, num_tokens, emb_size]
+        x = self.attn(x.to(self._compute_dtype))  # Shape: [batch_size, num_tokens, emb_size]
         x = x + shortcut
         # Shortcut connection for feed-forward block
         shortcut = x
         x = self.norm2(x)
-        x = self.ff(x.to(torch.bfloat16))
+        x = self.ff(x.to(self._compute_dtype))
         x = x + shortcut
 
         return x
@@ -208,6 +211,9 @@ class TransformerBlockQwen3(nn.Module):
     
     def __init__(self, cfg):
         super().__init__()
+
+        # 计算精度跟随 cfg.dtype（修复：原先硬编码 bfloat16，fp32 训练被静默降精度）
+        self._compute_dtype = cfg.dtype
 
         self.attn = GroupedQueryAttention_Qwen3(
             d_model = cfg.embed_dim,
@@ -229,7 +235,7 @@ class TransformerBlockQwen3(nn.Module):
         shortcut = x
         x = self.norm1(x)
         x, next_cache = self.attn(
-            x.to(torch.bfloat16), mask, cos, sin, 
+            x.to(self._compute_dtype), mask, cos, sin, 
             start_pos=start_pos, 
             cache=cache, 
         )  # Shape: [batch_size, num_tokens, emb_size]
@@ -238,58 +244,19 @@ class TransformerBlockQwen3(nn.Module):
         # Shortcut connection for feed-forward block
         shortcut = x
         x = self.norm2(x)
-        x = self.ff(x.to(torch.bfloat16))
+        x = self.ff(x.to(self._compute_dtype))
         x = x + shortcut
 
         return x, next_cache
-
-
-class TransformerBlockQwen3_original(nn.Module):
-    
-    def __init__(self, cfg):
-        super().__init__()
-
-        self.att = GroupedQueryAttention_Qwen3(
-            d_model = cfg.embed_dim,
-            n_heads = cfg.n_heads,
-            num_kv_groups = cfg.n_kv_groups,
-            head_dim = cfg.head_dim,
-            qk_norm = cfg.qk_norm,
-            dtype = cfg.dtype,
-        )
-        if cfg.num_experts > 0:
-            self.ff = MoEFeedForward(cfg)
-        else:
-            self.ff = FeedForwardSiLU(cfg)
-        self.norm1 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
-        self.norm2 = RMSNorm_Qwen3(cfg.embed_dim, eps=1e-6)
-    
-    def forward(self, x, mask, cos, sin, start_pos=0, cache=None):
-        # Shortcut connection for attention block
-        shortcut = x
-        x = self.norm1(x)
-        x, next_cache = self.att(
-            x.to(torch.bfloat16), mask, cos, sin, 
-            start_pos=start_pos, 
-            cache=cache, 
-        )  # Shape: [batch_size, num_tokens, emb_size]
-        x = x + shortcut
-
-        # Shortcut connection for feed-forward block
-        shortcut = x
-        x = self.norm2(x)
-        x = self.ff(x.to(torch.bfloat16))
-        x = x + shortcut
-
-        return x, next_cache
-
-
 
 
 class TransformerBlockQwen3_optimized(nn.Module):
     
     def __init__(self, cfg):
         super().__init__()
+
+        # 计算精度跟随 cfg.dtype（修复：原先硬编码 bfloat16，fp32 训练被静默降精度）
+        self._compute_dtype = cfg.dtype
 
         self.attn = GroupedQueryAttention_Qwen3_optimized(
             d_model = cfg.embed_dim,
@@ -311,7 +278,7 @@ class TransformerBlockQwen3_optimized(nn.Module):
         shortcut = x
         x = self.norm1(x)
         x = self.attn(
-            x.to(torch.bfloat16), mask, cos, sin, 
+            x.to(self._compute_dtype), mask, cos, sin, 
             start_pos=start_pos, 
             cache=cache, 
             layer_idx=layer_idx, 
@@ -322,7 +289,7 @@ class TransformerBlockQwen3_optimized(nn.Module):
         # Shortcut connection for feed-forward block
         shortcut = x
         x = self.norm2(x)
-        x = self.ff(x.to(torch.bfloat16))
+        x = self.ff(x.to(self._compute_dtype))
         x = x + shortcut
 
         return x
@@ -332,6 +299,9 @@ class TransformerBlockQwen3_batched(nn.Module):
     
     def __init__(self, cfg):
         super().__init__()
+
+        # 计算精度跟随 cfg.dtype（修复：原先硬编码 bfloat16，fp32 训练被静默降精度）
+        self._compute_dtype = cfg.dtype
 
         self.attn = GroupedQueryAttention_Qwen3_batched(
             d_model = cfg.embed_dim,
@@ -353,7 +323,7 @@ class TransformerBlockQwen3_batched(nn.Module):
         shortcut = x
         x = self.norm1(x)
         x, next_cache = self.attn(
-            x.to(torch.bfloat16), mask, cos, sin, 
+            x.to(self._compute_dtype), mask, cos, sin, 
             cache=cache, pos_ids=pos_ids
         )  # Shape: [batch_size, num_tokens, emb_size]
         x = x + shortcut
@@ -361,7 +331,7 @@ class TransformerBlockQwen3_batched(nn.Module):
         # Shortcut connection for feed-forward block
         shortcut = x
         x = self.norm2(x)
-        x = self.ff(x.to(torch.bfloat16))
+        x = self.ff(x.to(self._compute_dtype))
         x = x + shortcut
 
         return x, next_cache
@@ -403,7 +373,7 @@ class TransformerBlockGemma3(nn.Module):
             cos = cos_global
             sin = sin_global
         # Shape: [batch_size, num_tokens, emb_size]
-        x_attn = self.attn(x.to(torch.bfloat16), attn_mask, cos, sin)
+        x_attn = self.attn(x.to(self.cfg.dtype), attn_mask, cos, sin)
         x_attn = self.post_attention_layernorm(x_attn)
         x = x_attn + shortcut
         # Shortcut connection for feed-forward block

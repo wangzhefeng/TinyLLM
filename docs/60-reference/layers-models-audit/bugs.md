@@ -4,9 +4,12 @@
 
 所有问题均经源码交叉验证。P0 = 运行时必挂或输出必错；P1 = 结果错误但不崩溃；P2 = 设计/结构缺陷。
 
-> **状态（2026-10-20）**：P0 #1–#11 与 P1 #12–#17、KV cache 溢出防护均已修复，
-> 并由 `tests/unit/test_layers_regression.py`（16 项回归测试）覆盖；全量 83 项测试通过。
-> 剩余：P1 #18/#19、P2 全部，随 Phase 1/2 处理（见 [roadmap.md](roadmap.md)）。
+> **状态（2026-10-20）**：P0 #1–#11 与 P1 #12–#17、KV cache 溢出防护均已修复；
+> Phase 1 结构整改完成（目录改名、inference 归位、sys.path hack 清除、Qwen3 重复收敛、
+> 硬编码 bf16、mask 语义、llama Sequential/tok_emb、#18/#19）。
+> 由 `tests/unit/test_layers_regression.py`（17 项）覆盖；全量 85 项测试通过。
+> 剩余：P2 #22（tokenizers 归属，暂保留）、#23（generate 变体收敛，部分完成）、
+> #24/#25/#28/#29（完整接口统一与权重加载抽象，随 Phase 2 需要）。
 
 ## P0：必修 bug
 

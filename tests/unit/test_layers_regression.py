@@ -207,5 +207,30 @@ class TestSimpleBPERoundtrip(unittest.TestCase):
         self.assertEqual(tok.decode(ids), text)
 
 
+class TestQwen3BookStateDictRemap(unittest.TestCase):
+    """Phase 1: qwen3_original 与 qwen3 合并后，书本 checkpoint 键名可无损重映射。"""
+
+    def test_remap_is_identity_on_canonical_and_roundtrip(self):
+        from models.qwen3.qwen3 import Model as Qwen3Model
+        from inference.loaders.qwen3.load_weights import remap_book_state_dict
+        cfg = SimpleNamespace(
+            vocab_size=64, context_length=16, embed_dim=32, n_heads=4,
+            n_layers=2, head_dim=8, qk_norm=True, n_kv_groups=2,
+            rope_base=1_000_000.0, dtype=torch.float32,
+            num_experts=0, num_experts_per_tok=0, moe_intermediate_size=0,
+            hidden_dim=64,
+        )
+        model = Qwen3Model(cfg)
+        sd = model.state_dict()
+        # 规范命名不应被改动
+        self.assertEqual(set(remap_book_state_dict(sd).keys()), set(sd.keys()))
+        # 模拟书本命名（tok_emb / .att.）再重映射回来，必须还原
+        book = {k.replace("tok_embed.", "tok_emb.").replace(".attn.", ".att."): v
+                for k, v in sd.items()}
+        remapped = remap_book_state_dict(book)
+        self.assertEqual(set(remapped.keys()), set(sd.keys()))
+        model.load_state_dict(remapped)  # strict 加载通过
+
+
 if __name__ == "__main__":
     unittest.main()

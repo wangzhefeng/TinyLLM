@@ -28,6 +28,18 @@ from utils.log_util import logger
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
+def remap_book_state_dict(state_dict):
+    """rasbt/qwen3-from-scratch checkpoint 的键名映射到本仓库规范命名。
+
+    书本用 tok_emb / block.att，本仓库用 tok_embed / block.attn
+    （与 load_weights_into_qwen 的官方权重加载约定一致）。
+    """
+    return {
+        k.replace("tok_emb.", "tok_embed.").replace(".att.", ".attn."): v
+        for k, v in state_dict.items()
+    }
+
+
 def load_weights_into_qwen(model, param_config, params):
     def assign(left, right, tensor_name="unknown"):
         if left.shape != right.shape:

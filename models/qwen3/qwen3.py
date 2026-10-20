@@ -72,7 +72,14 @@ class Model(nn.Module):
         if cache is not None:
             pos_start = self.current_pos
             pos_end = pos_start + num_tokens
-            self.current_pos = pos_end 
+            # RoPE 越界防护：cos/sin 只预计算到 context_length，超出即报清晰错误
+            if pos_end > self.cfg.context_length:
+                raise IndexError(
+                    f"KV cache position {pos_end} exceeds context_length "
+                    f"{self.cfg.context_length}: RoPE cos/sin 预计算长度不足。"
+                    f"请调用 reset_kv_cache() 或减小 max_new_tokens。"
+                )
+            self.current_pos = pos_end
             mask = torch.triu(
                 torch.ones(pos_end, pos_end, device=x.device, dtype=torch.bool), diagonal=1
             )[pos_start:pos_end, :pos_end]

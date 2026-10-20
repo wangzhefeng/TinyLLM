@@ -29,10 +29,10 @@ class Model(nn.Module):
         super().__init__()
 
         # embedding
-        self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.embed_dim, dtype=cfg.dtype)
-        # transformer block
-        self.trf_blocks = nn.Sequential(
-            *[TransformerBlockLlama2(cfg) for _ in range(cfg.n_layers)]
+        self.tok_embed = nn.Embedding(cfg.vocab_size, cfg.embed_dim, dtype=cfg.dtype)
+        # transformer block（ModuleList：为 cache/mask 传参预留，Sequential 无法携带参数）
+        self.trf_blocks = nn.ModuleList(
+            [TransformerBlockLlama2(cfg) for _ in range(cfg.n_layers)]
         )
         # RMSNorm
         self.final_norm = RMSNorm(cfg.embed_dim)
@@ -43,10 +43,11 @@ class Model(nn.Module):
         # in_idx size
         batch_size, seq_len = in_idx.shape
         # embedding
-        tok_embeds = self.tok_emb(in_idx)
+        tok_embeds = self.tok_embed(in_idx)
         x = tok_embeds
         # transformer blocks
-        x = self.trf_blocks(x)
+        for block in self.trf_blocks:
+            x = block(x)
         # final rms norm
         x = self.final_norm(x)
         # output head

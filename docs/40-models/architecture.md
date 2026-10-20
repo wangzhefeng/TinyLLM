@@ -90,8 +90,18 @@ Position Embeddings:
 
 ### DeepSeek
 
-- 独立模型目录：[deepseek.md](deepseek.md)（MLA / DeepSeekMoE 骨架与 roadmap）
-- 当前状态：占位；DeepSeek-R1-Distill-Qwen 的 LoRA 微调仍在 `post_training/peft/model_peft/deepseek_lora/`。
+- 独立模型目录：[deepseek.md](deepseek.md)（MLA 完整实现 + DeepSeekModel 组装，2026-10-20）
+- DeepSeek-R1-Distill-Qwen 的 LoRA 微调仍在 `post_training/peft/model_peft/deepseek_lora/`。
+
+## layers/ 新增组件（2026-10-20）
+
+- `layers/position_encoding/ALiBi.py`：ALiBi 线性偏置位置编码（长度外推）
+- `layers/position_encoding/RoPE.py`：新增 NTK-aware（`ntk_factor`）与 YaRN（`yarn_config`）外推
+- `layers/attention.py`：新增独立 `SlidingWindowAttention`（SWA，含窗口 KV cache）
+- `layers/kv_cache.py`：新增 `trim_kv_cache_window`（tuple cache 窗口截断）
+- `layers/moe.py`：`MoEFeedForward` 新增 Switch 式负载均衡 aux loss 与 DeepSeekMoE shared expert
+- `layers/lora.py`：LoRA/DoRA 通用层（`post_training/peft/layers/lora_dora.py` 为兼容 shim）
+- `layers/normalization/`：目录名由 normailzation 修正为 normalization
 
 ## 计算优化
 

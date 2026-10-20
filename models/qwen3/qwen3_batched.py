@@ -71,6 +71,12 @@ class Model(nn.Module):
         else:
             pos_start = 0  # Not strictly necessary but helps torch.compile
         pos_end = pos_start + num_tokens
+        # RoPE 越界防护：cos/sin 只预计算到 context_length，超出即报清晰错误
+        if pos_end > self.cfg.context_length:
+            raise IndexError(
+                f"KV cache position {pos_end} exceeds context_length "
+                f"{self.cfg.context_length}: RoPE cos/sin 预计算长度不足。"
+            )
         # Build causal mask for [Q=num_tokens, K=pos_end]
         base = torch.triu(
             torch.ones(pos_end, pos_end, device=x.device, dtype=torch.bool), 
@@ -98,7 +104,7 @@ class Model(nn.Module):
             x, new_block_cache = block(
                 x, mask, self.cos, self.sin, 
                 cache=block_cache, 
-                pos_id=pos_ids_current
+                pos_ids=pos_ids_current
             )
             if cache is not None:
                 cache.update(i, new_block_cache)
@@ -111,9 +117,10 @@ class Model(nn.Module):
     
     def reset_kv_cache(self):
         """
-        Keep for compatibility with regular, non-batched generate_text_basic_cache function
+        Keep for compatibility with regular, non-batched generate_text_basic_cache function.
+        batched 模型的位置从 cache 内容推导（见 forward），无需重置计数器。
         """
-        self.current_pos = 0
+        pass
 
 
 

@@ -143,10 +143,20 @@ class SparseMoE(nn.Module):
 
 
 class MoEFeedForward(nn.Module):
-    
+    """Qwen3 式 MoE FFN，可扩展 DeepSeekMoE 两个关键设计（2026-10-20）：
+
+    1. **shared expert**：``num_shared_experts >= 1`` 时无条件激活的共享专家，
+       输出与 routed experts 相加（DeepSeekMoE §2.1，保证公共知识总被计算）。
+    2. **负载均衡 aux loss**：Switch Transformer 式
+       ``L_aux = N * Σ_i f_i · P_i``（f_i=专家 i 分到的 token 比例，
+       P_i=平均路由概率）；路由完全均衡时最小。
+       ``return_aux_loss=True`` 时返回 (out, aux_loss)；
+       默认 False 保持既有调用兼容（aux loss 挂在 ``self.last_aux_loss``）。
+    """
+
     def __init__(self, cfg):
         super().__init__()
-        
+
         self.num_experts_per_tok = cfg.num_experts_per_tok
         self.num_experts = cfg.num_experts
         self.embed_dim = cfg.embed_dim
@@ -165,10 +175,63 @@ class MoEFeedForward(nn.Module):
             for _ in range(cfg.num_experts)
         ])
 
-    def forward(self, x):
+        # DeepSeekMoE：可选 shared expert（总是激活，与 routed 输出相加）
+        try:
+            num_shared = cfg["num_shared_experts"] if isinstance(cfg, dict) \
+                else getattr(cfg, "num_shared_experts", 0)
+        except (KeyError, AttributeError, TypeError):
+            # DotDict 缺键抛 KeyError，getattr 对 SimpleNamespace 缺属性抛 AttributeError
+            num_shared = 0
+        self.num_shared_experts = int(num_shared or 0)
+        if self.num_shared_experts > 0:
+            shared_dim = cfg.moe_intermediate_size
+            self.shared_fc1 = nn.ModuleList([
+                nn.Linear(cfg.embed_dim, shared_dim, bias=False, dtype=cfg.dtype)
+                for _ in range(self.num_shared_experts)
+            ])
+            self.shared_fc2 = nn.ModuleList([
+                nn.Linear(cfg.embed_dim, shared_dim, bias=False, dtype=cfg.dtype)
+                for _ in range(self.num_shared_experts)
+            ])
+            self.shared_fc3 = nn.ModuleList([
+                nn.Linear(shared_dim, cfg.embed_dim, bias=False, dtype=cfg.dtype)
+                for _ in range(self.num_shared_experts)
+            ])
+        self.last_aux_loss = None
+
+    @staticmethod
+    def load_balancing_loss(topk_probs, topk_indices, num_experts):
+        """Switch 式 aux loss：N · Σ_i f_i · P_i。
+
+        Args:
+            topk_probs: (N_tokens, top_k) 每 token 的路由概率
+            topk_indices: (N_tokens, top_k) 每 token 选中的专家
+        Returns:
+            标量 loss；路由完全均衡时 ≈ 1.0，越偏斜越大
+        """
+        n_tokens = topk_probs.shape[0]
+        # f_i：专家 i 被选中的 token 比例
+        one_hot = torch.zeros(n_tokens, num_experts, device=topk_probs.device)
+        one_hot.scatter_(1, topk_indices, 1.0)
+        f = one_hot.mean(dim=0)                            # (N,)
+        # P_i：专家 i 的平均路由概率（softmax 全量分布的期望近似）
+        # topk 概率未归一到全 vocab，这里用 one-hot 加权 topk_probs 的均值
+        prob_mass = torch.zeros(num_experts, device=topk_probs.device)
+        prob_mass.index_add_(0, topk_indices.reshape(-1), topk_probs.reshape(-1))
+        p = prob_mass / n_tokens
+        return num_experts * torch.sum(f * p)
+
+    def forward(self, x, return_aux_loss=False):
         scores = self.gate(x)  # (b, seq_len, num_experts)
         topk_scores, topk_indices = torch.topk(scores, self.num_experts_per_tok, dim=-1)
         topk_probs = torch.softmax(topk_scores, dim=-1)
+
+        # 负载均衡 aux loss（训练时加到总 loss：total + aux_weight * aux）
+        aux_loss = self.load_balancing_loss(
+            topk_probs.reshape(-1, self.num_experts_per_tok),
+            topk_indices.reshape(-1, self.num_experts_per_tok),
+            self.num_experts,
+        )
 
         batch, seq_len, _ = x.shape
         x_flat = x.reshape(batch * seq_len, -1)
@@ -200,7 +263,17 @@ class MoEFeedForward(nn.Module):
 
             out_flat.index_add_(0, selected_idx, expert_out * selected_probs.unsqueeze(-1))
 
-        return out_flat.reshape(batch, seq_len, self.embed_dim)
+        out = out_flat.reshape(batch, seq_len, self.embed_dim)
+
+        # shared expert：无条件激活，输出直接相加（不经过路由权重）
+        for s in range(self.num_shared_experts):
+            hidden = torch.nn.functional.silu(self.shared_fc1[s](x)) * self.shared_fc2[s](x)
+            out = out + self.shared_fc3[s](hidden)
+
+        self.last_aux_loss = aux_loss
+        if return_aux_loss:
+            return out, aux_loss
+        return out
 
 
 

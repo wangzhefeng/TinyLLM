@@ -92,6 +92,28 @@ class KVCache_optimized:
             self.len[i] = 0
 
 
+def trim_kv_cache_window(cache, n_layers, window_size):
+    """对 tuple 式 ``KVCache`` 做滑动窗口截断。
+
+    每层只保留最近 ``window_size`` 个 token 的 K/V（沿 seq 维切片），
+    将 O(seq_len) 的 cache 增长约束为 O(window_size)。
+    与 ``SlidingWindowAttention`` 的内置窗口 cache 不同，本工具用于
+    Qwen3 式（tuple cache + 外部 mask）模型在长生成时限制显存。
+
+    Args:
+        cache: ``KVCache``，每层存 ``(k, v)``，k/v 形状 (B, H_kv, T, D)
+        n_layers: 层数
+        window_size: 保留的窗口大小
+    """
+    for i in range(n_layers):
+        kv = cache.get(i)
+        if kv is None:
+            continue
+        k, v = kv
+        if k.shape[2] > window_size:
+            cache.update(i, (k[:, :, -window_size:, :], v[:, :, -window_size:, :]))
+
+
 
 
 # 测试代码 main 函数

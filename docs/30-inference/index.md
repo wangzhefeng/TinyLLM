@@ -54,6 +54,15 @@ python inference/examples/bert_fill_mask.py --text1 '今天天气[MASK]好'
 
 `inference/generate_core.py` 提供统一的 `sample_next_token(logits, temperature, top_k, top_p)`（greedy / temperature / top-k / top-p，softmax 数值稳定），所有 `generate*` 变体（GPT-2 / Qwen3 / 批量 / 流式 / 早停）均复用它；单元测试见 `tests/unit/test_inference.py`。
 
+2026-10-20 新增解码能力：
+
+- `repetition_penalty(logits, token_ids, penalty)`：CTRL 式重复惩罚（正 logit 除、负 logit 乘）；
+- `beam_search_generate(...)`：beam search（beam 冻结、长度归一化、可返回全部 beam 对比），
+  beam_size=1 与 greedy 输出一致（测试保证）。
+
+进一步的多步推断策略（self-consistency / Best-of-N / self-refinement）在
+[post-training reasoning](../20-post-training/reasoning.md)。
+
 ## 相关
 
 - [模型](../40-models/index.md)

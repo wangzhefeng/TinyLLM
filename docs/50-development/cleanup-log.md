@@ -49,6 +49,37 @@
       新增包级 `__init__.py`（导出 LLM/Config/SamplingParams）与 `llm.py` 便捷入口，
       入口脚本保留直跑/-m 双模式；
     - 新增 `tests/unit/test_inference_registry.py`（注册表、load_model 错误路径、facade 离线生成、懒加载契约）。
+- 2026-10-20 layers/models 审查整改（Phase 0 修 bug + Phase 1 结构，见
+  [layers-models-audit](../60-reference/layers-models-audit/index.md)）：
+    - Phase 0 修复 11 组 P0 bug 与低成本 P1（attention 缩放指数、Qwen3-optimized 的 RoPE 张量与
+      layer_idx 条件反转、generate 双重索引、pos_embed 回退、embedding assert、FixPE 重复类、
+      GPT-2 cache 语义、llama d_ff/eos、Gemma3 权重 tying、tokenizer 系列、MoE 噪声/链式赋值、
+      RMSNorm fp32 上转、BPE rank 合并与互逆），新增 `tests/unit/test_layers_regression.py`；
+    - `layers/normailzation/` → `layers/normalization/`（拼写修正，全仓 import 同步）；
+    - `layers/inference.py` → `inference/generate_core.py`（生成逻辑归位推断域，17 处 import 更新）；
+    - 删除重复实现：`models/qwen3/qwen3_original.py`（与 qwen3.py 仅属性名不同）与
+      `TransformerBlockQwen3_original`；书本 checkpoint 用
+      `inference/loaders/qwen3/load_weights.py:remap_book_state_dict` 重映射加载；
+    - 删除 layers/、models/ 全部 37 处 `sys.path.append(Path.cwd())` hack（正式包导入）；
+    - `CasualAttention` → `CausalAttention`（保留旧名别名）；llama 模型 `nn.Sequential` → `ModuleList`
+      且 embedding 命名 `tok_emb` → `tok_embed`（与 qwen3/gpt2/gemma3 统一，两个 loader 同步）；
+    - transformer block 硬编码 `.to(torch.bfloat16)` 改为跟随 `cfg.dtype`；
+    - `layers/masking.py` 语义统一为 True=屏蔽（与 attention 一致），新增 `combine_causal_padding_mask`；
+    - 修复 `qwen3_batched.py` 的 `pos_id`/`pos_ids` 参数名不匹配（原前向必抛 TypeError）；
+    - Qwen3 三模型新增 RoPE 越界防护（超过 context_length 时抛明确 IndexError）。
+- 2026-10-20 layers/models 审查整改（Phase 2 补教学主题，见
+  [layers-models-audit](../60-reference/layers-models-audit/index.md)）：
+    - MLA 完整实现（`models/deepseek/mla.py`）+ `DeepSeekModel` 组装（`model.py`），
+      原占位删除；
+    - 推断域新增：`beam_search_generate`、`repetition_penalty`（`inference/generate_core.py`）；
+    - 预训练域新增：`layers/position_encoding/ALiBi.py`、`SlidingWindowAttention`、
+      `trim_kv_cache_window`、RoPE 的 NTK/YaRN 外推、MoE aux loss 与 shared expert；
+    - 后训练域新增：`layers/lora.py` 规范 LoRA/DoRA（`post_training/peft/layers/lora_dora.py`
+      转为兼容 shim）、GRPO from scratch（`post_training/reasoning/training/reinforcement_learning.py`）、
+      KL 蒸馏（`training/distillation.py`）、推断时扩展脚手架
+      （`reasoning/inference/voting_and_verification.py` / `advance_text_generation.py`，原占位实现）；
+    - 填充 `models/llama/llama31_8B.py`、`llama32_1B.py`（复用 Llama3 Model + 新 config），
+      `config/llama/model_cfgs.py` 新增 `LLAMA32_CONFIG_1B`。
 
 ## 2. 数据
 
@@ -71,7 +102,7 @@
 ## 5. 验证
 
 ```bash
-python -m unittest discover -s tests -v   # 67 项（2026-10-20）
+python -m unittest discover -s tests -v   # 85 项（2026-10-20）
 python run_gpt2_124M.py --help            # OK
 python scripts/check_docs.py              # OK
 ```

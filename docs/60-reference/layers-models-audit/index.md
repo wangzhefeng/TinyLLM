@@ -8,6 +8,7 @@
 - **对照对象**：[rasbt/LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch)（`main`，含 42 个 bonus）、[rasbt/reasoning-from-scratch](https://github.com/rasbt/reasoning-from-scratch)（`main`，8 章 + 附录）
 - **审查范围**：`layers/` 全部 27 个 Python 文件（约 5900 行）、`models/` 全部 13 个文件，并交叉核对 `config/`、`post_training/`、`inference/`
 - **分析日期**：2026-10-20
+- **执行状态（2026-10-20 完成）**：Phase 0（P0 bug 修复）、Phase 1（结构整改）、Phase 2（教学主题 1–10）均已完成并验证，详见 [roadmap.md](roadmap.md)
 - **历史对照**：[llms-from-scratch 旧版差距分析](../llms-from-scratch/index.md)（2026-10-18 快照，路径口径已失真，本报告为其刷新版）
 
 ## 一页结论
