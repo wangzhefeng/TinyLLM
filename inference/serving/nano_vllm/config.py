@@ -20,17 +20,7 @@ __all__ = [
 ]
 
 # python libraries
-import os
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-# 将 nano_vllm 包根目录置于 sys.path 最前，避免与仓库根目录的 utils/ 等同名包冲突
-PKG_ROOT = str(Path(__file__).resolve().parent)
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 

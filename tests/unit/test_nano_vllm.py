@@ -5,20 +5,19 @@ import textwrap
 import unittest
 from pathlib import Path
 
-NANO_VLLM = Path(__file__).resolve().parents[2] / "inference" / "serving" / "nano_vllm"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# 在子进程中运行：nano_vllm 模块会改写 sys.path（PKG_ROOT 优先），
-# 隔离以避免遮蔽仓库根目录的同名包（config/ utils/ 等）
+# 在子进程中运行：nano_vllm 已包化(相对导入)，按仓根包路径导入，
+# 隔离以避免影响测试主进程的 sys.modules
 LOAD_MODEL_SCRIPT = textwrap.dedent("""
     import sys
     from pathlib import Path
-    PKG = sys.argv[1]
-    sys.path.insert(0, PKG)
+    sys.path.insert(0, sys.argv[1])  # 仓根
     import torch
     from safetensors.torch import save_file
-    from config import Config
-    from models.qwen3_for_causal_lm import Qwen3ForCausalLM
-    from utils.loader import load_model
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.models.qwen3_for_causal_lm import Qwen3ForCausalLM
+    from inference.serving.nano_vllm.utils.loader import load_model
 
     tmp = sys.argv[2]
     cfg = Config(vocab_size=32, hidden_size=16, intermediate_size=32,
@@ -66,7 +65,7 @@ class TestNanoVllmLoadModel(unittest.TestCase):
     def test_load_model_from_safetensors_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(
-                [sys.executable, "-c", LOAD_MODEL_SCRIPT, str(NANO_VLLM), tmp],
+                [sys.executable, "-c", LOAD_MODEL_SCRIPT, str(REPO_ROOT), tmp],
                 capture_output=True, text=True, timeout=120,
             )
         self.assertEqual(result.returncode, 0, msg=result.stderr)

@@ -66,19 +66,20 @@ python post_training/preference/model_rlhf/dpo/run_gpt_dpo.py
 
 | 目录 | 职责 |
 |---|---|
+| `registry.py`、`loading.py`、`generation.py` | 通用推理 API：模型注册表、统一加载 `load_model`、统一生成 `generate_text` |
 | `serving/` | `nano_vllm` serving 级实现 |
 | `api/` | Ollama / OpenAI 客户端 |
-| `evaluation/` | 指令回答评测 |
-| `loaders/` | GPT-2 / Qwen3 / Gemma3 / Llama 权重加载 |
-| `apps/` | Chainlit UI |
+| `evaluation/` | 指令回答评测（judge.py 统一入口） |
+| `loaders/` | GPT-2 / Qwen3 / Gemma3 / Llama 权重加载库 |
+| `apps/` | Chainlit UI（app.py） |
 | `examples/` | GPT-2 生成示例 |
-| `scripts/` | UI / 维护脚本 |
+| `scripts/` | run_app.sh |
 
 入口：
 
 ```bash
-bash inference/scripts/run_app_own.sh
-python inference/loaders/qwen3/qwen3_06B_kvcache_load.py
+bash inference/scripts/run_app.sh        # Chainlit UI（GPT2_WEIGHTS=orig|own）
+python inference/loaders/qwen3/qwen3_06B_load.py   # USE_CACHE=True 即 KV cache 版
 ```
 
 ## 2.4 `tools/`

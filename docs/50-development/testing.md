@@ -18,7 +18,7 @@ python -m unittest discover -s tests/unit -v
 
 | 目录 | 内容 |
 |---|---|
-| `unit/` | 单模块、无网络、秒级完成：attention、FFN、norm、tokenizer、GPT 前向/反向、BERT MLM/NSP、BERT 训练流水线（run_bert）、BERT 情感分类（bert_sentiment）、tools（profiling/checkpoint/data）、**预训练**（pretraining：LR 调度、梯度累积、词表 padding/扩容、特殊 token 扩展、滑动窗口数据集、checkpoint 恢复、legacy 入口导入）、**推理**（inference：sample_next_token 解码策略、generate 贪心确定性、temperature/top-k/top-p、Qwen3 KV cache 一致性、EOS 早停）、**nano_vllm**（safetensors 权重加载与 qkv/gate_up 打包映射、tp=1/tp=2 生成一致性，子进程隔离） |
+| `unit/` | 单模块、无网络、秒级完成：attention、FFN、norm、tokenizer、GPT 前向/反向、BERT MLM/NSP、BERT 训练流水线（run_bert）、BERT 情感分类（bert_sentiment）、tools（profiling/checkpoint/data）、**预训练**（pretraining：LR 调度、梯度累积、词表 padding/扩容、特殊 token 扩展、滑动窗口数据集、checkpoint 恢复、legacy 入口导入）、**推理**（inference：sample_next_token 解码策略、generate 贪心确定性、temperature/top-k/top-p、Qwen3 KV cache 一致性、EOS 早停）、**nano_vllm**（safetensors 权重加载与 qkv/gate_up 打包映射、tp=1/tp=2 生成一致性，子进程隔离）、**推理注册表**（inference_registry：MODEL_REGISTRY、load_model 错误路径、generate_text facade 离线生成、公共 API 懒加载契约） |
 | `integration/` | 跨模块或需要小模型生成的测试（后续补充） |
 
 ## 说明

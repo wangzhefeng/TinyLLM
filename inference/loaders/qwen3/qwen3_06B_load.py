@@ -89,6 +89,8 @@ def main():
     MAX_NEW_TOKENS = 500
     TEMPERATURE = 0.0
     TOP_K = 1
+    # 是否启用 KV cache（原 qwen3_06B_kvcache_load.py 与本脚本仅此一处差异，已合并）
+    USE_CACHE = True
 
     # ------------------------------
     # Weights download and loding of the 0.6B model
@@ -152,6 +154,7 @@ def main():
         temperature=TEMPERATURE,
         top_k=TOP_K,
         eos_token_id=tokenizer.eos_token_id,
+        use_cache=USE_CACHE,
     ):
         token_id = token.squeeze(0).tolist()
         print(tokenizer.decode(token_id), end="", flush=True)

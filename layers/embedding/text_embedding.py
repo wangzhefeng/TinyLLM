@@ -51,7 +51,7 @@ class AbsolutePositionEmbeddings(nn.Module):
         self.pe = nn.Embedding(context_length, d_model)
     
     def forward(self, x):
-        assert x == torch.arange(self.context_length)
+        # x: (batch_size, seq_len) 的位置索引（通常为 torch.arange(seq_len)）
         return self.pe(x)
 
 

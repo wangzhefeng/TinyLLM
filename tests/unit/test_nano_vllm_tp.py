@@ -9,7 +9,7 @@
 # * Description : nano_vllm 多进程张量并行(TP)一致性测试：
 # *               同一微型随机 Qwen3 分别以 tp=1 与 tp=2 跑贪心生成，
 # *               断言两者输出 token 完全一致(gloo 后端, CPU 可跑)。
-# *               在子进程中运行，隔离 nano_vllm 对 sys.path 的改写。
+# *               在子进程中运行，nano_vllm 已包化(相对导入)，按仓根包路径导入。
 # * Link        : https://github.com/GeeeekExplorer/nano-vllm
 # * Requirement : torch >= 2.0
 # ***************************************************
@@ -21,19 +21,18 @@ import textwrap
 import unittest
 from pathlib import Path
 
-NANO_VLLM = Path(__file__).resolve().parents[2] / "inference" / "serving" / "nano_vllm"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # 注意：spawn 的 worker 子进程会重新 import __main__，
 # 因此脚本主体必须放在 if __name__ == "__main__" 保护内
 TP_SCRIPT = textwrap.dedent("""
     import sys
     from pathlib import Path
-    PKG = sys.argv[1]
-    sys.path.insert(0, PKG)
+    sys.path.insert(0, sys.argv[1])  # 仓根
 
-    from config import Config
-    from sampling_params import SamplingParams
-    from engine.llm_engine import LLMEngine
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.sampling_params import SamplingParams
+    from inference.serving.nano_vllm.engine.llm_engine import LLMEngine
 
 
     def build_engine(tp: int) -> LLMEngine:
@@ -78,7 +77,7 @@ class TestNanoVllmTP(unittest.TestCase):
             script = Path(tmp) / "tp_check.py"
             script.write_text(TP_SCRIPT, encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, str(script), str(NANO_VLLM)],
+                [sys.executable, str(script), str(REPO_ROOT)],
                 capture_output=True, text=True, timeout=600,
             )
             print(result.stdout)

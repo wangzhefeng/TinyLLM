@@ -35,7 +35,7 @@
 | 20 | ch05/03 Gutenberg | `data_provider/pgcorpus_gutenberg/` | ✅ | 数据准备 + 预训练脚本 |
 | 21 | ch05/04 LR schedulers | `utils/learning_rate.py`、`test/train_loop_template.py` | 🟡 | 函数有，主循环未接入 |
 | 22 | ch05/05 超参搜索 | `exp/hparam_search.py` | ✅ | 网格搜索 |
-| 23 | ch05/06 用户界面 | `apps/app_orig.py`、`app_own.py` | ✅ | Chainlit 替代 Streamlit |
+| 23 | ch05/06 用户界面 | `apps/app.py`（`app_orig.py`/`app_own.py` 为兼容 shim） | ✅ | Chainlit 替代 Streamlit |
 | 24 | ch05/07 GPT→Llama | `models/llama/`、`test/llama_load/` | 🟡 | 模型有，加载/入口失修 |
 | 25 | ch05/08 内存高效加载 | 无 | ❌ | 无分块 load_state_dict |
 | 26 | ch05/09 tokenizer 扩展 | 无 | ❌ | 无特殊 token + embedding resize |

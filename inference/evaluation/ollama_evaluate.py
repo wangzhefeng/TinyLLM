@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : evaluating_instruction_flow.py
+# * File        : ollama_evaluate.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-18
-# * Version     : 0.1.021800
-# * Description : description
+# * Version     : 0.2.102000
+# * Description : 【已合并到 inference/evaluation/judge.py，本文件仅为兼容保留】
+#               保留原 generate_model_scores 函数名与签名（下游
+#               post_training/sft/exp/exp_finetune_gpt_instruction_flow_evaluate.py
+#               依赖此签名），内部委托 judge.generate_model_scores(backend="ollama")。
 # * Link        : link
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
@@ -18,12 +21,9 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-from tqdm import tqdm
 
 
-from post_training.common.data_provider.instruction_format import format_input_alpaca
-from inference.api.ollama_api import check_if_running, query_model
-from utils.log_util import logger
+from inference.evaluation.judge import generate_model_scores as _judge_generate_model_scores
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -41,51 +41,16 @@ def generate_model_scores(
     """
     generate model evaluate scores
     """
-    scores = []
-    for entry in tqdm(json_data, desc="Scoring entries"):
-        if entry[json_key] == "":
-            scores.append(0)
-        else:
-            # query model to generate score
-            prompt = (
-                f"Given the input `{format_input_alpaca(entry)}` "
-                f"and correct output `{entry['output']}`, "
-                f"score the model response `{entry[json_key]}`"
-                f" on a scale from 0 to 100, where 100 is the best score. "
-                f"Respond with the integer number only."
-            )
-            # check ollama running
-            ollama_running = check_if_running(process_name=inference_server)
-            # inference
-            if ollama_running:
-                logger.info(f"Ollama running: {ollama_running}")
-                # query model
-                score = query_model(
-                    prompt=prompt, 
-                    model=model, 
-                    url=url, 
-                    seed=seed, 
-                    num_ctx=num_ctx
-                )
-                # print the procession
-                logger.info(f"\nDataset response:")
-                logger.info(f">>, {entry['output']}")
-                logger.info(f"\nModel response:")
-                logger.info(f">>, {entry['model_response']}")
-                logger.info(f"\nScore:")
-                logger.info(f">>, {score}")
-                logger.info(f"\n-------------------------")
-            else:
-                raise RuntimeError("Ollama not running. Launch ollama before proceeding") 
-
-            # save scores
-            try:
-                scores.append(int(score))
-            except ValueError:
-                logger.info(f"Could not convert score: {score}")
-                continue
-
-    return scores
+    return _judge_generate_model_scores(
+        json_data,
+        json_key,
+        backend="ollama",
+        inference_server=inference_server,
+        model=model,
+        url=url,
+        seed=seed,
+        num_ctx=num_ctx,
+    )
 
 
 

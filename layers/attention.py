@@ -145,7 +145,7 @@ class MultiHeadAttention(nn.Module):
         # KV-Cache
         if use_cache:
             if self.cache_k is None or self.cache_k.size(0) != batch_size:
-                self.cache_k = torch.zeros(batch_size, self.n_heads, self.window_size, self.head_dim, device=x.device)
+                self.cache_k = torch.zeros(batch_size, self.n_heads, self.window_size, self.head_dim, device=x.device, dtype=x.dtype)
                 self.cache_v = torch.zeros_like(self.cache_k)
                 self.ptr_cur = 0  # pointer to next free slot
             
@@ -259,7 +259,7 @@ class MultiHeadAttentionCombinedQKV(nn.Module):
         # ------------------------------
         # TODO attention weights
         # ------------------------------
-        attn_weights = torch.softmax(attn_scores / keys.shape[-1]**-0.5, dim=-1)
+        attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
         # ------------------------------
         # context vectors
@@ -372,7 +372,9 @@ class MHAPyTorchScaledDotProduct(nn.Module):
         self.qkv = nn.Linear(d_model, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = dropout
-        self.training = training
+        # 不再覆盖 nn.Module.training：dropout 行为由 model.train()/eval() 控制。
+        # 构造参数 training 仅为兼容旧调用保留，不再生效。
+        _ = training
 
     def forward(self, x):
         batch_size, num_tokens, embed_dim = x.shape
@@ -414,7 +416,9 @@ class MHAPyTorchSDPAWithoutFlash(nn.Module):
         self.qkv = nn.Linear(d_model, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = dropout
-        self.training = training
+        # 不再覆盖 nn.Module.training：dropout 行为由 model.train()/eval() 控制。
+        # 构造参数 training 仅为兼容旧调用保留，不再生效。
+        _ = training
         self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool())
 
     def forward(self, x):
@@ -508,15 +512,18 @@ class MHAPyTorchFlexAttention(nn.Module):
         self.qkv = nn.Linear(d_model, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = dropout
-        self.training = training
-        # self.register_buffer("block_mask", create_block_mask(causal, B=None, H=None, Q_LEN=context_length, KV_LEN=context_length))
-        # `create_block_mask` function does not support buffers, yet
+        # 不再覆盖 nn.Module.training：dropout 行为由 model.train()/eval() 控制。
+        # 构造参数 training 仅为兼容旧调用保留，不再生效。
+        _ = training
+        # flex_attention 需要 torch >= 2.5；BlockMask 不支持张量切片，forward 内按需重建
         self.current_version = self.normalize_version(torch.__version__)
         MIN_TORCH_VERSION = "2.5.0"
         self.required_version = parse_version(MIN_TORCH_VERSION)
-        if self.current_version >= self.required_version:
-            from torch.nn.attention.flex_attention import flex_attention, create_block_mask
-        self.block_mask = create_block_mask(self.causal, B=None, H=None, Q_LEN=context_length, KV_LEN=context_length)
+        if self.current_version < self.required_version:
+            raise ImportError(
+                f"MHAPyTorchFlexAttention requires torch >= {MIN_TORCH_VERSION}, "
+                f"got {torch.__version__}"
+            )
 
     @staticmethod
     def normalize_version(version):
@@ -538,21 +545,19 @@ class MHAPyTorchFlexAttention(nn.Module):
         # (3, b, n_heads, num_tokens, head_dim)->3 times (batch_size, n_heads, num_tokens, head_dim)
         queries, keys, values = qkv
         # ------------------------------
-        # mask
+        # mask（BlockMask 不支持张量切片，按当前序列长度在与输入相同的设备上重建）
         # ------------------------------
-        use_dropout = 0.0 if not self.training else self.dropout
-        # Ensure attn_mask is compatible with expected shape and `batch_first=True`
-        # No need to manually adjust for n_heads; ensure it's right for the sequence
-        if self.context_length >= num_tokens:
-            attn_mask = self.block_mask[:num_tokens, :num_tokens]
-        else:
-            attn_mask = self.block_mask[:self.context_length, :self.context_length]
+        from torch.nn.attention.flex_attention import flex_attention, create_block_mask
+        block_mask = create_block_mask(
+            self.causal, B=None, H=None,
+            Q_LEN=num_tokens, KV_LEN=num_tokens, device=x.device,
+        )
         # ------------------------------
         # context vector
         # ------------------------------
-        if self.current_version >= self.required_version:
-            from torch.nn.attention.flex_attention import flex_attention, create_block_mask
-        context_vec = flex_attention(queries, keys, values, block_mask=attn_mask)
+        context_vec = flex_attention(queries, keys, values, block_mask=block_mask)
+        if self.training and self.dropout > 0.0:
+            context_vec = nn.functional.dropout(context_vec, p=self.dropout, training=True)
         # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.transpose(1, 2).contiguous().view(batch_size, num_tokens, self.d_out)
         context_vec = self.proj(context_vec)
@@ -872,9 +877,9 @@ class GroupedQueryAttention_Qwen3_optimized(nn.Module):
         keys_new = self.k_norm(keys_new) if self.k_norm else keys_new
         # Apply RoPE
         queries = compute_rope(queries, cos, sin, offset=start_pos)
-        keys_new = compute_rope(keys, cos, sin, offset=start_pos)
+        keys_new = compute_rope(keys_new, cos, sin, offset=start_pos)
         if cache is not None:
-            if layer_idx is not None:
+            if layer_idx is None:
                 raise ValueError("layer_idx required for KVCache")
             cache.append(layer_idx, keys_new, values_new)
             keys, values = cache.view(layer_idx)

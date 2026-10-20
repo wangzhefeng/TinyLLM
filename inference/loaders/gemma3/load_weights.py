@@ -180,6 +180,7 @@ def download_weights(CHOOSE_MODEL, repo_id, local_dir):
 
 # 测试代码 main 函数
 def main():
+    # WIP：仅演示权重下载与加载函数；模型组装见 models/gemma3/
     USE_INSTRUCT_MODEL = False
     CHOOSE_MODEL = "270m"
     
@@ -188,11 +189,9 @@ def main():
     else:
         repo_id = f"google/gemma-3-{CHOOSE_MODEL}"
     
-    # tokenizer model dir
-    tokenizer_model_dir = Path("./layers/tokenizers/models/").joinpath(Path(repo_id).parts[-1])
-    
-    # model download
-    weights_dict = download_weights(CHOOSE_MODEL, repo_id, tokenizer_model_dir)
+    # model download（权重放 downloaded_models/，不要下到 tokenizer 目录）
+    weights_dir = Path("./downloaded_models/gemma_model/").joinpath(Path(repo_id).parts[-1])
+    weights_dict = download_weights(CHOOSE_MODEL, repo_id, weights_dir)
     """
     # model
     model = None

@@ -22,21 +22,22 @@ __all__ = []
 # python libraries
 import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-PKG_ROOT = str(Path(__file__).resolve().parent)
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
 import torch
 
-from config import Config
-from sampling_params import SamplingParams
-from engine.llm_engine import LLMEngine
+# 双模式导入：包导入优先(python -m 或宿主已含仓根)；
+# 直接以脚本运行(.venv/bin/python inference/serving/nano_vllm/example.py)时回退为插入仓根
+try:
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.sampling_params import SamplingParams
+    from inference.serving.nano_vllm.engine.llm_engine import LLMEngine
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # 仓根
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.sampling_params import SamplingParams
+    from inference.serving.nano_vllm.engine.llm_engine import LLMEngine
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

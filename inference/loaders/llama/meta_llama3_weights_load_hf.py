@@ -38,7 +38,7 @@ def download_llama3_model(model_path: str):
             weights_file = hf_hub_download(
                 repo_id = "meta-llama/Meta-Llama-3-8B",
                 filename = model_name,
-                local_dir = "Meta-Llama-3-8B",
+                local_dir = str(model_path),
             )
         else:
             weights_file = model_file_path
@@ -58,9 +58,9 @@ def download_llama3_instruct_model(model_path: str):
         model_file_path = Path(model_path).joinpath(model_name)
         if not Path(model_file_path).exists():
             weights_file = hf_hub_download(
-                repo_id = "meta-llama/Meta-Llama-3-8B",
+                repo_id = "meta-llama/Meta-Llama-3-8B-Instruct",
                 filename = model_name,
-                local_dir = "Meta-Llama-3-8B-Instruct",
+                local_dir = str(model_path),
             )
         else:
             weights_file = model_file_path

@@ -82,16 +82,20 @@ class SiLU(nn.Module):
         return x * torch.sigmoid(x)
 
 
-# TODO
 class SwiGLU(nn.Module):
     """
     SwiGLU(Swish-Gated Linear Unit, Swish 门控线性单元)
+    https://arxiv.org/abs/2002.05202
+
+    逐元素激活形式：把最后一维切成两半 ``x1, x2``，返回 ``SiLU(x1) * x2``。
+    完整的 SwiGLU FFN（含门控投影）见 ``layers.feed_forward.FeedForwardSiLU``。
     """
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
-        pass
+        x1, x2 = x.chunk(2, dim=-1)
+        return nn.functional.silu(x1) * x2
 
 
 

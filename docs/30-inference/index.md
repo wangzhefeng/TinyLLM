@@ -18,20 +18,33 @@
 
 ```text
 inference/
+├── registry.py  # MODEL_REGISTRY：模型注册表（family/config/权重来源/tokenizer/eos）
+├── loading.py   # load_model(model_key, source=...)：统一权重加载入口
+├── generation.py# generate_text / generate_text_stream：统一生成 facade
 ├── serving/     # nano_vllm
 ├── api/         # Ollama/OpenAI 客户端
-├── evaluation/  # 指令回答评测
-├── apps/        # Chainlit UI
-├── loaders/     # gpt2 / qwen3 / gemma3 / llama
+├── evaluation/  # judge.py 统一评测（--backend ollama|openai）+ 兼容 shim
+├── apps/        # app.py 单一 Chainlit UI（GPT2_WEIGHTS=orig|own）+ 兼容 shim
+├── loaders/     # gpt2 / qwen3 / gemma3 / llama 各族加载库（loading.py 的底层）
 ├── examples/    # GPT-2 生成示例、BERT fill-mask 示例
-└── scripts/     # UI / 维护脚本
+└── scripts/     # run_app.sh
+```
+
+## 公共 API
+
+```python
+from inference import MODEL_REGISTRY, list_models, load_model, generate_text
+
+list_models()                                    # 注册的模型 key
+model, cfg, extras = load_model("qwen3-0.6b")    # 统一下载+加载（懒加载重依赖）
+text = generate_text(model, "Hello", family="gpt2", max_new_tokens=50)
 ```
 
 ## 入口
 
 ```bash
-bash inference/scripts/run_app_own.sh
-python inference/loaders/qwen3/qwen3_06B_kvcache_load.py
+bash inference/scripts/run_app.sh        # Chainlit UI（orig|own）
+python inference/loaders/qwen3/qwen3_06B_load.py   # USE_CACHE=True 即 KV cache 版
 python inference/examples/bert_fill_mask.py --text1 '今天天气[MASK]好'
 ```
 

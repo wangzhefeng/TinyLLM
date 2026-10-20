@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : evaluating_instruction_flow_openai.py
+# * File        : openai_evaluate.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-18
-# * Version     : 0.1.021800
-# * Description : https://github.com/rasbt/LLMs-from-scratch/blob/16738b61fd37bd929ea3b1982857608036d451fa/ch07/03_model-evaluation/llm-instruction-eval-openai.ipynb
-# * Link        : link
-# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
+# * Version     : 0.2.102000
+# * Description : 【已合并到 inference/evaluation/judge.py，本文件仅为兼容保留】
+#               保留原 generate_model_scores(json_data, json_key, client) 签名，
+#               内部委托 judge.generate_model_scores(backend="openai")。
+# * Link        : https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/03_model-evaluation/llm-instruction-eval-openai.ipynb
+# * Requirement : pip install openai；config.json 中配置 OPENAI_API_KEY
 # ***************************************************
 
 # python libraries
@@ -18,54 +20,34 @@ from pathlib import Path
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
-import json
-from tqdm import tqdm
 
 
-from utils.llm.load_save_data import load_json_data
-from inference.api.openai_api import create_client, run_chatgpt
-from utils.log_util import logger
+from inference.evaluation.judge import generate_model_scores as _judge_generate_model_scores
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-def format_input(entry):
-    instruction_text = (
-        f"Below is an instruction that describes a task. Write a response that "
-        f"appropriately completes the request."
-        f"\n\n### Instruction:\n{entry['instruction']}"
-    )
-
-    input_text = f"\n\n### Input:\n{entry['input']}" if entry["input"] else ""
-    instruction_text + input_text
-
-    return instruction_text + input_text
-
-
 def generate_model_scores(json_data, json_key, client):
-    scores = []
-    for entry in tqdm(json_data, desc="Scoring entries"):
-        prompt = (
-            f"Given the input `{format_input(entry)}` "
-            f"and correct output `{entry['output']}`, "
-            f"score the model response `{entry[json_key]}`"
-            f" on a scale from 0 to 100, where 100 is the best score. "
-            f"Respond with the number only."
-        )
-        score = run_chatgpt(prompt, client)
-        try:
-            scores.append(int(score))
-        except ValueError:
-            continue
-
-    return scores
+    """
+    generate model evaluate scores
+    """
+    return _judge_generate_model_scores(
+        json_data,
+        json_key,
+        backend="openai",
+        client=client,
+    )
 
 
 
 
 # 测试代码 main 函数
 def main():
+    import json
+    from utils.load_save_data import load_json_data
+    from inference.api.openai_api import create_client
+
     # instruction data path
     data_path="./dataset/finetune/instruction-example.json"
 
@@ -82,7 +64,9 @@ def main():
         print(f"Average score: {sum(scores)/len(scores):.2f}\n")
 
         # Optionally save the scores
-        save_path = Path("scores") / f"gpt4-{model.replace(" ", "-")}.json"
+        save_dir = Path("scores")
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_path = save_dir / f"gpt4-{model.replace(' ', '-')}.json"
         with open(save_path, "w") as file:
             json.dump(scores, file)
 

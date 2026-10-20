@@ -28,9 +28,14 @@ inference/serving/nano_vllm/
 
 ## 运行
 
+```python
+# 作为库使用（包化，无副作用，不遮蔽仓根同名包）
+from inference.serving.nano_vllm import LLM, Config, SamplingParams
+```
+
 ```bash
 # 随机权重演示（无需下载）：chunked prefill + continuous batching
-.venv/bin/python inference/serving/nano_vllm/example.py
+.venv/bin/python inference/serving/nano_vllm/example.py   # 或 python -m inference.serving.nano_vllm.example
 
 # 吞吐基准（默认随机微型模型；--model-path 指向 HF 目录则加载真实权重）
 .venv/bin/python inference/serving/nano_vllm/bench.py --num-seqs 32

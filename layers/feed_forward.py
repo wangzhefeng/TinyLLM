@@ -53,24 +53,27 @@ class FeedForwardReLU(nn.Module):
 
 
 class FeedForwardGELU(nn.Module):
+    """
+    GPT-2 风格 FFN：Linear -> GELU(tanh) -> Linear。
+
+    内部用 ``nn.Sequential`` 组织，子模块名与
+    ``inference/loaders/gpt2/`` 的权重加载约定（``ff.layers[0]`` / ``ff.layers[2]``）一致。
+    """
     
     def __init__(self, cfg):
         super().__init__()
 
-        self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=True)
-        self.gelu = nn.GELU(approximate="tanh")
-        self.fc2 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=True)
+        self.layers = nn.Sequential(
+            nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=True),
+            nn.GELU(approximate="tanh"),
+            nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=True),
+        )
     
     def forward(self, x):
         # input tensor x.shape: [batch_size, num_tokens, embed_dim]
-        # Linear layer
-        x = self.fc1(x)  # [batch_size, num_tokens, 4*embed_dim]
-        # GELU activation
-        x = self.gelu(x)  # [batch_size, num_tokens, 4*embed_dim]
-        # Linear layer
-        out = self.fc2(x)  # [batch_size, num_tokens, embed_dim]
-
-        return out
+        # [batch_size, num_tokens, embed_dim] -> [batch_size, num_tokens, 4*embed_dim]
+        # -> GELU -> [batch_size, num_tokens, embed_dim]
+        return self.layers(x)
 
 
 class FeedForwardGELU_Gemma3(nn.Module):
@@ -99,14 +102,19 @@ class FeedForwardGELU_Gemma3(nn.Module):
 class FeedForwardSiLU(nn.Module):
     """
     SwiGLU: GLU Variants Improve Transformer (2020): https://arxiv.org/abs/2002.05202
+
+    中间维优先取 ``cfg.d_ff``，缺省回退到 ``cfg.hidden_dim``（Llama 系配置的叫法）。
     """
     def __init__(self, cfg):
         super().__init__()
 
-        self.fc1 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
-        self.fc2 = nn.Linear(cfg.embed_dim, cfg.d_ff, dtype=cfg.dtype, bias=False)
+        d_ff = getattr(cfg, "d_ff", None) or getattr(cfg, "hidden_dim", None)
+        if d_ff is None:
+            raise ValueError("cfg must define `d_ff` or `hidden_dim`")
+        self.fc1 = nn.Linear(cfg.embed_dim, d_ff, dtype=cfg.dtype, bias=False)
+        self.fc2 = nn.Linear(cfg.embed_dim, d_ff, dtype=cfg.dtype, bias=False)
         self.silu = nn.SiLU()
-        self.fc3 = nn.Linear(cfg.d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=False)
+        self.fc3 = nn.Linear(d_ff, cfg.embed_dim, dtype=cfg.dtype, bias=False)
 
     def forward(self, x):
         x_fc1 = self.fc1(x)
@@ -117,14 +125,13 @@ class FeedForwardSiLU(nn.Module):
         return out
 
 
-class FeedForwardSwiGLU(nn.Module):
-    
-    def __init__(self):
-        super().__init__()
-        self.swiglu = None
+class FeedForwardSwiGLU(FeedForwardSiLU):
+    """
+    SwiGLU FFN（``FeedForwardSiLU`` 的语义化别名，二者结构相同）。
 
-    def forward(self, x):
-        pass
+    SwiGLU(x) = (SiLU(x @ W1) * (x @ W2)) @ W3
+    """
+    pass
 
 
 

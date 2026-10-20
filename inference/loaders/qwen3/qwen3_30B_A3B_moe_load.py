@@ -91,6 +91,8 @@ def main():
     MAX_NEW_TOKENS = 500
     TEMPERATURE = 0.0
     TOP_K = 1
+    # 是否启用 KV cache（原 qwen3_30B_A3B_moe_kvcache_load.py 与本脚本仅此一处差异，已合并）
+    USE_CACHE = True
 
     # ------------------------------
     # Weights download and loding of the 0.6B model
@@ -102,7 +104,7 @@ def main():
         # repo_id = "Qwen/Qwen3-30B-A3B-Thinking-2507"  # New thinking model
         # repo_id = "Qwen/Qwen3-Coder-30B-A3B-Instruct"  # (Qwen3 Coder Flash)
     else:
-        repo_id = f"Qwen/Qwen3-0.6B-Base"
+        repo_id = "Qwen/Qwen3-30B-A3B-Base"
 
     # model local dir
     local_dir = Path(llm_model_dir).joinpath(Path(repo_id).parts[-1])
@@ -158,6 +160,7 @@ def main():
         temperature=TEMPERATURE,
         top_k=TOP_K,
         # eos_token_id=tokenizer.eos_token_id,
+        use_cache=USE_CACHE,
     ):
         token_id = token.squeeze(0).tolist()
         print(tokenizer.decode(token_id), end="", flush=True)

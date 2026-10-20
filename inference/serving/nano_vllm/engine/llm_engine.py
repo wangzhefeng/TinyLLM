@@ -22,15 +22,7 @@ __all__ = [
 ]
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-PKG_ROOT = str(Path(__file__).resolve().parents[1])
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -41,11 +33,11 @@ from time import perf_counter
 
 import torch.multiprocessing as mp
 
-from config import Config
-from sampling_params import SamplingParams
-from engine.sequence import Sequence
-from engine.scheduler import Scheduler
-from engine.model_runner import ModelRunner
+from ..config import Config
+from ..sampling_params import SamplingParams
+from .sequence import Sequence
+from .scheduler import Scheduler
+from .model_runner import ModelRunner
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

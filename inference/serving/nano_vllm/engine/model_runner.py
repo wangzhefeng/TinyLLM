@@ -27,15 +27,7 @@ __all__ = [
 ]
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-PKG_ROOT = str(Path(__file__).resolve().parents[1])
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -46,12 +38,12 @@ from multiprocessing.synchronize import Event
 import torch
 import torch.distributed as dist
 
-from config import Config
-from engine.sequence import Sequence
-from layers.sampler import Sampler
-from models.qwen3_for_causal_lm import Qwen3ForCausalLM
-from utils.context import set_context, get_context, reset_context
-from utils.loader import init_random_weights
+from ..config import Config
+from .sequence import Sequence
+from ..layers.sampler import Sampler
+from ..models.qwen3_for_causal_lm import Qwen3ForCausalLM
+from ..utils.context import set_context, get_context, reset_context
+from ..utils.loader import init_random_weights
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

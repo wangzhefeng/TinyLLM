@@ -20,15 +20,7 @@ __all__ = [
 ]
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-PKG_ROOT = str(Path(__file__).resolve().parents[1])
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -36,7 +28,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from layers.parallel_linear import MergedColumnParallelLinear, RowParallelLinear
+from .parallel_linear import MergedColumnParallelLinear, RowParallelLinear
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

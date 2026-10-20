@@ -6,8 +6,8 @@
 
 ## 指令回答评测
 
-- `inference/evaluation/ollama_evaluate.py`：本地 Ollama 模型打分
-- `inference/evaluation/openai_evaluate.py`：OpenAI API 打分
+- `inference/evaluation/judge.py`：统一 LLM judge 评分入口（`backend="ollama"|"openai"`）
+- `inference/evaluation/ollama_evaluate.py` / `openai_evaluate.py`：兼容 shim，保留原签名并委托 judge.py
 - `inference/api/`：Ollama/OpenAI 客户端封装
 
 ## Reasoning 评测

@@ -20,8 +20,8 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-from utils.llm.load_save_data import load_json_data
-from model_evaluate.ollama_evaluate import generate_model_scores
+from utils.load_save_data import load_json_data
+from inference.evaluation.ollama_evaluate import generate_model_scores
 from utils.log_util import logger
 
 # global variable

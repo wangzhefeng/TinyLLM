@@ -40,7 +40,7 @@ from layers.feed_forward import (
 )
 from layers.moe import MoEFeedForward
 from layers.moe import SparseMoE
-# from layers.normailzation.layer_norm import LayerNorm
+from layers.normailzation.layer_norm import LayerNorm
 from layers.normailzation.rms_norm import (
     RMSNorm, 
     RMSNorm_Qwen3,
@@ -52,23 +52,28 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class TransformerBlockGPT2_124M(nn.Module):
+    """
+    GPT-2 pre-LN block。
+
+    注意力使用 ``MultiHeadAttention``（支持 KV cache 与 ``reset_cache``，
+    权重名 W_query/W_key/W_value/out_proj 与 ``inference/loaders/gpt2/`` 的加载约定一致）；
+    LayerNorm 使用自定义 ``LayerNorm``（scale/shift，同上）。
+    """
     
     def __init__(self, cfg):
         super().__init__()
         
-        self.attn = MHAPyTorchScaledDotProduct(
+        self.attn = MultiHeadAttention(
             d_model = cfg.embed_dim,
             d_out = cfg.embed_dim,
             n_heads = cfg.n_heads,
             context_length = cfg.context_length,
             dropout = cfg.dropout,
             qkv_bias = cfg.qkv_bias,
-            training=cfg.is_train,
-            # window_size = cfg.kv_window_size if "kv_window_size" in cfg else cfg.context_length
         )
         self.ff = FeedForwardGELU(cfg)
-        self.norm1 = nn.LayerNorm(cfg.embed_dim)
-        self.norm2 = nn.LayerNorm(cfg.embed_dim)
+        self.norm1 = LayerNorm(cfg.embed_dim)
+        self.norm2 = LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
     def forward(self, x, use_cache=False):
@@ -79,7 +84,7 @@ class TransformerBlockGPT2_124M(nn.Module):
         # Masked multi-head attention
         x = self.attn(
             x, 
-            # use_cache=use_cache
+            use_cache=use_cache,
         )  # shape: [batch_size, num_tokens, embed_dim]
         # Dropout
         x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]

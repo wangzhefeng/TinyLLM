@@ -19,11 +19,7 @@ __all__ = [
 ]
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 from functools import lru_cache

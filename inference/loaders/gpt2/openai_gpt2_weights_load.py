@@ -27,8 +27,8 @@ from tqdm import tqdm
 
 import numpy as np
 import torch
-import tensorflow as tf
 
+# tensorflow 仅用于读取 OpenAI 官方 TF checkpoint，按需懒加载（未安装不影响其他加载路径）
 from utils.log_util import logger
 
 # global variable
@@ -118,6 +118,7 @@ def download_file(url, destination):
 
 
 def load_gpt2_params_from_tf_ckpt(ckpt_path, settings):
+    import tensorflow as tf  # 懒加载：仅读取 TF checkpoint 时需要
     # Initialize parameters dictionary with empty blocks for each layer
     params = {"blocks": [{} for _ in range(settings["n_layer"])]}
 
@@ -171,6 +172,7 @@ def download_and_load_gpt2(model_size, models_dir):
         download_file(file_url, file_path, backup_url)
 
     # Load settings and params
+    import tensorflow as tf  # 懒加载：仅读取 TF checkpoint 时需要
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     settings = json.load(open(Path(model_dir).joinpath("hparams.json")))
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)

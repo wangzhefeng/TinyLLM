@@ -91,10 +91,6 @@ def download_from_huggingface(kind="base", tokenizer_only=False, repo_id="rasbt/
             "model": "qwen3-0.6B-reasoning.pth", 
             "tokenizer": "tokenizer-reasoning.json"
         },
-        "instruction": {
-            "model": "",
-            "tokenizer": "",
-        },
     }
     if kind not in files:
         raise ValueError("kind must be 'base' or 'reasoning'")

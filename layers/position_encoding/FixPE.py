@@ -69,9 +69,9 @@ class PositionalEncoding(nn.Module):
         return x
 
 
-class PositionalEncoding(nn.Module):
+class PositionalEncodingWithDropout(nn.Module):
     """
-    位置编码模块
+    位置编码模块（带 dropout，config 驱动版本）
     
     在输入(input -> Embedding)上加入了位置编码
     """
@@ -117,7 +117,7 @@ def example_positional():
     import pandas as pd
     import altair as alt
 
-    pe = PositionalEncoding(20, 0)
+    pe = PositionalEncoding(d_model=20, max_len=100)
     y = pe.forward(torch.zeros(1, 100, 20))
 
     data = pd.concat(

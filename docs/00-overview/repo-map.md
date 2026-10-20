@@ -21,6 +21,7 @@
 | `post_training/preference/` | [20-post-training/dpo.md](../20-post-training/dpo.md)、[rlhf.md](../20-post-training/rlhf.md) |
 | `post_training/common/` | [20-post-training/finetuning/index.md](../20-post-training/finetuning/index.md) |
 | `post_training/reasoning/` | [20-post-training/reasoning.md](../20-post-training/reasoning.md) |
+| `inference/registry.py`、`loading.py`、`generation.py` | [30-inference/index.md](../30-inference/index.md) |
 | `inference/serving/`、`inference/api/` | [30-inference/serving.md](../30-inference/serving.md) |
 | `inference/evaluation/` | [30-inference/evaluation.md](../30-inference/evaluation.md) |
 | `inference/loaders/` | [30-inference/loaders.md](../30-inference/loaders.md) |

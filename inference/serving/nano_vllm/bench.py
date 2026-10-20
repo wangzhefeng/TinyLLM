@@ -20,22 +20,22 @@ __all__ = []
 # python libraries
 import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-PKG_ROOT = str(Path(__file__).resolve().parent)
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import argparse
 import time
 from random import randint, seed
 
 import torch
 
-from config import Config
-from sampling_params import SamplingParams
-from engine.llm_engine import LLMEngine
+# 双模式导入：包导入优先；直接以脚本运行时回退为插入仓根再包导入
+try:
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.sampling_params import SamplingParams
+    from inference.serving.nano_vllm.engine.llm_engine import LLMEngine
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # 仓根
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.sampling_params import SamplingParams
+    from inference.serving.nano_vllm.engine.llm_engine import LLMEngine
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -44,8 +44,8 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 def build_engine(args):
     """构造引擎：--model-path 加载真实权重，否则随机初始化微型模型"""
     if args.model_path:
-        from models.qwen3_for_causal_lm import Qwen3ForCausalLM
-        from utils.loader import load_model
+        from inference.serving.nano_vllm.models.qwen3_for_causal_lm import Qwen3ForCausalLM
+        from inference.serving.nano_vllm.utils.loader import load_model
         config = Config.from_pretrained(
             args.model_path,
             max_num_batched_tokens=args.max_num_batched_tokens,
@@ -58,8 +58,8 @@ def build_engine(args):
         print(f"加载真实权重: {args.model_path} "
               f"(layers={config.num_hidden_layers}, hidden={config.hidden_size})")
     else:
-        from models.qwen3_for_causal_lm import Qwen3ForCausalLM
-        from utils.loader import init_random_weights
+        from inference.serving.nano_vllm.models.qwen3_for_causal_lm import Qwen3ForCausalLM
+        from inference.serving.nano_vllm.utils.loader import init_random_weights
         config = Config(
             vocab_size=32000, hidden_size=128, intermediate_size=256,
             num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,

@@ -8,7 +8,8 @@
 
 | 页面 | 内容 |
 |---|---|
-| [llms-from-scratch/index.md](llms-from-scratch/index.md) | 上游仓库分析、逐章拆解、覆盖度、缺口、路线 |
+| [layers-models-audit/index.md](layers-models-audit/index.md) | layers/ 与 models/ 审查：缺失主题、代码问题、整改路线（2026-10-20） |
+| [llms-from-scratch/index.md](llms-from-scratch/index.md) | 上游仓库分析、逐章拆解、覆盖度、缺口、路线（2026-10-18 快照，已被 layers-models-audit 刷新） |
 | [migration-2026-10.md](migration-2026-10.md) | 两仓库合并与目录重构记录 |
 | [refactor-2026-10-18-domains.md](refactor-2026-10-18-domains.md) | 2026-10-18 三域内部结构重构 |
 | [learning-resources.md](learning-resources.md) | 教程、Agent、技巧、资料链接 |

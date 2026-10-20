@@ -22,20 +22,22 @@ __all__ = []
 # python libraries
 import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-PKG_ROOT = str(Path(__file__).resolve().parent)
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import argparse
 
-from config import Config
-from sampling_params import SamplingParams
-from engine.llm_engine import LLMEngine
-from models.qwen3_for_causal_lm import Qwen3ForCausalLM
-from utils.loader import load_model
+# 双模式导入：包导入优先；直接以脚本运行时回退为插入仓根再包导入
+try:
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.sampling_params import SamplingParams
+    from inference.serving.nano_vllm.engine.llm_engine import LLMEngine
+    from inference.serving.nano_vllm.models.qwen3_for_causal_lm import Qwen3ForCausalLM
+    from inference.serving.nano_vllm.utils.loader import load_model
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # 仓根
+    from inference.serving.nano_vllm.config import Config
+    from inference.serving.nano_vllm.sampling_params import SamplingParams
+    from inference.serving.nano_vllm.engine.llm_engine import LLMEngine
+    from inference.serving.nano_vllm.models.qwen3_for_causal_lm import Qwen3ForCausalLM
+    from inference.serving.nano_vllm.utils.loader import load_model
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

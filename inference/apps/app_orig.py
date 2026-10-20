@@ -1,120 +1,37 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : app_own.py
+# * File        : app_orig.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-09-07
-# * Version     : 1.0.090713
-# * Description : description
+# * Version     : 1.1.102000
+# * Description : 【已合并到 app.py，本文件仅为兼容保留】
+#               官方 GPT-2 124M 权重的 Chainlit UI 入口。
+#               等价于：GPT2_WEIGHTS=orig chainlit run ./apps/app.py
+#               兼容机制说明：chainlit 的 @chainlit.on_message 装饰器把 handler
+#               注册到 chainlit 的全局回调（config.code.on_message），不绑定
+#               入口文件本身，因此本 shim 只需设置 GPT2_WEIGHTS=orig 后 import
+#               app 模块，handler 即注册生效。
 # * Link        : link
-# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
+# * Requirement : pip install chainlit tensorflow（tensorflow 仅读官方 TF checkpoint 时需要）
 # ***************************************************
-
-__all__ = []
 
 # python libraries
 import os
 import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-import warnings
-warnings.filterwarnings("ignore")
 
-import torch
-import chainlit
+# 选择官方 GPT-2 124M 权重（必须在 import app 之前设置）
+os.environ["GPT2_WEIGHTS"] = "orig"
 
-from layers.tokenizers.tokenization import (
-    choose_tokenizer,
-    text_to_token_ids,
-    token_ids_to_text,
-)
-from models.gpt2.gpt2_124M import Model
-from layers.inference import generate
-from utils.args_tools import DotDict
-from utils.device import device_setting
+# 让同目录的 app.py 可被 import（chainlit 不保证把入口文件目录加入 sys.path）
+APP_DIR = str(Path(__file__).resolve().parent)
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
 
-# global variable
-LOGGING_LABEL = Path(__file__).name[:-3]
-os.environ['LOG_NAME'] = LOGGING_LABEL
-from utils.log_util import logger
-
-
-# device
-device = device_setting(verbose=True)
-
-
-def get_model_and_tokenizer():
-    # params
-    CHOOSE_MODEL = "gpt2-small (124M)"
-    model_config = None
-    # model config
-    GPT2_124M_CONFIG = {
-        "vocab_size": 50257,     # Vocabular size
-        "context_length": 256,  # Context length
-        "max_new_tokens": 50,   # Maximum new tokens to generate
-        "embed_dim": 768,        # Embedding dimension
-        "d_ff": 4 * 768,         # Hidden dimension
-        "n_heads": 12,           # Number of attention heads
-        "n_layers": 12,          # Number of transformer layers
-        "dropout": 0.1,          # Dropout rate
-        "qkv_bias": False,       # Query-Key-Value bias
-        "dtype": torch.float32,
-        "kv_window_size": 1024,  # KV cache window size
-        "top_k": 1,
-        "temperature": 0.0,
-        "eos_id": 50256,
-        "use_cache": True,
-        "tokenizer_model": "tiktoken_gpt2_bpe",
-    }
-    GPT2_124M_CONFIG.update(model_config[CHOOSE_MODEL])
-    GPT2_124M_CONFIG = DotDict(GPT2_124M_CONFIG)
-
-    settings, params = download_and_load_gpt2()
-
-    # model
-    model = Model(GPT2_124M_CONFIG)
-    load_weights_into_gpt(model, params)
-    model.to(device)
-    model.eval()
-
-    # tokenizer
-    tokenizer = choose_tokenizer(tokenizer_model = "tiktoken_gpt2_bpe")
-
-    return tokenizer, model, GPT2_124M_CONFIG
-
-
-# Obtain the necessary tokenizer and model files for the chainlit function below
-tokenizer, model, model_config = get_model_and_tokenizer()
-
-
-
-
-# 测试代码 main 函数
-@chainlit.on_message
-async def main(message: chainlit.Message):
-    """
-    The Main Chainlit function
-    """
-    token_ids = generate(
-        model=model,
-        token_ids=text_to_token_ids(
-            message.content, 
-            tokenizer_model=model_config.tokenizer_model
-        ).to(device),
-        max_new_tokens=model_config.max_new_tokens,
-        context_length=model_config.context_length,
-        temperature=model_config.temperature,
-        top_k=model_config.top_k,
-        eos_token_id=model_config.eos_id,
-        use_cache=model_config.use_cache,
-    )
-    text = token_ids_to_text(token_ids, tokenizer_model=model_config.tokenizer_model)
-
-    # Returns the model response to the interface
-    await chainlit.Message(content=f"{text}").send()
+# import 即完成模型加载与 @chainlit.on_message handler 注册
+from app import main  # noqa: F401
 
 if __name__ == "__main__":
     main()

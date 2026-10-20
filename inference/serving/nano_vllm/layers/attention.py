@@ -29,15 +29,7 @@ __all__ = [
 ]
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-PKG_ROOT = str(Path(__file__).resolve().parents[1])
-if PKG_ROOT in sys.path:
-    sys.path.remove(PKG_ROOT)
-sys.path.insert(0, PKG_ROOT)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -45,10 +37,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from layers.norm import RMSNorm
-from layers.parallel_linear import QKVParallelLinear, RowParallelLinear, _tp_rank_and_size
-from layers.rotary_embedding import get_rope
-from utils.context import get_context
+from .norm import RMSNorm
+from .parallel_linear import QKVParallelLinear, RowParallelLinear, _tp_rank_and_size
+from .rotary_embedding import get_rope
+from ..utils.context import get_context
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

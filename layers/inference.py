@@ -69,6 +69,26 @@ def sample_next_token(logits: torch.Tensor, temperature: float = 0.0,
     return next_idx
 
 
+def _resolve_ctx_len(model, context_length):
+    """Resolve the effective context length for generation.
+
+    兼容两类模型：
+    - 绝对位置嵌入模型（GPT-2）：有 ``pos_embed`` 属性；
+    - RoPE 模型（Llama/Qwen3/Gemma3）：没有 ``pos_embed``，取 ``cfg.context_length``。
+    """
+    if context_length:
+        return context_length
+    if hasattr(model, "pos_embed"):
+        return model.pos_embed.num_embeddings
+    cfg = getattr(model, "cfg", None)
+    if cfg is not None and getattr(cfg, "context_length", None):
+        return cfg.context_length
+    raise ValueError(
+        "context_length is None and the model exposes neither "
+        "`pos_embed` nor `cfg.context_length`; please pass context_length explicitly."
+    )
+
+
 @torch.inference_mode()
 def generate_simple(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int):
     """
@@ -110,7 +130,7 @@ def generate_simple_cached(model, token_ids: torch.tensor, max_new_tokens: int, 
         context_size (int): start context length
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
     with torch.no_grad():
         if use_cache:
             # Init cache with full prompt
@@ -169,7 +189,7 @@ def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length
     """
     model.eval()
     input_len = token_ids.shape[1]
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
     with torch.no_grad():
         if use_cache:
             # Init cache with full prompt
@@ -226,7 +246,7 @@ def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_
         context_size (int): start context length
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
     with torch.no_grad():
         if use_cache:
             # input length
@@ -283,7 +303,7 @@ def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, c
         context_size (int): start context length
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
     with torch.no_grad():
         if use_cache:
             # Init cache with full prompt
@@ -338,7 +358,7 @@ def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int
         context_size (int): start context length
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
     with torch.no_grad():
         if use_cache:
             # input length
@@ -357,7 +377,7 @@ def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int
             # Crop current context if it exceeds the supported context size
             cond_idx = token_ids[:, -ctx_len:]
             # Get the predictions
-            logits = model(cond_idx, cache=cache)[:, -1]
+            logits = model(cond_idx, cache=cache)
             for _ in range(max_new_tokens):
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
@@ -409,7 +429,7 @@ def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens:
         context_size (int): start context length
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
     
     device = token_ids.device
     batch_size, input_len = token_ids.shape
@@ -472,7 +492,7 @@ def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_
         context_size (int): start context length
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
     
     device = token_ids.device
     batch_size, input_len = token_ids.shape
@@ -533,7 +553,7 @@ def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_n
     participate in forward pass anymore.
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
 
     device = token_ids.device
     batch_size, input_len = token_ids.shape
@@ -621,7 +641,7 @@ def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor
     with per-sequence early stop.
     """
     model.eval()
-    ctx_len = context_length or model.pos_embed.num_embeddings
+    ctx_len = _resolve_ctx_len(model, context_length)
 
     device = token_ids.device
     batch_batch, input_len = token_ids.shape
