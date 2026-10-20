@@ -35,7 +35,7 @@
 | 2 | beam search + repetition penalty | 推断 | 与 greedy 输出对比用例 |
 | 3 | ALiBi | 预训练 | 与 RoPE 同配置前向对照 |
 | 4 | 独立 SWA 层 + KV cache 窗口截断 | 预训练×推断 | 窗口外 token 不影响输出 |
-| 5 | 推断时推理增强（self-consistency / self-refinement / Best-of-N） | 推断×推理 | MATH-500 小子集准确率提升 |
+| 5 | 推断时扩展脚手架（self-consistency / self-refinement / Best-of-N） | 推断 | MATH-500 小子集准确率提升 |
 | 6 | MoE aux loss + shared expert | 预训练 | 路由分布可视化、aux loss 下降 |
 | 7 | GRPO from scratch（reasoning ch06/07） | 后训练 | GSM8K 小子集 reward 上升 |
 | 8 | 蒸馏（reasoning ch08） | 后训练 | 教师-学生 loss 下降 |

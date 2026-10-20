@@ -26,7 +26,7 @@
 
 | 主题 | 状态 | 说明 |
 |---|---|---|
-| SwiGLU | 🟡 | `FeedForwardSiLU` 实际就是 SwiGLU 结构；但名为 `SwiGLU` / `FeedForwardSwiGLU` 的类是空壳（forward 返回 None） |
+| SwiGLU | ✅ | `FeedForwardSiLU` 即 SwiGLU FFN；`FeedForwardSwiGLU`/`SwiGLU` 空壳已在 Phase 0 补齐实现 |
 | MoE 负载均衡 | ❌ | 无 aux loss / router z-loss；超容量 token 静默丢弃且无统计 |
 | DeepSeekMoE（shared + routed expert） | ❌ | `layers/moe.py` 是 Qwen3 式 MoE |
 | RMSNorm fp32 上转一致性 | 🟡 | 基础版无上转，Qwen3/Gemma3 版有，语义不统一 |
@@ -67,13 +67,13 @@
 | GRPO（unsloth/vllm 版） | 🟡 | `post_training/preference/model_rlhf/grpo/`，非 from-scratch |
 | GRPO from scratch（reasoning ch06/07） | ❌ | `post_training/reasoning/training/reinforcement_learning.py` 为 42 行占位 |
 | 蒸馏（reasoning ch08） | ❌ | `post_training/reasoning/training/distillation.py` 为占位 |
-| 推理评测（MATH verifier / MMLU / LLM judge） | 🟡 | `post_training/reasoning/evaluation/` 有部分实现 |
+| 逻辑推理评测（MATH verifier / MMLU / LLM judge） | 🟡 | `post_training/reasoning/evaluation/` 有部分实现 |
 
 ## 4. 缺口优先级（教学价值 × 成本）
 
 1. **MLA 完整实现**（预训练）：DeepSeek 骨架已占位，与 GQA 做 KV cache 显存对比实验，教学价值最高。
 2. **GRPO from scratch**（后训练）：reasoning-from-scratch 的核心，纯 PyTorch 实现与现有 unsloth 版对照。
-3. **推断时扩展脚手架**（推断时推理）：self-consistency / self-refinement 只需组合现有 generate，成本低。
+3. **推断时扩展脚手架**（推断）：self-consistency / self-refinement 只需组合现有 generate，成本低。
 4. **独立 SWA 层 + KV cache 窗口截断**（预训练×推断交叉）。
 5. **beam search + repetition penalty**（推断）：小补全，性价比最高。
 6. **ALiBi**（预训练）：极低成本。
