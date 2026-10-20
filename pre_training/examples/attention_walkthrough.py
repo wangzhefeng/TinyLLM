@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 
 from layers.attention import (
-    CasualAttention, MultiHeadAttentionWrapper, 
+    CausalAttention, MultiHeadAttentionWrapper, 
     MultiHeadAttention, 
     MultiHeadAttentionCombinedQKV, 
     MHAEinsum, 
@@ -361,7 +361,7 @@ def causal_self_attention_class_test(inputs_embed):
     
     # attention
     torch.manual_seed(123)
-    casual_attn = CasualAttention(
+    casual_attn = CausalAttention(
         d_model=embed_dim, 
         d_out=d_out, 
         context_length=context_len, 

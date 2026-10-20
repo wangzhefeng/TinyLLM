@@ -36,9 +36,9 @@ from layers.normalization.rms_norm import (
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-class CasualAttention(nn.Module):
+class CausalAttention(nn.Module):
     """
-    Casual Self Attention
+    Causal Self Attention（单头，因果掩码）
     """
     def __init__(self, d_model: int, d_out: int, context_length: int, dropout: float=0.0, qkv_bias: bool=False):
         super().__init__()
@@ -57,7 +57,7 @@ class CasualAttention(nn.Module):
         values = self.W_value(x)
         # attention scores
         attn_scores = queries @ keys.transpose(1, 2)
-        # casual mask
+        # causal mask
         attn_scores.masked_fill_(self.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
         # attention weights
         attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
@@ -69,13 +69,17 @@ class CasualAttention(nn.Module):
         return context_vec
 
 
+# 历史拼写遗留：旧代码以 CasualAttention 引用，保留别名兼容
+CasualAttention = CausalAttention
+
+
 class MultiHeadAttentionWrapper(nn.Module):
     
     def __init__(self, d_model: int, d_out: int, n_heads: int, context_length: int, dropout: float=0.0, qkv_bias: bool=False, proj: bool=False):
         super().__init__()
         
         self.heads = nn.ModuleList([
-            CasualAttention(d_model, d_out // n_heads, context_length, dropout, qkv_bias) 
+            CausalAttention(d_model, d_out // n_heads, context_length, dropout, qkv_bias) 
             for _ in range(n_heads)
         ])
         self.proj = proj
