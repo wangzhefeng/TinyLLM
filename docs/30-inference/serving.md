@@ -80,8 +80,27 @@ Token 是 LLMs 处理文本时使用的语言最小单位。它可以是一个�
 
 #### Decode
 
+prefill 完成后进入 decode 阶段，模型自回归地逐个生成 token：
+
+1. 每一步只把**上一步新生成的 1 个 token** 输入模型，而不是重新输入整个序列。
+2. 注意力计算直接读取 prefill 阶段写入的 KV Cache，只为新 token 计算 Q/K/V，
+   把每步的计算量从 O(n²) 降到 O(n)。
+3. 对最后一个位置的 logits 应用解码策略（greedy、temperature、top-k、top-p），
+   采样出下一个 token，直到命中 EOS 或达到长度上限。
+
+decode 阶段是显存带宽密集型（memory-bound）：每步都要读完全部权重和 KV Cache，
+但计算量很小，因此吞吐主要取决于显存带宽而非算力。
 
 #### Collocating Prefill 和 Decode
+
+* **混合部署（collocated）**：prefill 与 decode 跑在同一批 GPU 上，通过连续批处理
+  （continuous batching）把不同请求的 prefill/decode 步骤混排在同一批次中，
+  实现简单、资源利用率高，但长 prompt 的 prefill 会阻塞 decode（head-of-line blocking）。
+* **分离部署（disaggregated，P/D 分离）**：prefill 和 decode 分别部署在独立的 GPU 池，
+  prefill 完成后把 KV Cache 传输给 decode 节点。两阶段可独立扩缩容，
+  延迟更稳定，代价是 KV 传输开销与系统复杂度。
+
+教学级实现见 [nano_vllm](nano-vllm.md)（分页 KV + 连续批处理）。
 
 
 

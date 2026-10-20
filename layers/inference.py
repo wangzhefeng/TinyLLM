@@ -26,6 +26,49 @@ from utils.log_util import logger
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
+def sample_next_token(logits: torch.Tensor, temperature: float = 0.0,
+                      top_k: int | None = None, top_p: float | None = None) -> torch.Tensor:
+    """
+    Sample the next token from the last-position logits.
+
+    Args:
+        logits: shape (batch_size, vocab_size)
+        temperature: <= 0 means greedy (argmax); > 0 scales logits before sampling
+        top_k: keep only the k highest-probability tokens before sampling
+        top_p: nucleus sampling, keep the smallest token set whose cumulative
+               probability mass >= top_p (only applied when 0 < top_p < 1)
+
+    Returns:
+        next token ids, shape (batch_size, 1)
+    """
+    # Greedy decoding
+    if temperature is None or temperature <= 0.0:
+        return torch.argmax(logits, dim=-1, keepdim=True)
+    # Temperature scaling
+    logits = logits / temperature
+    # Top-k filtering
+    if top_k is not None:
+        top_k = min(top_k, logits.size(-1))
+        top_logits, _ = torch.topk(logits, top_k, dim=-1)
+        min_val = top_logits[:, -1:]                              # shape: (batch_size, 1)
+        logits = torch.where(logits < min_val, torch.full_like(logits, float("-inf")), logits)
+    # Top-p (nucleus) filtering
+    if top_p is not None and 0.0 < top_p < 1.0:
+        sorted_logits, sorted_idx = torch.sort(logits, descending=True, dim=-1)
+        sorted_probs = torch.softmax(sorted_logits, dim=-1)
+        cum_probs = torch.cumsum(sorted_probs, dim=-1)
+        # Remove tokens once the cumulative mass exceeds top_p, always keep >= 1 token
+        remove = cum_probs > top_p
+        remove[..., 1:] = remove[..., :-1].clone()
+        remove[..., 0] = False
+        sorted_logits = sorted_logits.masked_fill(remove, float("-inf"))
+        logits = torch.full_like(logits, float("-inf")).scatter(-1, sorted_idx, sorted_logits)
+    # Softmax (numerically stable in torch) then sample; masked -inf entries get prob 0
+    probs = torch.softmax(logits, dim=-1)                        # shape: (batch_size, vocab_size)
+    next_idx = torch.multinomial(probs, num_samples=1)           # shape: (batch_size, 1)
+    return next_idx
+
+
 @torch.inference_mode()
 def generate_simple(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int):
     """
@@ -114,7 +157,7 @@ def generate_simple_cached(model, token_ids: torch.tensor, max_new_tokens: int, 
 
 @torch.inference_mode()
 def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-             temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
+             temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
 
@@ -139,21 +182,7 @@ def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 # logits = logits[:, -1, :]
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -171,21 +200,7 @@ def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 # logits = logits[:, -1, :]
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -200,7 +215,7 @@ def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length
 
 @torch.inference_mode()
 def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                   temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
+                   temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
 
@@ -227,21 +242,7 @@ def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_
             for _ in range(max_new_tokens):
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -249,7 +250,7 @@ def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_
                 token_ids = torch.cat([token_ids, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
                 # Feed model only the new token
                 logits = model(next_idx, cache=cache)
-            return token_ids[:, -1][:, input_len:]
+            return token_ids[:, input_len:]
         else:
             # input length
             input_len = token_ids.shape[1]
@@ -260,21 +261,7 @@ def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_
                 logits = model(cond_idx)
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -285,7 +272,7 @@ def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_
 
 @torch.inference_mode()
 def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                          temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
+                          temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
 
@@ -310,21 +297,7 @@ def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, c
             for _ in range(max_new_tokens):
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -342,21 +315,7 @@ def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, c
                 logits = model(cond_idx)
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -368,7 +327,7 @@ def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, c
 
 @torch.inference_mode()
 def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                             temperature: float=0.0, top_k: int=None, eos_token_id: int=None, use_cache=False):
+                             temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
 
@@ -402,21 +361,7 @@ def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int
             for _ in range(max_new_tokens):
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -438,21 +383,7 @@ def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int
                 logits = model(cond_idx)
                 # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
                 logits = logits[:, -1]
-                # Filter logits with top_k sampling
-                if top_k is not None:
-                    top_logits, _ = torch.topk(logits, top_k)
-                    min_val = top_logits[:, -1]
-                    logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
-                # Apply temperature scaling
-                if temperature > 0.0:
-                    logits = logits / temperature
-                    # apply softmax to get probabilities
-                    # probs = torch.softmax(logits, dim=-1)                # shape:(batch_size, context_length)
-                    # sample from the distribution
-                    next_idx = torch.multinomial(logits, num_samples=1)    # shape:(batch_size, 1)
-                # Otherwise same as before: get idx of the vocab entry with the highest logits value
-                else:
-                    next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1)
+                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 # Stop generating early if end-of-sequence token is encountered and eos_id is specified
                 if eos_token_id is not None and torch.all(next_idx == eos_token_id):
                     break
@@ -466,7 +397,7 @@ def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int
 
 @torch.inference_mode()
 def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                                 temperature: float=0.0, top_k: int=None, eos_token_id: int=None, 
+                                 temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, 
                                  attn_mask=None, pad_id=None):
     """
     get logits, and only focus on last time step
@@ -508,7 +439,7 @@ def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens:
             # If all sequences are already finished, stop
             if eos_token_id is not None and finished is not None and torch.all(finished):
                 break
-            next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1) 
+            next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)  # shape:(batch_size, 1)
             # Force already finished rows to keep emitting EOS to maintain shape
             if eos_token_id is not None:
                 eos_tok = next_idx.new_full((batch_size, 1), eos_token_id)
@@ -529,7 +460,7 @@ def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens:
 
 @torch.inference_mode()
 def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                                        temperature: float=0.0, top_k: int=None, eos_token_id: int=None, 
+                                        temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, 
                                         attn_mask=None, pad_id=None):
     """
     get logits, and only focus on last time step
@@ -562,7 +493,7 @@ def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_
         # Decode
         cur_attn = attn_mask
         for _ in range(max_new_tokens):
-            next_idx = torch.argmax(logits, dim=-1, keepdim=True)  # shape:(batch_size, 1) 
+            next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)  # shape:(batch_size, 1)
             # If all sequences are already finished, stop
             if eos_token_id is not None and torch.all(next_idx.squeeze(-1) == eos_token_id):
                 break
@@ -593,7 +524,7 @@ def shrink_kv_cache_inplace(cache, keep_mask, n_layers):
 
 @torch.inference_mode()
 def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                                           temperature: float=0.0, top_k: int=None, eos_token_id=None, 
+                                           temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id=None, 
                                            attn_mask=None, pad_id=None):
     """
     Same as generate_text_basic_batched_cache but
@@ -627,7 +558,7 @@ def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_n
         generated_full_steps = []                    # list of (B,1) step tensors
         for _ in range(max_new_tokens):
             # Next tokens for the active sub-batch
-            next_token_active = torch.argmax(logits, dim=-1, keepdim=True)  # (B_active, 1)
+            next_token_active = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)  # (B_active, 1)
 
             # Scatter into a full-sized (B,1) step tensor (EOS for finished rows)
             fill_val = int(eos_token_id) if eos_token_id is not None else 0
@@ -683,7 +614,7 @@ def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_n
 
 @torch.inference_mode()
 def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor, max_new_tokens: int, context_length: int,
-                                                  temperature: float = 0.0, top_k: int | None = None, eos_token_id: int | None = None, 
+                                                  temperature: float = 0.0, top_k: int | None = None, top_p: float | None = None, eos_token_id: int | None = None, 
                                                   attn_mask: torch.Tensor | None = None, pad_id: int | None = None):
     """
     Same as generate_text_basic_batched_stream_cache but
@@ -713,7 +644,7 @@ def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor
         active_idx = torch.arange(batch_batch, device=device)
         cur_attn_active = attn_mask
         for _ in range(max_new_tokens):
-            next_token_active = torch.argmax(logits, dim=-1, keepdim=True)  # (B_active, 1)
+            next_token_active = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)  # (B_active, 1)
 
             # Build full-sized step to yield
             fill_val = int(eos_token_id) if eos_token_id is not None else 0
