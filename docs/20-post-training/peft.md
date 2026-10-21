@@ -23,7 +23,7 @@
 |---|---|---|
 | `model_peft/lora_qlora/` | QLoRA 实战：Orca math、SQL、from-scratch | 可参考（from-scratch 部分断链） |
 | `model_peft/adapter_finetuning/` | Adapter + DistilBERT 分类 | 示例（有已知 bug，见下） |
-| `model_peft/prompt_tuning/` | Prompt Tuning | **空壳**（仅 peft import，无实现） |
+| `model_peft/prompt_tuning/` | Prompt Tuning | ✅ 自研 `SoftPromptGPT`（Lester 2021，冻结基座 + n 个可学习虚拟 token，不走 peft 库；测试 8 项） |
 | `model_peft/finetuning_feature_extractor/` | 特征提取微调 | 可参考 |
 | `model_peft/knowledge_distillation/` | 蒸馏 | 不可运行（见 cleanup-log） |
 | `model_peft/deepseek_lora/` | DeepSeek-R1-Distill-Qwen LoRA | 可参考（评测对比有已知 bug） |
@@ -56,5 +56,4 @@ python post_training/peft/run_peft.py   # 教程拼接参考，不可直接运�
 - [ ] `model_peft/lora_qlora/scratch_exps/lora_dora_from_scratch.py` 四重断链（import、`Exp_Basic` 签名、空 `model_dict`、缺 args 键），整体不可运行。
 - [ ] `run_peft.py` 为两段教程拼接（TrainingArguments/Trainer 未导入、数据集未定义、训练 mt0-large 推断 opt-350m）。
 - [ ] `deepseek_lora/model_eval.py` 的 `merge_and_unload()` 使对比评测变成模型自比；collator 无 -100 mask。
-- [ ] `prompt_tuning/` 空壳：软提示主题待按附录 E 补自研实现。
-- [ ] QLoRA 全依赖 bitsandbytes；NF4 量化原理的自研教学实现仍缺。
+- [ ] QLoRA 训练组合仍全依赖 bitsandbytes；NF4 **量化原语**已自研（`peft/layers/nf4.py`，量化/反量化往返 + 6 项测试），double quantization 与 4bit+LoRA 组合训练留作下一步。

@@ -124,3 +124,11 @@ python -m unittest discover -s tests -v   # 85 项（2026-10-20）
 python run_gpt2_124M.py --help            # OK
 python scripts/check_docs.py              # OK
 ```
+
+## 6. 2026-10-21 追加（本轮）
+
+- `layers/tokenizers/bpe/tiktoken_bpe.py`：`encode` 透传 `allowed_special`（修端到端暴露的 TypeError）；
+- `inference/loaders/gpt2/`：base_config 补 `d_ff`（4×embed_dim）与 `dtype`（layers/feed_forward.py 需要）；
+- 空壳补全：`preference/model_rlhf/ppo/main.py`（最小 PPO）、`peft/model_peft/prompt_tuning/main.py`（自研 SoftPromptGPT）、新增 `peft/layers/nf4.py`（NF4 量化原语）；
+- 端到端验证：`run_gpt_clf_sft.py` 全链路冒烟通过（130/19/38 批次与书一致，随机权重 30 步 loss 0.699→0.663、valid acc 58.3%>50%、checkpoint 保存 198 keys）；
+  HF 权重下载（548MB）在本会话网络下反复 IncompleteRead/停滞（hf-mirror 仅 ~60KB/s），真实权重训练未能在会话内完成——属网络环境问题，代码链路已验证到下载前一步。
