@@ -22,7 +22,7 @@ from functools import partial
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from utils.llm.load_save_data import load_json_data
+from utils.load_save_data import load_json_data
 from post_training.common.data_provider import instruction_format
 from utils.log_util import logger
 
@@ -39,8 +39,9 @@ class InstructionDataset(Dataset):
         self.encoded_texts = []
         for entry in self.data:
             # format input into instruction-response template
+            # （与书中 ch07 模板一致：### Response:\n，冒号后无空格）
             instruction_plus_input = instruction_format.format_input_alpaca(entry)
-            response_text = f"\n\n### Response: \n{entry['output']}"
+            response_text = f"\n\n### Response:\n{entry['output']}"
             full_text = instruction_plus_input + response_text
             # convert instruction-response entry into token IDs
             token_ids = tokenizer.encode(full_text)
@@ -49,6 +50,41 @@ class InstructionDataset(Dataset):
     
     def __getitem__(self, index):
         return self.encoded_texts[index]
+    
+    def __len__(self):
+        return len(self.data)
+
+
+class InstructionDatasetWithMasking(Dataset):
+    """
+    指令数据集（prompt-masking 变体，LLMs-from-scratch ch07 exercise_experiments.py
+    的 InstructionDatasetWithMasking）。
+
+    额外记录每条样本的 instruction（含 input）token 长度，
+    __getitem__ 返回 (instruction_length, token_ids) 二元组，
+    供 custom_collate_fn_mask_out_instruction 在 targets 中掩掉 prompt 部分。
+    """
+
+    def __init__(self, data, tokenizer):
+        # load data
+        self.data = data
+        # instruction token 长度（与 encoded_texts 按下标对齐）
+        self.instruction_lengths = []
+        # pre-tokenize texts
+        self.encoded_texts = []
+        for entry in self.data:
+            instruction_plus_input = instruction_format.format_input_alpaca(entry)
+            response_text = f"\n\n### Response:\n{entry['output']}"
+            full_text = instruction_plus_input + response_text
+            # convert instruction-response entry into token IDs
+            token_ids = tokenizer.encode(full_text)
+            # collect token IDs and instruction length
+            self.encoded_texts.append(token_ids)
+            self.instruction_lengths.append(len(tokenizer.encode(instruction_plus_input)))
+
+    def __getitem__(self, index):
+        # 返回 (instruction_length, token_ids)，供 masking collate 使用
+        return self.instruction_lengths[index], self.encoded_texts[index]
 
     def __len__(self):
         return len(self.data)
@@ -103,7 +139,56 @@ def custom_collate_fn_mask_out_instruction(batch,
                                            ignore_index = -100, 
                                            allowed_max_length = None, 
                                            device = "cpu"):
-    pass
+    """
+    prompt-masking collate（LLMs-from-scratch ch07 exercise_experiments.py 的
+    custom_collate_with_masking_fn 忠实移植）。
+
+    与 custom_collate_fn 的区别：batch 中的每个 item 是
+    (instruction_length, token_ids) 二元组（来自 InstructionDatasetWithMasking），
+    targets 中属于 instruction/input（prompt）的部分被置为 ignore_index=-100，
+    只对 response（含首个 <|endoftext|>）计算损失。
+
+    注意：instruction_length 是 prompt 单独编码的长度，BPE 跨界合并可能带来
+    ±1 token 的边界近似（与书一致的教学近似）。
+    """
+    # Find the longest sequence in the batch（batch 元素为 (instruction_length, token_ids)）
+    batch_max_length = max(len(item) + 1 for _, item in batch)
+
+    # Pad and prepare inputs and targets
+    inputs_lst, targets_lst = [], []
+
+    for instruction_length, item in batch:
+        new_item = item.copy()
+        # Add an <|endoftext|> token
+        new_item += [pad_token_id]
+        # Pad sequences to max_length
+        padded = new_item + [pad_token_id] * (batch_max_length - len(new_item))
+        inputs = torch.tensor(padded[:-1])  # Truncate the last token for inputs
+        targets = torch.tensor(padded[1:])  # Shift +1 to the right for targets
+
+        # Replace all but the first padding tokens in targets by ignore_index
+        mask = targets == pad_token_id
+        indices = torch.nonzero(mask).squeeze()
+        if indices.numel() > 1:
+            targets[indices[1:]] = ignore_index
+
+        # Mask all input and instruction tokens in the targets
+        # （targets 已整体右移一位，故 prompt 部分对应 targets[:instruction_length-1]）
+        targets[:instruction_length - 1] = ignore_index
+
+        # Optionally truncate to maximum sequence length
+        if allowed_max_length is not None:
+            inputs = inputs[:allowed_max_length]
+            targets = targets[:allowed_max_length]
+
+        inputs_lst.append(inputs)
+        targets_lst.append(targets)
+
+    # Convert list of inputs and targets to tensors and transfer to target device
+    inputs_tensor = torch.stack(inputs_lst).to(device)
+    targets_tensor = torch.stack(targets_lst).to(device)
+
+    return inputs_tensor, targets_tensor
 
 
 def load_split_data(data_path: str, train_ratio: int = 0.85, test_ratio: int = 0.10):
@@ -134,17 +219,34 @@ def create_dataloader(data,
                       batch_size = 8, 
                       shuffle = True, 
                       drop_last = True, 
-                      num_workers = 0):
-    # collate function
-    collate_fn = partial(
-        custom_collate_fn, 
-        pad_token_id = pad_token_id, 
-        ignore_index = ignore_index,
-        allowed_max_length = allowed_max_length, 
-        device = device
-    )
-    # data set
-    dataset = InstructionDataset(data = data, tokenizer = tokenizer)
+                      num_workers = 0,
+                      mask_out_instruction = False):
+    """
+    Args:
+        mask_out_instruction: True 时使用 InstructionDatasetWithMasking +
+            custom_collate_fn_mask_out_instruction（prompt 部分不计损失，
+            对应书 ch07 exercise 的 instruction-masking 实验）
+    """
+    # collate function 与 dataset 按 mask 开关二选一
+    if mask_out_instruction:
+        collate_fn = partial(
+            custom_collate_fn_mask_out_instruction, 
+            pad_token_id = pad_token_id, 
+            ignore_index = ignore_index,
+            allowed_max_length = allowed_max_length, 
+            device = device
+        )
+        dataset = InstructionDatasetWithMasking(data = data, tokenizer = tokenizer)
+    else:
+        collate_fn = partial(
+            custom_collate_fn, 
+            pad_token_id = pad_token_id, 
+            ignore_index = ignore_index,
+            allowed_max_length = allowed_max_length, 
+            device = device
+        )
+        # data set
+        dataset = InstructionDataset(data = data, tokenizer = tokenizer)
     # data loader
     dataloader = DataLoader(
         dataset = dataset,

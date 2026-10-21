@@ -41,7 +41,7 @@ def download_data(data_url, data_path):
 
 # 测试代码 main 函数
 def main(): 
-    from utils.llm.load_save_data import load_json_data
+    from utils.load_save_data import load_json_data
     from post_training.sft.data_provider.instruction_follow.data_config import data_url, data_path
 
     # data download 

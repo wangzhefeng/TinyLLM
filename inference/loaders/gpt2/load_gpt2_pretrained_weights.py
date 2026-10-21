@@ -24,6 +24,8 @@ if HERE not in sys.path:
 
 from transformers import GPT2Model
 
+import torch
+
 from config.gpt2.model_cfgs import (
     gpt2_model_names,
     gpt2_model_configs,
@@ -48,18 +50,28 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gpt2"):
     """
     initializing a model with pretrained weights
+
+    Args:
+        cfgs: 需包含 vocab_size/context_length/dropout/qkv_bias/n_heads 与
+            embed_dim 或 emb_dim（两者任一；run 脚本多用 emb_dim）、
+            pretrained_model（形如 "gpt2-small (124M)"，见 config/gpt2/model_cfgs.py）
     """
     # Loading pretrained LLM
+    # （embed_dim 兼容 emb_dim：不同 run 脚本参数命名不一）
+    embed_dim = getattr(cfgs, "embed_dim", None) or getattr(cfgs, "emb_dim")
     base_config = {
         "vocab_size": cfgs.vocab_size,          # Vocabulary size: 50257
         "context_length": cfgs.context_length,  # Context length: 1024
         "dropout": cfgs.dropout,                # Dropout rate: 0.0
         "qkv_bias": cfgs.qkv_bias,              # Query-key-value bias: True
-        "embed_dim": cfgs.embed_dim,                # Embedding dimension: 768
+        "embed_dim": embed_dim,                 # Embedding dimension: 768
         "n_layers": cfgs.n_layers,              # Number of layers: 12
         "n_heads": cfgs.n_heads,                # Number of heads: 12
+        "dtype": getattr(cfgs, "dtype", None) or torch.float32,  # layers/feed_forward.py 需要
     }
     base_config.update(gpt2_model_configs[cfgs.pretrained_model])
+    # GPT-2 FFN 维度 = 4 × embed_dim（需在 config 表覆盖后计算，换 medium/large 才对）
+    base_config["d_ff"] = 4 * base_config["embed_dim"]
     base_config = DotDict(base_config)
     logger.info(f"New config: {base_config}")
 

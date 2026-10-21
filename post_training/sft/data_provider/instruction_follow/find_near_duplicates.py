@@ -23,7 +23,7 @@ import argparse
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from utils.llm.load_save_data import load_json_data, save_json_data
+from utils.load_save_data import load_json_data, save_json_data
 from utils.log_util import logger
 
 # global variable

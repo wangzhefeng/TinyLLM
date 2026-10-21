@@ -47,7 +47,7 @@ logger.info(f"data_path: {data_path}")
 
 # 测试代码 main 函数
 def main():
-    from utils.llm.load_save_data import load_local_data, load_json_data
+    from utils.load_save_data import load_local_data, load_json_data
 
     # data load
     data = load_local_data(url=data_url, data_path=data_dir)

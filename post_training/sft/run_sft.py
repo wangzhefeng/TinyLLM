@@ -66,6 +66,8 @@ class ScriptArguments():
     dataset_splits: str = "train"
     tokenizer_name_or_path: str = None
     spectrum_config_path: Optional[str] = None
+    # 截断样本数（调试用）；None = 用全量数据
+    max_train_samples: Optional[int] = None
 
 
 # ------------------------------
@@ -96,7 +98,7 @@ def setup_model_for_spectrum(model, spectrum_config_path):
     
     # unfreeze Spectrum parameters
     for name, param in model.named_parameters():
-        if any(re.math(unfrozen_param, name) for unfrozen_param in unfrozen_parameters):
+        if any(re.match(unfrozen_param, name) for unfrozen_param in unfrozen_parameters):
             param.requires_grad = True
     
     # for sanity check print the trainable parameters
@@ -133,7 +135,9 @@ def train_function(model_args: ModelConfig, script_args: ScriptArguments, traini
     else:
         train_dataset = load_dataset(script_args.dataset_id_or_path, split=script_args.dataset_splits)
     
-    train_dataset = train_dataset.select(range(10000))
+    # 可选截断（调试用；不再默认硬编码 10000 截断全量数据）
+    if script_args.max_train_samples is not None:
+        train_dataset = train_dataset.select(range(min(script_args.max_train_samples, len(train_dataset))))
     logger.info(f"Loaded dataset with {len(train_dataset)} samples and the following features: \n{train_dataset.features}")
     #########################
     # Load tokenizer
@@ -161,7 +165,8 @@ def train_function(model_args: ModelConfig, script_args: ScriptArguments, traini
         if model_args.torch_dtype in ["auto", None] 
         else getattr(torch, model_args.torch_dtype),  # what torch dtype to use, defaults to auto
         use_cache=False if training_args.gradient_checkpointing else True, # Whether
-        low_cpu_mem_usage=True if not strtobool(os.environ.get("ACCELERATE_USE_DEEPSPEED", "false")) else None,  # Reduces memory usage on CPU for loading the model
+        # strtobool 属已废弃的 distutils；直接做布尔解析
+        low_cpu_mem_usage=True if os.environ.get("ACCELERATE_USE_DEEPSPEED", "false").lower() not in ("1", "true", "yes") else None,  # Reduces memory usage on CPU for loading the model
     )
     # Check which training method to use and if 4-bit quantization is needed
     if model_args.load_in_4bit: 

@@ -22,7 +22,7 @@ from functools import partial
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from utils.llm.load_save_data import load_json_data
+from utils.load_save_data import load_json_data
 from post_training.common.data_provider import instruction_format
 from utils.log_util import logger
 

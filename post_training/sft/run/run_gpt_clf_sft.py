@@ -38,59 +38,60 @@ def args_parse():
     # add arguments
     # ------------------------------
     # task params
-    parser.add_argument("--task_name", type=str, required=True, default="tiny_gpt_classification_sft",
+    parser.add_argument("--task_name", type=str, required=False, default="tiny_gpt_classification_sft",
                         help="task name")
-    parser.add_argument("--model_name", type=str, required=True, default="gpt_finetune_clf",
+    parser.add_argument("--model_name", type=str, required=False, default="gpt_finetune_clf",
                         help="model name")
-    parser.add_argument("--is_train", type=int, required=True, default=1,
+    parser.add_argument("--is_train", type=int, required=False, default=1,
                         help="training flag")
-    parser.add_argument("--is_inference", type=int, required=True, default=0,
+    parser.add_argument("--is_inference", type=int, required=False, default=0,
                         help="inference flag")
     # data params
-    parser.add_argument("--data_path", type=str, required=True, 
+    parser.add_argument("--data_path", type=str, required=False,
                         default="./dataset/finetuning/sms_spam_collection", 
                         help="data download url")
-    parser.add_argument("--context_length", type=int, required=True, default=1024,
+    parser.add_argument("--context_length", type=int, required=False, default=1024,
                         help="context length")
     # model params
-    parser.add_argument("--num_classes", type=int, required=True, default=2,
+    parser.add_argument("--num_classes", type=int, required=False, default=2,
                         help="number of classes")
-    parser.add_argument("--vocab_size", type=int, required=True, default=50257,
+    parser.add_argument("--vocab_size", type=int, required=False, default=50257,
                         help="vocab size")
-    parser.add_argument("--emb_dim", type=int, required=True, default=768,
+    parser.add_argument("--emb_dim", type=int, required=False, default=768,
                         help="embedding dimension")
-    parser.add_argument("--n_heads", type=int, required=True, default=12,
+    parser.add_argument("--n_heads", type=int, required=False, default=12,
                         help="number of heads")
-    parser.add_argument("--n_layers", type=int, required=True, default=12,  
+    parser.add_argument("--n_layers", type=int, required=False, default=12,  
                         help="number of layers")
-    parser.add_argument("--dropout", type=float, required=True, default=0.0, 
+    parser.add_argument("--dropout", type=float, required=False, default=0.0, 
                         help="dropout")
-    parser.add_argument("--qkv_bias", type=int, required=True, default=1, 
+    parser.add_argument("--qkv_bias", type=int, required=False, default=1, 
                         help="use bias in qkv")
     # model pretrain params 
-    parser.add_argument("--pretrained_model", type=str, required=True, default="gpt2-small (124)",
-                        help="pretrained model")
-    parser.add_argument("--pretrained_model_path", type=str, required=True, default="./downloaded_models/gpt2_model",
+    parser.add_argument("--pretrained_model", type=str, required=False, default="gpt2-small (124M)",
+                        help="pretrained model（键名见 config/gpt2/model_cfgs.py）")
+    parser.add_argument("--pretrained_model_path", type=str, required=False, default="./downloaded_models/gpt2_model",
                         help="pretrained model path")
-    parser.add_argument("--pretrained_model_source", type=str, required=True, default="huggingface_gpt2",
+    parser.add_argument("--pretrained_model_source", type=str, required=False, default="huggingface_gpt2",
                         help="pretrained model source")
-    parser.add_argument("--finetuned_model_path", type=str, required=True, default="./saved_results/finetuned_models",
+    parser.add_argument("--finetuned_model_path", type=str, required=False, default="./saved_results/finetuned_models",
                         help="finetuned model path")
-    parser.add_argument("--finetune_method", type=str, required=True, default="simple",
-                        help="finetune method")
-    parser.add_argument("--tokenizer_model", type=str, required=True, default="gpt2",
+    parser.add_argument("--finetune_method", type=str, required=False, default="last_transformer_stage",
+                        choices=["last_layer", "last_transformer_stage", "all_layers", "lora"],
+                        help="finetune method（LLMs-from-scratch ch06/附录E：仅分类头/末块/full/LoRA）")
+    parser.add_argument("--tokenizer_model", type=str, required=False, default="gpt2",
                         help="tokenizer model")
-    parser.add_argument("--seed", type=int, required=True, default=123,
+    parser.add_argument("--seed", type=int, required=False, default=123,
                         help="random seed")
-    parser.add_argument("--iters", type=int, required=True, default=10, 
+    parser.add_argument("--iters", type=int, required=False, default=10, 
                         help="number of iterations")
-    parser.add_argument("--train_epochs", type=int, required=True, default=10, 
+    parser.add_argument("--train_epochs", type=int, required=False, default=10, 
                         help="number of training epochs")
-    parser.add_argument("--batch_size", type=int, required=True, default=2, 
+    parser.add_argument("--batch_size", type=int, required=False, default=2, 
                         help="batch size") 
-    parser.add_argument("--learning_rate", type=float, required=True, default=5e-5, 
+    parser.add_argument("--learning_rate", type=float, required=False, default=5e-5, 
                         help="learning rate")
-    parser.add_argument("--weight_decay", type=float, required=True, default=0.1, 
+    parser.add_argument("--weight_decay", type=float, required=False, default=0.1, 
                         help="weight decay")
     parser.add_argument("--initial_lr", type=float, default=3e-5, 
                         help="initial learning rate")
@@ -107,16 +108,16 @@ def args_parse():
                         help="test results path")
     parser.add_argument("--use_amp", type=int, default=1,
                         help="Use amp")
-    parser.add_argument("--num_workers", type=int, required=True, default=0,
+    parser.add_argument("--num_workers", type=int, required=False, default=0,
                         help="num_workers")
     # model pretrain device params
-    parser.add_argument("--use_gpu", type=int, required=True, default=1, 
+    parser.add_argument("--use_gpu", type=int, required=False, default=1, 
                         help="user gpu")
-    parser.add_argument("--use_multi_gpu", type=int, required=True, default=0, 
+    parser.add_argument("--use_multi_gpu", type=int, required=False, default=0, 
                         help="use multi gpu")
-    parser.add_argument("--gpu_type", type=str, required=True, default="cuda", 
+    parser.add_argument("--gpu_type", type=str, required=False, default="cuda", 
                         help="gpu type")
-    parser.add_argument("--devices", type=str, required=True, default="0,1,2,3,4,5,6,7",
+    parser.add_argument("--devices", type=str, required=False, default="0,1,2,3,4,5,6,7",
                         help="devices")
     # ------------------------------
     # arguments parse
@@ -151,6 +152,10 @@ def run(args):
         Exp = ModelFinetuningClassifier
     else:
         Exp = ModelFinetuningClassifier
+    # setting 在 train/inference 分支都要用，提前计算（Path 兼容任意分隔符）
+    setting = f"{args.task_name}_{args.model_name}_{Path(args.data_path).name}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
+    # set experiments（train 与 inference 共用同一 exp 实例）
+    exp = Exp(args)
     # ------------------------------
     # 模型训练
     # ------------------------------
@@ -159,11 +164,7 @@ def run(args):
             logger.info(f"{50 * '='}")
             logger.info(f"training iter: {itr}")
             logger.info(f"{50 * '='}")
-            # setting record of experiments
-            setting = f"{args.task_name}_{args.model_name}_{args.data_path.split('/')[-1]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
             logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            # set experiments
-            exp = Exp(args)
             # model training
             exp.train(training_iter=itr, setting=setting, eval_freq=50, eval_iter=5)
             # empty cache
@@ -201,10 +202,10 @@ def run(args):
 
 # 测试代码 main 函数
 def main():
+    # 参数解析（先解析再设种子，否则 args 未定义即 NameError）
+    args = args_parse()
     # 设置随机数
     set_seed(args.seed)
-    # 参数解析
-    args = args_parse() 
     # 参数使用
     run(args)
 

@@ -19,19 +19,30 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch
+import torch.nn.functional as F
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
 
+# 分类微调类任务名：只对最后一个 token 的 logits 计损（LLMs-from-scratch ch06）
+# 注意与 run 脚本的 task_name（tiny_gpt_classification_sft 等）保持兼容
+CLF_TASK_NAMES = ("clf_sft", "tiny_gpt_classification_sft")
 
-def calc_loss_batch(task_name, input_batch, target_batch, model, criterion, device):
+
+def calc_loss_batch(task_name, input_batch, target_batch, model, criterion=None, device="cpu"):
     """
     calculate loss in batch training
+
+    Args:
+        task_name: 任务名；分类任务（见 CLF_TASK_NAMES）取最后一个 token 的 logits
+        criterion: 损失函数；None 时默认 F.cross_entropy
     """
     # move data to device
     input_batch, target_batch = input_batch.to(device), target_batch.to(device) 
+    if criterion is None:
+        criterion = F.cross_entropy
     # Logits of last output token, loss
-    if task_name == "clf_sft":
+    if task_name in CLF_TASK_NAMES:
         logits = model(input_batch)[:, -1, :]
         loss = criterion(logits, target_batch)
     else:
@@ -41,7 +52,7 @@ def calc_loss_batch(task_name, input_batch, target_batch, model, criterion, devi
     return loss
 
 
-def calc_loss_loader(task_name, data_loader, model, criterion, device, num_batches=None):
+def calc_loss_loader(task_name, data_loader, model, criterion=None, device="cpu", num_batches=None):
     """
     calculate loss in all batches
     """
@@ -59,7 +70,7 @@ def calc_loss_loader(task_name, data_loader, model, criterion, device, num_batch
     total_loss = 0.0
     for i, (input_batch, target_batch) in enumerate(data_loader):
         if i < num_batches:
-            loss = calc_loss_batch(task_name, input_batch, target_batch, model, criterion, device)
+            loss = calc_loss_batch(task_name, input_batch, target_batch, model, criterion, device)  # noqa: 位置参数兼容旧调用
             total_loss += loss.item()
         else:
             break

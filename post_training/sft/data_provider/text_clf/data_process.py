@@ -84,7 +84,7 @@ def data_to_csv(data_dir, train_df, valid_df, test_df):
 # 测试代码 main 函数
 def main():
     from post_training.sft.data_provider.text_clf.data_config import data_dir, tsv_file_path
-    from utils.llm.load_save_data import load_csv_data
+    from utils.load_save_data import load_csv_data
 
     # data load
     df = load_csv_data(data_file_path = tsv_file_path)

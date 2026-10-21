@@ -35,8 +35,8 @@ from post_training.common.data_provider import instruction_format
 from layers.tokenizers.tokenization import choose_tokenizer
 from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 # model
-from models.gpt import Model
-from utils.llm.gpt_generate import generate
+from models.gpt2.gpt2_124M import Model
+from inference.generate_core import generate
 # other model
 from inference.loaders.gpt2.load_gpt2_pretrained_weights import (
     model_with_gpt2_weights, 
@@ -44,9 +44,9 @@ from inference.loaders.gpt2.load_gpt2_pretrained_weights import (
 )
 from inference.loaders.gpt2.load_pretrained_weights import load_pretrained_model
 # model training
-from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.llm.early_stopping import select_optimizer
-from utils.plot_losses import plot_losses
+from utils.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.optimizer import select_optimizer
+from utils.plot_losses import plot_losses_llm
 # tools
 from utils.device import device_setting
 from utils.log_util import logger
@@ -261,15 +261,16 @@ class ModelFinetuningInstructionFlow:
                     track_tokens_seen.append(tokens_seen)
                     logger.info(f"Epoch {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
-            # TODO Print a sample text after each epoch
+            # 每个 epoch 结束打印一次样例生成（先切 eval，关 dropout，再恢复 train）
+            self.model.eval()
             start_context = valid_data[0]
             formated_start_context = instruction_format.format_input_alpaca(start_context)
             token_ids = generate(
                 model = self.model,
-                token_idx = text_to_token_ids(formated_start_context).to(self.device),
+                token_ids = text_to_token_ids(formated_start_context).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = self.base_config.context_length,
-                eos_id = self.pad_token_id
+                context_length = self._context_length(),
+                eos_token_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
             response_text = (
@@ -279,6 +280,7 @@ class ModelFinetuningInstructionFlow:
             )
             logger.info(f"Epoch {epoch+1}: start_context: \n{formated_start_context}") 
             logger.info(f"Epoch {epoch+1}: response_text: \n{response_text}") 
+            self.model.train()
         
         # training end time
         training_end_time = time.time()
@@ -286,12 +288,12 @@ class ModelFinetuningInstructionFlow:
         execution_time_minutes = (training_end_time - training_start_time) / 60
         logger.info(f"Training completed in {execution_time_minutes:.2f} minutes")
         
-        # plot losses
-        plot_losses(
+        # plot losses（tokens_seen 版本对应 plot_losses_llm，见 utils/plot_losses.py）
+        plot_losses_llm(
             train_epochs=self.args.train_epochs, 
             tokens_seen=track_tokens_seen, 
             train_losses=train_losses, 
-            val_losses=val_losses, 
+            valid_losses=val_losses, 
             label="loss",
             results_path=results_path
         )
@@ -330,10 +332,10 @@ class ModelFinetuningInstructionFlow:
             input_text = instruction_format.format_input_alpaca(entry)
             token_ids = generate(
                 model = model,
-                token_idx = text_to_token_ids(input_text).to(self.device),
+                token_ids = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = self.base_config.context_length,
-                eos_id = self.pad_token_id
+                context_length = self._context_length(),
+                eos_token_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
             response_text = (
@@ -365,10 +367,10 @@ class ModelFinetuningInstructionFlow:
             input_text = instruction_format.format_input_alpaca(entry)
             token_ids = generate(
                 model = model,
-                token_idx = text_to_token_ids(input_text).to(self.device),
+                token_ids = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
-                context_size = self.base_config.context_length,
-                eos_id = self.pad_token_id
+                context_length = self._context_length(),
+                eos_token_id = self.pad_token_id
             )
             generated_text = token_ids_to_text(token_ids)
             response_text = (
@@ -398,10 +400,10 @@ class ModelFinetuningInstructionFlow:
         input_text = instruction_format.format_input_alpaca(entry)
         token_ids = generate(
             model = model,
-            token_idx = text_to_token_ids(input_text).to(self.device),
+            token_ids = text_to_token_ids(input_text).to(self.device),
             max_new_tokens = self.args.max_new_tokens,
-            context_size = self.base_config.context_length,
-            eos_id = self.pad_token_id
+            context_length = self._context_length(),
+            eos_token_id = self.pad_token_id
         )
         generated_text = token_ids_to_text(token_ids)
         response_text = (
@@ -413,6 +415,15 @@ class ModelFinetuningInstructionFlow:
         logger.info(f"input_text:\n{input_text}")
         logger.info(f"\nCorrect response:\n>> {entry['output']}")
         logger.info(f"\nModel response:\n>> {response_text.strip()}")
+
+    def _context_length(self):
+        """
+        上下文长度：优先用模型实际 base_config（train 加载后存在），
+        未训练直接 test/inference 时回退到 args.context_length。
+        """
+        if getattr(self, "base_config", None) is not None:
+            return self.base_config.context_length
+        return self.args.context_length
 
     def _extract_response(self, response_text, input_text):
         """
@@ -453,10 +464,10 @@ class ModelFinetuningInstructionFlow:
         # inference
         token_ids = generate(
             model = model,
-            token_idx = text_to_token_ids(prompt),
+            token_ids = text_to_token_ids(prompt),
             max_new_tokens = self.args.max_new_tokens,  # 35
-            context_size = self.base_config.context_length,
-            eos_id = self.pad_token_id
+            context_length = self._context_length(),
+            eos_token_id = self.pad_token_id
         )
         response = self._extract_response(
             response_text = token_ids_to_text(token_ids), 

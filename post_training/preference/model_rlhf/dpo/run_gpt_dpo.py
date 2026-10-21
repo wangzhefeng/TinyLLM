@@ -38,67 +38,67 @@ def args_parse():
     # add arguments
     # ------------------------------
     # task params
-    parser.add_argument("--task_name", type=str, required=True, default="tiny_gpt_dpo_sft",
+    parser.add_argument("--task_name", type=str, required=False, default="tiny_gpt_dpo_sft",
                         help="task name")
-    parser.add_argument("--model_name", type=str, required=True, default="gpt_finetune_instruction_dpo",
+    parser.add_argument("--model_name", type=str, required=False, default="gpt_finetune_instruction_dpo",
                         help="model name")
-    parser.add_argument("--is_train", type=int, required=True, default=1,
+    parser.add_argument("--is_train", type=int, required=False, default=1,
                         help="train flag")
-    parser.add_argument("--is_test", type=int, required=True, default=0,
+    parser.add_argument("--is_test", type=int, required=False, default=0,
                         help="test flag")
-    parser.add_argument("--is_valid", type=int, required=True, default=0,
+    parser.add_argument("--is_valid", type=int, required=False, default=0,
                         help="eval flag")
-    parser.add_argument("--is_inference", type=int, required=True, default=0,
+    parser.add_argument("--is_inference", type=int, required=False, default=0,
                         help="inference flag")
     # data params
-    parser.add_argument("--data_path", type=str, required=True, 
+    parser.add_argument("--data_path", type=str, required=False,
                         default="./dataset/finetune/instruction-preference-data.json", 
                         help="data download url")
-    parser.add_argument("--context_length", type=int, required=True, default=1024,
+    parser.add_argument("--context_length", type=int, required=False, default=1024,
                         help="context length")
     # model params
-    parser.add_argument("--train_ratio", type=float, required=True, default=0.85,
+    parser.add_argument("--train_ratio", type=float, required=False, default=0.85,
                         help="train data ratio")
-    parser.add_argument("--test_ratio", type=float, required=True, default=0.10,
+    parser.add_argument("--test_ratio", type=float, required=False, default=0.10,
                         help="test data ratio") 
-    parser.add_argument("--vocab_size", type=int, required=True, default=50257,
+    parser.add_argument("--vocab_size", type=int, required=False, default=50257,
                         help="vocab size")
-    parser.add_argument("--emb_dim", type=int, required=True, default=768,
+    parser.add_argument("--emb_dim", type=int, required=False, default=768,
                         help="embedding dimension")
-    parser.add_argument("--n_layers", type=int, required=True, default=12,  
+    parser.add_argument("--n_layers", type=int, required=False, default=12,  
                         help="number of layers")
-    parser.add_argument("--n_heads", type=int, required=True, default=12,
+    parser.add_argument("--n_heads", type=int, required=False, default=12,
                         help="number of heads") 
-    parser.add_argument("--dropout", type=float, required=True, default=0.0, 
+    parser.add_argument("--dropout", type=float, required=False, default=0.0, 
                         help="dropout")
-    parser.add_argument("--qkv_bias", type=int, required=True, default=1, 
+    parser.add_argument("--qkv_bias", type=int, required=False, default=1, 
                         help="use bias in qkv")
-    parser.add_argument("--mask_prompt_tokens", type=int, required=True, default=1,
+    parser.add_argument("--mask_prompt_tokens", type=int, required=False, default=1,
                         help="mask prompt tokens")
     # model pretrain params 
-    parser.add_argument("--pretrained_model", type=str, required=True, default="gpt2-medium(335M)",
+    parser.add_argument("--pretrained_model", type=str, required=False, default="gpt2-medium (355M)",
                         help="pretrained model")
-    parser.add_argument("--pretrained_model_path", type=str, required=True, default="./downloaded_models/gpt2_model",
+    parser.add_argument("--pretrained_model_path", type=str, required=False, default="./downloaded_models/gpt2_model",
                         help="pretrained model path")
-    parser.add_argument("--pretrained_model_source", type=str, required=True, default="huggingface_gpt2",
+    parser.add_argument("--pretrained_model_source", type=str, required=False, default="huggingface_gpt2",
                         help="pretrained model source")
-    parser.add_argument("--finetuned_model_path", type=str, required=True, default="./saved_results/finetuned_models/tiny_gpt_instruction_sft_gpt_finetune_instruction_instruction-dat_cl1024_te10_bs8/0/gpt2-medium335M-sft.pth",
+    parser.add_argument("--finetuned_model_path", type=str, required=False, default="./saved_results/finetuned_models/tiny_gpt_instruction_sft_gpt_finetune_instruction_instruction-dat_cl1024_te10_bs8/0/gpt2-medium335M-sft.pth",
                         help="finetuned model path")
-    parser.add_argument("--tokenizer_model", type=str, required=True, default="gpt2",
+    parser.add_argument("--tokenizer_model", type=str, required=False, default="gpt2",
                         help="tokenizer model")
-    parser.add_argument("--seed", type=int, required=True, default=123,
+    parser.add_argument("--seed", type=int, required=False, default=123,
                         help="random seed")
-    parser.add_argument("--iters", type=int, required=True, default=1, 
+    parser.add_argument("--iters", type=int, required=False, default=1, 
                         help="number of iterations")
-    parser.add_argument("--train_epochs", type=int, required=True, default=1, 
+    parser.add_argument("--train_epochs", type=int, required=False, default=1, 
                         help="number of training epochs")
-    parser.add_argument("--max_new_tokens", type=int, required=True, default=256,
+    parser.add_argument("--max_new_tokens", type=int, required=False, default=256,
                         help="max new tokens")
-    parser.add_argument("--batch_size", type=int, required=True, default=8, 
+    parser.add_argument("--batch_size", type=int, required=False, default=8, 
                         help="batch size") 
-    parser.add_argument("--learning_rate", type=float, required=True, default=5e-5, 
+    parser.add_argument("--learning_rate", type=float, required=False, default=5e-5, 
                         help="learning rate")
-    parser.add_argument("--weight_decay", type=float, required=True, default=0.1, 
+    parser.add_argument("--weight_decay", type=float, required=False, default=0.1, 
                         help="weight decay")
     parser.add_argument("--initial_lr", type=float, default=3e-5, 
                         help="initial learning rate")  
@@ -114,6 +114,8 @@ def args_parse():
                         help="top k")
     parser.add_argument("--beta", type=float, default=0.1,
                         help="beta")
+    parser.add_argument("--dpo_avg_logprobs", type=int, default=0,
+                        help="DPO logprob 口径：0=序列求和（论文公式7，默认）；1=逐token平均（长度归一化，仅对比实验）")
     parser.add_argument("--checkpoints", type=str, 
                         default="./saved_results/finetuned_models", 
                         help="checkpoints path")
@@ -125,15 +127,15 @@ def args_parse():
     parser.add_argument("--use_amp", type=int, default=1,
                         help="Use amp")
     # model pretrain device params
-    parser.add_argument("--num_workers", type=int, required=True, default=0,
+    parser.add_argument("--num_workers", type=int, required=False, default=0,
                         help="num_workers")
-    parser.add_argument("--use_gpu", type=int, required=True, default=1, 
+    parser.add_argument("--use_gpu", type=int, required=False, default=1, 
                         help="user gpu")
-    parser.add_argument("--use_multi_gpu", type=int, required=True, default=0, 
+    parser.add_argument("--use_multi_gpu", type=int, required=False, default=0, 
                         help="use multi gpu")
-    parser.add_argument("--gpu_type", type=str, required=True, default="cuda", 
+    parser.add_argument("--gpu_type", type=str, required=False, default="cuda", 
                         help="gpu type")
-    parser.add_argument("--devices", type=str, required=True, default="0,1,2,3,4,5,6,7",
+    parser.add_argument("--devices", type=str, required=False, default="0,1,2,3,4,5,6,7",
                         help="devices")
     # ------------------------------
     # arguments parse
@@ -170,7 +172,7 @@ def run(args):
         Exp = ModelFinetuningPreference
     
     # setting record of experiments
-    setting = f"{args.task_name}_{args.model_name}_{args.data[:-6]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
+    setting = f"{args.task_name}_{args.model_name}_{Path(args.data_path).name[:-5]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
     # ------------------------------
     # 模型训练
     # ------------------------------

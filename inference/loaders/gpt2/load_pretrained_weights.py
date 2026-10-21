@@ -45,15 +45,19 @@ def load_pretrained_model(cfgs, model_configs, model_cls, device: str = "cpu", t
         "dropout": cfgs.dropout,                # Dropout rate: 0.0
         "qkv_bias": cfgs.qkv_bias,              # Query-key-value bias: True
     }
-    base_config.update(model_configs[cfgs.choose_model])
+    # （choose_model 兼容 pretrained_model：run 脚本多用 pretrained_model）
+    choose_model = getattr(cfgs, "choose_model", None) or cfgs.pretrained_model
+    base_config.update(model_configs[choose_model])
+    base_config["d_ff"] = 4 * base_config["embed_dim"]   # GPT-2 FFN 维度
+    base_config["dtype"] = getattr(cfgs, "dtype", None) or torch.float32
     base_config = DotDict(base_config)
     
     # pretrained model instance
     model = model_cls(base_config)
     if task == "binary_classification":
         model.out_head = nn.Linear(
-            in_features=cfgs.emb_dim, 
-            out_features=cfgs.num_classes
+            in_features = getattr(cfgs, "emb_dim", None) or cfgs.embed_dim, 
+            out_features = cfgs.num_classes
         )
     model.load_state_dict(torch.load(
         cfgs.finetuned_model_path, 

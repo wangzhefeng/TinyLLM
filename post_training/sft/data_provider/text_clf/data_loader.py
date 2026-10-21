@@ -31,9 +31,9 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 class SpamDataset(Dataset):
     
     def __init__(self, data_path, tokenizer, pad_token_id, max_length=None):
-        # load csv data
+        # load csv data（data_path 兼容 str 与 Path）
         self.data = pd.read_csv(data_path)
-        logger.info(f"{data_path.split('/')[-1]}: \n{self.data.head()}")
+        logger.info(f"{Path(data_path).name}: \n{self.data.head()}")
         
         # pre-tokenize texts
         self.encoded_texts = [tokenizer.encode(text) for text in self.data["Text"]]

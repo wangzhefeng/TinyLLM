@@ -30,7 +30,7 @@ from transformers import GPT2Model
 from post_training.preference.data_provider.dpo import data_loader
 from post_training.common.data_provider import instruction_format
 # model
-from models.gpt import Model
+from models.gpt2.gpt2_124M import Model
 from inference.generate_core import generate
 # tokenzier
 from layers.tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
@@ -39,7 +39,7 @@ from inference.loaders.gpt2.load_gpt2_pretrained_weights import (
     gpt2_huggingface_models,
 )
 from inference.loaders.gpt2.openai_gpt2_weights_load_hf import load_weights_hf
-from utils.llm.early_stopping import select_optimizer
+from utils.optimizer import select_optimizer
 from utils.plot_losses import plot_losses
 # utils
 from utils.device import device_setting
@@ -117,7 +117,11 @@ class ModelFinetuningPreference:
 
     def __load_finetuned_model(self, model_path, update_params: bool = True, base_config_new: Dict = None):
         """
-        initializing a model with pretrained weights
+        initializing a model with finetuned weights
+
+        加载顺序（重要）：先用 HF GPT-2 预训练权重初始化（并取回模型 config），
+        **再**加载 SFT checkpoint 的 state_dict——顺序颠倒会把 SFT 权重静默覆盖回
+        预训练权重，导致 DPO 实际从原始 GPT-2 开始（此前版本的真实 bug）。
         """
         # model base config 
         base_config = {
@@ -139,17 +143,17 @@ class ModelFinetuningPreference:
             base_config = DotDict(base_config)
             # pretrained model instance
             model = Model(base_config)
+            # 先用 HF 预训练权重初始化（仅为 config/形状，随后即被 checkpoint 覆盖）
+            load_weights_hf(model, gpt2_hf, base_config)
         else:
-            model = Model(base_config_new)
-        # load model weights
+            base_config = base_config_new
+            model = Model(base_config)
+        # 再加载 finetuned(SFT) checkpoint：policy 与 reference 都应从 SFT 模型出发
         model.load_state_dict(torch.load(
             model_path,
             map_location = torch.device("cpu"), 
             weights_only = True
         ))
-        # assign pretrained model's weights
-        if update_params:
-            load_weights_hf(model, gpt2_hf, base_config)
         # model inference mode
         model.eval()
 
@@ -165,7 +169,7 @@ class ModelFinetuningPreference:
             "context_length": self.args.context_length,  # Context length: 1024
             "dropout": self.args.dropout,                # Dropout rate: 0.0
             "qkv_bias": self.args.qkv_bias,              # Query-key-value bias: True
-            "emb_dim": self.args.emb_dim,                # Embedding dimension: 768
+            "embed_dim": self.args.emb_dim,              # Embedding dimension: 768（键名与 models/gpt2 一致）
             "n_layers": self.args.n_layers,              # Number of layers: 12
             "n_heads": self.args.n_heads,                # Number of heads: 12
         }
@@ -272,7 +276,7 @@ class ModelFinetuningPreference:
         # 使用 .mean() 对批次中的样本进行平均
         return losses.mean(), chosen_rewards.mean(), rejected_rewards.mean()
 
-    def __compute_logprobs(self, logits, labels, selection_mask=None):
+    def __compute_logprobs(self, logits, labels, selection_mask=None, avg_logprobs: bool = False):
         """
         Compute log probabilities.
 
@@ -280,9 +284,12 @@ class ModelFinetuningPreference:
             logits: Tensor of shape (batch_size, num_tokens, vocab_size)
             labels: Tensor of shape (batch_size, num_tokens)
             selection_mask: Tensor for shape (batch_size, num_tokens)
+            avg_logprobs: False（默认）= 对整条序列的 logprob **求和**（DPO 论文公式 7
+                与主流实现 eric-mitchell/direct-preference-optimization、TRL 的口径）；
+                True = 逐 token 平均（长度归一化，会隐式偏好短回复，仅作对比实验用）
 
         Returns:
-            mean_log_prob: Mean log probability excluding padding tokens.
+            序列级 logprob：sum 口径为总 logprob，avg 口径为均值（排除 padding token）。
         """
         # 标签是输入向右移动一位
         labels = labels[:, 1:].clone()
@@ -299,38 +306,48 @@ class ModelFinetuningPreference:
             mask = selection_mask[:, 1:].clone()
             # 应用掩码以过滤掉填充token
             selected_log_probs = selected_log_probs * mask
-            # 计算排除填充token的平均对数概率
-            # 这是在token上取平均，因此形状为 (batch_size, num_tokens)
-            avg_log_prob = selected_log_probs.sum(-1) / mask.sum(-1)
-            return avg_log_prob
+            if avg_logprobs:
+                # 计算排除填充token的平均对数概率
+                avg_log_prob = selected_log_probs.sum(-1) / mask.sum(-1)
+                return avg_log_prob
+            # DPO 标准口径：序列级求和（不做长度归一化）
+            return selected_log_probs.sum(-1)
         else:
-            return selected_log_probs.mean(-1)
+            if avg_logprobs:
+                return selected_log_probs.mean(-1)
+            return selected_log_probs.sum(-1)
 
     def __compute_dpo_loss_batch(self, batch, policy_model, reference_model, beta):
         """
         Compute the DPO loss on an input batch
         """
+        # logprob 口径：默认 sum（DPO 论文），可用 --dpo_avg_logprobs 1 切换为逐 token 平均
+        avg_logprobs = bool(getattr(self.args, "dpo_avg_logprobs", 0))
         # 其中 policy_model(batch["chosen"]) 是 logits
         policy_chosen_log_probas = self.__compute_logprobs(
             logits=policy_model(batch["chosen"]),
             labels=batch["chosen"],
-            selection_mask=batch["chosen_mask"]
+            selection_mask=batch["chosen_mask"],
+            avg_logprobs=avg_logprobs,
         )
         policy_rejected_log_probas = self.__compute_logprobs(
             logits=policy_model(batch["rejected"]),
             labels=batch["rejected"],
-            selection_mask=batch["rejected_mask"]
+            selection_mask=batch["rejected_mask"],
+            avg_logprobs=avg_logprobs,
         )
         with torch.no_grad():
             ref_chosen_log_probas = self.__compute_logprobs(
                 logits=reference_model(batch["chosen"]),
                 labels=batch["chosen"],
-                selection_mask=batch["chosen_mask"]
+                selection_mask=batch["chosen_mask"],
+                avg_logprobs=avg_logprobs,
             )
             ref_rejected_log_probas = self.__compute_logprobs(
                 logits=reference_model(batch["rejected"]),
                 labels=batch["rejected"],
-                selection_mask=batch["rejected_mask"]
+                selection_mask=batch["rejected_mask"],
+                avg_logprobs=avg_logprobs,
             )
         loss, chosen_rewards, rejected_rewards = self.__compute_dpo_loss(
             model_chosen_logprobs=policy_chosen_log_probas,
@@ -531,12 +548,12 @@ class ModelFinetuningPreference:
         logger.info(f"Input text: {input_text}")
         token_ids = generate(
             model = model,
-            token_idx = text_to_token_ids(input_text).to(self.device),
+            token_ids = text_to_token_ids(input_text).to(self.device),
             max_new_tokens = self.args.max_new_tokens,  # 256
-            context_size = self.args.context_length,
+            context_length = self.args.context_length,
             temperature=self.args.temperature,
             top_k = self.args.top_k,
-            eos_id = self.pad_token_id,
+            eos_token_id = self.pad_token_id,
         )
         generated_text = token_ids_to_text(token_ids)
         # 对响应进行清理，只返回响应文本，并去除提示和提示样式
@@ -563,9 +580,11 @@ class ModelFinetuningPreference:
         elif data_name == "test":
             data = test_data
         # print response
+        # （注意变量与模型的对应关系：policy_model 生成 policy 响应，
+        #   reference_model 生成 reference 响应——此前两行写反了）
         for entry in data[:data_index]:
-            reference_response_text = self.__extract_response(policy_model, entry)
-            policy_response_text = self.__extract_response(reference_model, entry)
+            policy_response_text = self.__extract_response(policy_model, entry)
+            reference_response_text = self.__extract_response(reference_model, entry)
             logger.info(f"\nCorrect response:\n>> {entry['output']}")
             logger.info(f"\nReference response:\n>> {reference_response_text.strip()}")
             logger.info(f"\nPolicy response:\n>> {policy_response_text.strip()}")

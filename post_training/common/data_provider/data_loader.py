@@ -25,7 +25,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from utils.llm.load_save_data import (
+from utils.load_save_data import (
     load_local_data, 
     load_hf_data,
 )

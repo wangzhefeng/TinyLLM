@@ -38,6 +38,7 @@ def choose_tokenizer(tokenizer_model: str = "tiktoken_gpt2_bpe"):
         "simple_custom": SimpleTokenizer,
         "simple_bpe": BPETokenizerSimple,
         "tiktoken_gpt2_bpe": TiktokenBPE,
+        "gpt2": TiktokenBPE,  # 别名：GPT-2 系（tiktoken gpt2 编码），供 run 脚本直传 --tokenizer_model gpt2
         "openai_gpt2_bpe": OpenaiGPT2BPE,
         "llama2": Llama27bTokenizer,
         "llama3-8B": Llama38bTokenizer,

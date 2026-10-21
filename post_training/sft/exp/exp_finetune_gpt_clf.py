@@ -26,16 +26,16 @@ import torch
 # data
 from post_training.sft.data_provider.text_clf.data_loader import create_dataloader
 # model
-from models.gpt import Model
+from models.gpt2.gpt2_124M import Model
 from post_training.sft.layers.clf_head import finetune_model
 # other model
 from layers.tokenizers.tokenization import choose_tokenizer
 from inference.loaders.gpt2.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
 from inference.loaders.gpt2.load_pretrained_weights import load_pretrained_model
 # training
-from utils.llm.calc_loss import calc_loss_batch, calc_loss_loader
-from utils.llm.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
-from utils.llm.early_stopping import select_optimizer
+from utils.calc_loss import calc_loss_batch, calc_loss_loader
+from utils.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
+from utils.optimizer import select_optimizer
 from utils.plot_losses import plot_values_classifier
 # utils
 from utils.device import device_setting
@@ -171,7 +171,7 @@ class ModelFinetuningClassifier:
         torch.manual_seed(self.args.seed)
         self.model = finetune_model(
             model, 
-            base_config.emb_dim, 
+            base_config.embed_dim, 
             self.args.num_classes,
             self.args.finetune_method,
         )
@@ -260,11 +260,17 @@ class ModelFinetuningClassifier:
         )
         # calculate accuracy over complete dataset
         calc_final_accuracy(train_loader, valid_loader, test_loader, self.model, self.device)
+        # save finetuned classifier（书中 ch06 末尾的模型保存）
+        torch.save(self.model.state_dict(), best_model_path)
+        logger.info(f"Model saved to {best_model_path}")
 
     def inference(self, text: str):
         """
         using the LLM as a spam classifier
         """
+        # 未经过 train() 直接推断时，懒加载数据集以获得 max_length
+        if not hasattr(self, "train_dataset"):
+            self._get_data()
         # Eval mode
         self.model.eval()
 
@@ -295,19 +301,24 @@ class ModelFinetuningClassifier:
         return classified_result
 
     def load_finetuned_model(self, setting, input_text: str):
+        """
+        加载微调好的分类模型并推断
+        """
         # model path
-        model_path = self._get_model_path(setting)
-        model_path = Path(model_path)
+        model_path = Path(self._get_model_path(setting))
         if not model_path.exists():
             logger.info(f"Could not find '{model_path}'.\n"
                         "Run finetune and save the finetuned model")
+            return None
+        # task 必须是 binary_classification：load_pretrained_model 才会重建分类头 out_head
+        self.args.finetuned_model_path = str(model_path)
         # loade model
-        model = load_pretrained_model(
+        self.model = load_pretrained_model(
             self.args, 
             model_configs=gpt2_model_configs,
             model_cls = Model, 
             device = self.device, 
-            task = "instruction_follow"
+            task = "binary_classification"
         )
         # model inference
         classified_result = self.inference(input_text)

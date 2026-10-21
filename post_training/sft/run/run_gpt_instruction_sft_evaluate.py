@@ -42,54 +42,54 @@ def args_parse():
     # add arguments
     # ------------------------------
     # task params
-    parser.add_argument("--task_name", type=str, required=True, 
+    parser.add_argument("--task_name", type=str, required=False,
                         default="tiny_gpt_instruction_sft_evaluate",
                         help="task name")
-    parser.add_argument("--model_name", type=str, required=True, 
+    parser.add_argument("--model_name", type=str, required=False,
                         default="gpt_instruction_sft",
                         help="model name") 
     # data params
-    parser.add_argument("--data_path", type=str, required=True, 
+    parser.add_argument("--data_path", type=str, required=False,
                         default="./dataset/finetune/instruction-data-with-response.json", 
                         help="data path")
-    parser.add_argument("--train_ratio", type=float, required=True, 
+    parser.add_argument("--train_ratio", type=float, required=False,
                         default=0.85,
                         help="train data ratio")
-    parser.add_argument("--test_ratio", type=float, required=True, 
+    parser.add_argument("--test_ratio", type=float, required=False,
                         default=0.10,
                         help="test data ratio") 
     # model params
-    parser.add_argument("--inference_server", type=str, required=True, 
+    parser.add_argument("--inference_server", type=str, required=False,
                         default="ollama",
                         help="inference server")
-    parser.add_argument("--inference_server_url", type=str, required=True, 
+    parser.add_argument("--inference_server_url", type=str, required=False,
                         default="http://localhost:11434/api/chat",
                         help="inference server url")
-    parser.add_argument("--inference_model", type=str, required=True, 
+    parser.add_argument("--inference_model", type=str, required=False,
                         default="llama3",
                         help="inference model")
-    parser.add_argument("--num_ctx", type=int, required=True,
+    parser.add_argument("--num_ctx", type=int, required=False,
                         default=2048,
                         help="number of context")
-    parser.add_argument("--iters", type=int, required=True, default=10, 
+    parser.add_argument("--iters", type=int, required=False, default=10, 
                         help="number of iterations")
-    parser.add_argument("--seed", type=int, required=True,
+    parser.add_argument("--seed", type=int, required=False,
                         default=123,
                         help="random seed")
     # model pretrain device params
-    parser.add_argument("--num_workers", type=int, required=True, 
+    parser.add_argument("--num_workers", type=int, required=False,
                         default=0,
                         help="num_workers")
-    parser.add_argument("--use_gpu", type=int, required=True, 
+    parser.add_argument("--use_gpu", type=int, required=False,
                         default=1, 
                         help="user gpu")
-    parser.add_argument("--use_multi_gpu", type=int, required=True, 
+    parser.add_argument("--use_multi_gpu", type=int, required=False,
                         default=0, 
                         help="use multi gpu")
-    parser.add_argument("--gpu_type", type=str, required=True, 
+    parser.add_argument("--gpu_type", type=str, required=False,
                         default="cuda", 
                         help="gpu type")
-    parser.add_argument("--devices", type=str, required=True, 
+    parser.add_argument("--devices", type=str, required=False,
                         default="0,1,2,3,4,5,6,7",
                         help="devices")
     # ------------------------------
@@ -127,7 +127,7 @@ def run(args):
         Exp = ModelFinetuningInstructionFlowEvaluate
     
     # setting record of experiments
-    setting = f"{args.task_name}_{args.model_name}_{args.data[:-6]}"
+    setting = f"{args.task_name}_{args.model_name}_{Path(args.data_path).name[:-5]}"
     # ------------------------------
     # 模型训练
     # ------------------------------

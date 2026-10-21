@@ -36,11 +36,17 @@ class TiktokenBPE:
     def n_vocab(self):
         return self.tokenizer.n_vocab
 
-    def encode(self, text: str):
+    def encode(self, text: str, allowed_special=None, **kwargs):
         """
         text encode to token IDs
+
+        Args:
+            allowed_special: 允许的特殊 token 集合（默认 {"<|endoftext|>"}）；
+                透传 tiktoken 的同名参数，调用方可显式传入
         """
-        token_ids = self.tokenizer.encode(text=text, allowed_special={"<|endoftext|>"})
+        if allowed_special is None:
+            allowed_special = {"<|endoftext|>"}
+        token_ids = self.tokenizer.encode(text=text, allowed_special=allowed_special, **kwargs)
 
         return token_ids
     

@@ -55,7 +55,7 @@ def format_input_phi3(entry):
 # 测试代码 main 函数
 def main():
     from post_training.sft.data_provider.instruction_follow import data_config
-    from utils.llm.load_save_data import load_json_data
+    from utils.load_save_data import load_json_data
     from utils.log_util import logger
 
     # data load
