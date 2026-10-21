@@ -28,6 +28,9 @@ from pathlib import Path
 import torch
 
 from inference.generate_core import sample_next_token
+from post_training.reasoning.evaluation.benchmark_based_eval.math_verifiers import (
+    get_last_boxed,
+)
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -56,15 +59,43 @@ def _generate_one(model, token_ids, max_new_tokens, context_length,
     return seq
 
 
+def _majority_vote(answers, return_counts=False):
+    """多数投票（含平票规则，reasoning ch04）。
+
+    平票规则：取最高票数；若多个答案并列最高票，返回**首次出现最早**的
+    答案（Counter 按首次出现顺序遍历，取第一个达到最高票者），不再静默
+    依赖底层排序行为。
+
+    Args:
+        answers: 可哈希答案的列表
+        return_counts: True 时额外返回 Counter（用于诊断平票）
+
+    Returns:
+        majority 或 (majority, counts)
+    """
+    counts = Counter(answers)
+    max_count = max(counts.values(), default=0)
+    majority = None
+    for answer, count in counts.items():        # dict 按首次出现顺序遍历
+        if count == max_count:
+            majority = answer
+            break
+    if return_counts:
+        return majority, counts
+    return majority
+
+
 def self_consistency(model, token_ids, num_samples=8, extract_answer=None,
                      decode_fn=None, max_new_tokens=64, context_length=None,
                      temperature=0.8, top_k=None, top_p=None, eos_token_id=None,
-                     return_all=False):
+                     return_all=False, return_counts=False):
     """Self-Consistency（自洽性投票，reasoning ch04）。
 
     对同一 prompt 采样 ``num_samples`` 条生成，用 ``extract_answer``
     把每条映射为可比较的规范化答案（如 ``\\boxed{42}`` -> "42"），再多数投票。
     CoT 提示（prompt 里加 "Let's think step by step"）由调用方准备。
+
+    平票规则见 :func:`_majority_vote`：并列最高票时选首次出现最早的答案。
 
     Args:
         model: forward(x) 返回 (B, T, V) logits 的模型
@@ -72,10 +103,12 @@ def self_consistency(model, token_ids, num_samples=8, extract_answer=None,
         num_samples: 采样条数
         extract_answer: callable[str, object]；None 时按完整生成文本投票
         decode_fn: callable[tensor, str]；None 时用调试用默认解码
+        return_counts: True 时在返回值末尾附带票数 Counter（诊断平票用）
 
     Returns:
-        return_all=False: 多数答案
+        return_all=False: 多数答案（return_counts=True 时为 (多数答案, counts)）
         return_all=True: (多数答案, [(text, answer), ...])
+            （return_counts=True 时为 (多数答案, [(text, answer), ...], counts)）
     """
     decode_fn = decode_fn or _default_decode_fn
     answers = []
@@ -86,10 +119,13 @@ def self_consistency(model, token_ids, num_samples=8, extract_answer=None,
         answer = extract_answer(text) if extract_answer is not None else text
         answers.append((text, answer))
 
-    counts = Counter(a for _, a in answers)
-    majority = counts.most_common(1)[0][0]
+    majority, counts = _majority_vote([a for _, a in answers], return_counts=True)
+    if return_all and return_counts:
+        return majority, answers, counts
     if return_all:
         return majority, answers
+    if return_counts:
+        return majority, counts
     return majority
 
 
@@ -121,10 +157,17 @@ def best_of_n(model, token_ids, reward_fn, num_samples=8, decode_fn=None,
 
 
 def extract_boxed_answer(text: str):
-    r"""reasoning 书常用的 \\boxed{...} 答案抽取；无 boxed 时取最后一个数字。"""
-    m = re.findall(r"\\boxed\{([^{}]+)\}", text)
-    if m:
-        return m[-1].strip()
+    r"""reasoning 书常用的 \\boxed{...} 答案抽取；无 boxed 时取最后一个数字。
+
+    委托 math_verifiers.get_last_boxed 做**嵌套大括号**解析（修复旧正则
+    ``\\boxed\{([^{}]+)\}`` 无法匹配 ``\\boxed{\\dfrac{14}{3}}`` 一类分数、
+    错误回退取"最后一个数字"的缺陷）；get_last_boxed 返回花括号内原文
+    （含 LaTeX 命令，如 ``\\dfrac{14}{3}``），调用方可用 normalize_text
+    进一步归一化。
+    """
+    boxed = get_last_boxed(text) if text else None
+    if boxed is not None and boxed.strip():
+        return boxed.strip()
     nums = re.findall(r"-?\d+(?:\.\d+)?", text)
     return nums[-1] if nums else None
 

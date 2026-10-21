@@ -6,12 +6,25 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-10-05
 # * Version     : 1.0.100516
-# * Description : description
-# * Link        : link
-# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
+# * Description : MATH-500 答案解析与数学等价性验证（reasoning-from-scratch ch03）。
+# *               本模块保持"导入零副作用"：模型加载与数据集下载均移入
+# *               load_math500_data()，便于被单测与其他模块安全 import。
+# * Link        : https://github.com/rasbt/reasoning-from-scratch/tree/main/ch03
+# * Requirement : sympy
 # ***************************************************
 
-__all__ = []
+__all__ = [
+    "get_last_boxed",
+    "extract_final_candidate",
+    "normalize_text",
+    "sympy_parser",
+    "equality_check",
+    "split_into_parts",
+    "grade_answer",
+    "run_demos_table",
+    "render_prompt",
+    "load_math500_data",
+]
 
 # python libraries
 import os
@@ -22,22 +35,12 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
 import json
-from urllib.request import urlopen
 import warnings
 warnings.filterwarnings("ignore")
 
 from sympy.parsing import sympy_parser as spp
 from sympy.core.sympify import SympifyError
 from sympy import simplify
-from datasets import load_dataset
-
-from post_training.reasoning.inference.llm_basic.qwen3_06B import (
-    device, 
-    QWEN3_CONFIG,
-    model, 
-    tokenizer,
-)
-from inference.generate_core import generate_qwen3_stream
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -125,6 +128,12 @@ def extract_final_candidate(text, fallback="number_then_full"):
 # Normalizing the extracted answer
 # ------------------------------
 def normalize_text(text):
+    """答案文本规范化（reasoning-from-scratch ch03 主线实现）。
+
+    相比早期移植版，补齐了原书的两段逻辑：
+    1. Unicode 上标转换（``2²`` -> ``2**2`` 等，含 ``⁺⁻⁽⁾``）；
+    2. 多项选择标签剥离（``B. 7`` -> ``7``、``c: 2`` -> ``2``）。
+    """
     LATEX_FIXES = [  # Latex formatting to be replaced
         (r"\\left\s*", ""),
         (r"\\right\s*", ""),
@@ -143,6 +152,18 @@ def normalize_text(text):
         return ""
     text = RE_SPECIAL.sub("", text).strip()
 
+    # Unicode 上标字符映射表（含正负号与括号上标）
+    SUPERSCRIPT_MAP = {
+        "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+        "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
+        "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")",
+    }
+
+    # 剥离开头的多项选择标签，如 "c. 3" -> "3"、"b: 2" -> "2"
+    match = re.match(r"^[A-Za-z]\s*[.:]\s*(.+)$", text)
+    if match:
+        text = match.group(1)
+
     # Remove angle-degree markers
     text = re.sub(r"\^\s*\{\s*\\circ\s*\}", "", text)   # ^{\circ}
     text = re.sub(r"\^\s*\\circ", "", text)             # ^\circ
@@ -159,6 +180,23 @@ def normalize_text(text):
     # light LaTeX canonicalization
     for pat, rep in LATEX_FIXES:
         text = re.sub(pat, rep, text)
+
+    def convert_superscripts(s, base=None):
+        converted = "".join(
+            SUPERSCRIPT_MAP[ch] if ch in SUPERSCRIPT_MAP else ch
+            for ch in s
+        )
+        if base is None:
+            return converted
+        return f"{base}**{converted}"
+
+    # convert unicode superscripts into exponent form (e.g., 2² -> 2**2)
+    text = re.sub(
+        r"([0-9A-Za-z\)\]\}])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)",
+        lambda m: convert_superscripts(m.group(2), base=m.group(1)),
+        text,
+    )
+    text = convert_superscripts(text)
 
     # numbers/roots
     text = text.replace("\\%", "%").replace("$", "").replace("%", "")
@@ -320,35 +358,50 @@ def run_demos_table(tests):
 # ------------------------------
 # Load dataset
 # ------------------------------
-# data download
-hf_data = load_dataset(
-    "HuggingFaceH4/MATH-500",
-    split="test",
-    cache_dir="./dataset/evaluation/math500/hf-cache",
-)
+def load_math500_data(
+    cache_path = "./dataset/evaluation/math500/math500_test.json",
+    verbose = True,
+):
+    """加载 MATH-500 数据集（reasoning ch03）。
 
-# data path
-math_data_path = Path("./dataset/evaluation/math500/math500_test.json")
-math_data_path.parent.mkdir(parents=True, exist_ok=True)
+    优先读本地缓存；本地无则先从 HuggingFace 下载并写缓存，
+    再不行退回 GitHub raw。此前这段逻辑在模块级执行（import 即下载），
+    现移入函数以保证 ``import math_verifiers`` 零副作用、可被单测安全导入。
 
-# data write
-with open(math_data_path, "w", encoding="utf-8") as f:
-    json.dump(hf_data.to_list(), f, ensure_ascii=False, indent=2)
+    Args:
+        cache_path: 本地 JSON 缓存路径
+        verbose: 是否打印条目数与首条样例
 
-# data load
-if math_data_path.exists():
-    with math_data_path.open("r", encoding="utf-8") as f:
-        math_data = json.load(f)
-else:
-    url = (
-        "https://raw.githubusercontent.com/rasbt/reasoning-from-scratch/"
-        "main/ch03/01_main-chapter-code/math500_test.json"
-    )
-    with urlopen(url) as f:
-        math_data = json.load(f)
-logger.info(f"Number of entries: {len(math_data)}")
-from pprint import pprint
-pprint(math_data[0])
+    Returns:
+        list[dict]: MATH-500 测试集条目
+    """
+    # python libraries（局部 import，避免模块级依赖 datasets/网络）
+    from datasets import load_dataset
+
+    cache_path = Path(cache_path)
+
+    # 本地缓存命中
+    if cache_path.exists():
+        with cache_path.open("r", encoding="utf-8") as f:
+            math_data = json.load(f)
+    else:
+        # 先尝试 HuggingFace 数据集并写缓存
+        hf_data = load_dataset(
+            "HuggingFaceH4/MATH-500",
+            split="test",
+            cache_dir="./dataset/evaluation/math500/hf-cache",
+        )
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with cache_path.open("w", encoding="utf-8") as f:
+            json.dump(hf_data.to_list(), f, ensure_ascii=False, indent=2)
+        math_data = hf_data.to_list()
+
+    if verbose:
+        logger.info(f"Number of entries: {len(math_data)}")
+        from pprint import pprint
+        pprint(math_data[0])
+
+    return math_data
 
 # ------------------------------
 # Evaluating Model
@@ -370,7 +423,7 @@ def render_prompt(prompt):
 # ------------------------------
 # test
 # ------------------------------
-'''
+r'''
 # model answer
 model_answer = (
 r"""....some explanation...

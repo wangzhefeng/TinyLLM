@@ -47,7 +47,6 @@ def elo_ratings(vote_pairs, k_factor=32, initial_rating=1000):
         for pair in vote_pairs
         for model in pair
     }
-    print(ratings)
     # Update ratings after each match
     for winner, loser in vote_pairs:
         # Expected score for the current winner
@@ -73,7 +72,6 @@ def main():
     ]
     
     ratings = elo_ratings(votes, k_factor=32, initial_rating=1000)
-    print(ratings)
     
     for model in sorted(ratings, key=ratings.get, reverse=True):
         print(f"{model:8s} : {ratings[model]:.1f}")
