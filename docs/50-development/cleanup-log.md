@@ -1,7 +1,7 @@
 # 清理记录
 
 > 所属：[TinyLLM Docs](../README.md) › [Development](index.md)
-> 更新时间：2026-10-18。本文只记录**当前仍然成立**的清理结果。
+> 更新时间：2026-10-21。本文只记录**当前仍然成立**的清理结果。
 
 ## 1. 代码与目录
 
@@ -10,6 +10,22 @@
 - `inference/` 拆为 `serving/`、`api/`、`evaluation/`、`loaders/`、`apps/`、`examples/`。
 - 分布式训练独立为 `tools/distributed/`；新增 `tools/profiling/`、`tools/checkpoint/`、`tools/data/`。
 - 删除空壳、重复实现和未接入的外部参考，详见 [reference-projects](reference-projects.md)。
+- 2026-10-21 后训练域修复（对照 LLMs-from-scratch ch06/07/附录E 与 reasoning-from-scratch）：
+    - 删除死代码树 `post_training/sft/data_provider/llmbox/`（LLaMA-Box 残缺复制：
+      `Path` 未 import、`process` 签名不匹配、依赖 HF tokenizer 特性、全仓无引用）；
+    - 修复全模块 16 处 `utils.llm.*` / `models.gpt` stale import（真实模块在
+      `utils/` 平铺与 `models/gpt2/gpt2_124M.py`），新增缺失的 `utils/calc_accuracy.py`；
+    - 修复 3 个 run 入口崩溃（`set_seed` 先于 `args_parse`、`args.data` 不存在、
+      `re.math` 笔误、`strtobool` 未导入、`required=True` 反模式、GPT-2 config 键名）；
+    - 修复 DPO 三处正确性问题：权重加载顺序颠倒（SFT checkpoint 被 HF 权重覆盖）、
+      inference 变量互换、logprob 口径改为论文默认的序列求和（可 `--dpo_avg_logprobs 1` 切回平均）；
+    - `layers/lora.py`：LoRA 缩放改为标准 `alpha/rank`、支持 dropout 与目标层过滤、
+      新增论文版 DoRA；`clf_head.py` 重写为四种清晰冻结策略；
+    - `post_training/reasoning/`：GRPO 补 completion mask 与梯度裁剪及多 prompt 批处理、
+      新增 REINFORCE-with-baseline（reinforce.py）与推理轨迹蒸馏（distill_reasoning.py）、
+      补全 Bradley-Terry / LLM-judge / MMLU first-token logprob 法；
+    - `instruction_follow/data_loader.py` 补齐 prompt-masking collate
+      （custom_collate_fn_mask_out_instruction，对应书 ch07 exercise）。
 - 2026-10-18 预训练域归位：
     - 解散 `pre_training/legacy/`：`run_llama.py` / `run_qwen.py` 修复后提升为根目录入口；
     - 解散 `pre_training/analysis/`：`flops_analysis.py` 并入 `pre_training/examples/`（可复用 FLOPs/MFU 实现在 `tools/profiling/`）；
@@ -95,9 +111,11 @@
 
 ## 4. 仍存在的遗留
 
-- `post_training/sft/run_sft.py` 的 `TrlParser` 用法与当前 `trl` 版本不兼容。
-- `post_training/peft/.../lora_dora_from_scratch.py` 引用不存在的 `data_provider.lora`。
-- `post_training/peft/run_peft.py` 会尝试下载 HF 模型，离线/受限环境不可直接运行。
+- `post_training/sft/run_sft.py` 的 `TrlParser` 用法与当前 `trl` 版本不兼容（`tokenizer=` 已弃用改 `processing_class`）。
+- `post_training/peft/.../lora_dora_from_scratch.py` 引用不存在的 `data_provider.lora`（四重断链，整体不可运行）。
+- `post_training/peft/run_peft.py` 是教程拼接（TrainingArguments/Trainer 未导入、数据集未定义），会尝试下载 HF 模型，离线/受限环境不可直接运行。
+- `post_training/preference/model_rlhf/ppo/` 仍为空壳（docs 中已如实标注未实现）。
+- `post_training/peft/model_peft/prompt_tuning/` 仍为空壳（仅 import 无实现）。
 
 ## 5. 验证
 

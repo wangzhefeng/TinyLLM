@@ -27,3 +27,11 @@ python post_training/sft/bert_sentiment/run.py --help   # BERT 情感分类微�
 - 代码位于 `post_training/sft/`；共享数据加载在 `post_training/common/data_provider/`。
 - `post_training/sft/bert_sentiment/`：情感分类微调，复用从零 BERT 的预训练 checkpoint（支持 pretrained/scratch/freeze 对照），详见 [BERT](../../40-models/bert.md)。
 - 运行前设置 `PYTHONPATH="$PWD"`。
+
+## 2026-10-21 更新
+
+- `run_gpt_clf_sft.py` 支持 `--finetune_method last_layer|last_transformer_stage|all_layers|lora`
+  （对应书 ch06 §6.5 冻结策略实验与附录 E LoRA；自研层见 [PEFT](../peft.md)）。
+- 指令 SFT 的 prompt-masking collate 已实现
+  （`instruction_follow/data_loader.py::custom_collate_fn_mask_out_instruction`，
+  对应书 ch07 exercise；`create_dataloader(..., mask_out_instruction=True)` 开启）。

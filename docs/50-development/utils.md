@@ -11,7 +11,8 @@ CV / 时序 / 可视化工具。这里按 TinyLLM 的实际 import 做了最小�
 ```
 utils/
 ├── args_tools.py       # DotDict、print_args_llm
-├── calc_loss.py        # calc_loss_batch / calc_loss_loader
+├── calc_accuracy.py    # calc_accuracy_loader / calc_final_accuracy（分类微调准确率）
+├── calc_loss.py        # calc_loss_batch / calc_loss_loader（分类任务取最后 token logits）
 ├── criterion.py        # select_criterion
 ├── ddp_utils.py        # 分布式初始化 / rank / DDP
 ├── device.py           # device_setting、torch_gc
