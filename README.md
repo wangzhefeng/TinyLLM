@@ -50,6 +50,7 @@ TinyLLM/
 ├── config/              # 模型配置
 ├── utils/               # 训练与日志工具
 ├── dataset/             # 本地数据（gitignored）
+├── results/             # 模型输出：checkpoints/finetuned_models/test_results（gitignored）
 ├── tests/               # 单元测试
 ├── docs/                # 全部文档
 ├── run_gpt2_124M.py     # GPT-2 预训练入口

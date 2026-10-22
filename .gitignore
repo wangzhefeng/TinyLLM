@@ -177,7 +177,7 @@ dataset/
 .vscode/
 logs/
 downloaded_models/
-saved_results/
+results/
 minbpe/
 wandb/
 .DS_Store

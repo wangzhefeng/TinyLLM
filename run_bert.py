@@ -63,7 +63,7 @@ def args_parse():
     parser.add_argument("--patience", type=int, default=3, help="early stopping patience")
     parser.add_argument("--log_interval", type=int, default=200, help="log every N steps")
     parser.add_argument("--seed", type=int, default=2025, help="random seed")
-    parser.add_argument("--checkpoints", type=str, default="./checkpoints/bert/", help="checkpoints dir")
+    parser.add_argument("--checkpoints", type=str, default="./results/checkpoints/bert/", help="checkpoints dir")
     parser.add_argument("--resume", type=str, default=None, help="checkpoint path to resume model weights from")
 
     return parser.parse_args()

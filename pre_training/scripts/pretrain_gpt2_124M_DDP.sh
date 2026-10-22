@@ -74,8 +74,8 @@ torchrun \
     --itrs 1 \
     --train_epochs 30 \
     --patience 14 \
-    --checkpoints ./saved_results/pretrained_models/ \
-    --test_results ./saved_results/test_results/ \
+    --checkpoints ./results/pretrained_models/ \
+    --test_results ./results/test_results/ \
     --max_new_tokens 50 \
     --use_gpu 1 \
     --gpu_type cuda \

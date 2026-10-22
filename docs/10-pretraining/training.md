@@ -29,7 +29,7 @@ run_gpt2_124M.py
 ## 恢复训练
 
 ```bash
-python run_gpt2_124M.py --save_every_steps 500 ...        # 周期保存到 <checkpoints>/<setting>/steps/
+python run_gpt2_124M.py --save_every_steps 500 ...        # 周期保存到 <checkpoints>/<setting>/steps/（默认 ./results/pretrained_models/）
 python run_gpt2_124M.py --resume latest --save_every_steps 500 ...
 ```
 

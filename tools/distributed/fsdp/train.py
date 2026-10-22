@@ -62,7 +62,7 @@ def main(args):
         set_modules_to_forward_prefetch(model, num_to_forward_prefetch=2)
         set_modules_to_backward_prefetch(model, num_to_backward_prefetch=2)
 
-    checkpointer = Checkpointer("checkpoints", dcp_api=args.dcp_api)
+    checkpointer = Checkpointer("results/checkpoints/fsdp", dcp_api=args.dcp_api)
     if checkpointer.last_training_time is None:
         model.to_empty(device="cuda")
         model.reset_parameters()

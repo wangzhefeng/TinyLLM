@@ -147,7 +147,7 @@ def main():
         train_losses=[1.0, 0.8, 0.6, 0.5],
         valid_losses=[1.1, 0.9, 0.7, 0.6],
         label="loss",
-        results_path="./saved_results/test_results/",
+        results_path="./results/test_results/",
     )
 
 if __name__ == "__main__":

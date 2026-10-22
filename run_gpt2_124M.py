@@ -103,8 +103,8 @@ def build_parser(description: str = "Model Pretraining") -> argparse.ArgumentPar
     parser.add_argument("--itrs", type=int,  default=10, help="number of iterations")
     parser.add_argument("--train_epochs", type=int,  default=10, help="number of training epochs")
     parser.add_argument("--patience", type=int,  default=7, help="early stopping patience")
-    parser.add_argument("--checkpoints", type=str, required=False, default="./saved_results/pretrained_models/", help="checkpoints path")
-    parser.add_argument("--test_results", type=str, required=False, default="./saved_results/test_results/", help="test results path")
+    parser.add_argument("--checkpoints", type=str, required=False, default="./results/pretrained_models/", help="checkpoints path")
+    parser.add_argument("--test_results", type=str, required=False, default="./results/test_results/", help="test results path")
     # model inference params
     parser.add_argument("--max_new_tokens", type=int,  default=50, help="max new tokens")
     parser.add_argument("--use_cache", type=int,  default=0, help="max new tokens")

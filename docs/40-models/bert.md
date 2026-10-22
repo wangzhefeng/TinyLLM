@@ -83,7 +83,7 @@ python run_bert.py
 ```
 
 - 流程：加载词表与 `task2.csv` → 末尾 `--dev_size` 条作验证集 → AdamW + 线性 warmup/衰减 → 训练（MLM+NSP 联合 loss）→ 每 epoch 验证输出 `dev loss / acc_mask / acc_next`。
-- 早停按 dev loss 保存最优 checkpoint 到 `--checkpoints`（默认 `./checkpoints/bert/`，gitignored），结束时另存 `bert_pretrain_final.pt`（含 config，可用于恢复模型）。
+- 早停按 dev loss 保存最优 checkpoint 到 `--checkpoints`（默认 `./results/checkpoints/bert/`，gitignored），结束时另存 `bert_pretrain_final.pt`（含 config，可用于恢复模型）。
 - `--resume <ckpt>` 可加载已有权重继续训练。
 
 ## 说明

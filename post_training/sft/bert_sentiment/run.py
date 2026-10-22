@@ -48,7 +48,7 @@ def args_parse():
     parser.add_argument("--num_workers", type=int, default=0, help="number of dataloader workers")
     # model params
     parser.add_argument("--init_mode", type=str, default="pretrained", choices=["pretrained", "scratch"], help="backbone init: pretrained checkpoint or scratch")
-    parser.add_argument("--checkpoint", type=str, default="./checkpoints/bert/bert_pretrain_best.pt", help="pretrain checkpoint (init_mode=pretrained)")
+    parser.add_argument("--checkpoint", type=str, default="./results/checkpoints/bert/bert_pretrain_best.pt", help="pretrain checkpoint (init_mode=pretrained)")
     parser.add_argument("--freeze_backbone", action="store_true", help="freeze backbone, train classifier head only")
     parser.add_argument("--num_classes", type=int, default=2, help="number of classes")
     # scratch 模式下的模型结构（pretrained 模式从 checkpoint 读取 config）
@@ -63,7 +63,7 @@ def args_parse():
     parser.add_argument("--patience", type=int, default=3, help="early stopping patience (on dev accuracy)")
     parser.add_argument("--log_interval", type=int, default=100, help="log every N steps")
     parser.add_argument("--seed", type=int, default=2025, help="random seed")
-    parser.add_argument("--checkpoints", type=str, default="./checkpoints/bert_sentiment/", help="checkpoints dir")
+    parser.add_argument("--checkpoints", type=str, default="./results/checkpoints/bert_sentiment/", help="checkpoints dir")
 
     return parser.parse_args()
 

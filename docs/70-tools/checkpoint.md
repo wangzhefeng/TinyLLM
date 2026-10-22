@@ -19,7 +19,7 @@
 import torch
 from tools.checkpoint import CheckpointManager, load_checkpoint
 
-manager = CheckpointManager("saved_results/ckpt", keep_last=3)
+manager = CheckpointManager("results/checkpoints/ckpt", keep_last=3)
 manager.save(
     step=100,
     model=model,

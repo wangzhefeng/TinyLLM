@@ -43,7 +43,7 @@ from utils.log_util import logger
 dataset = get_dataset()
 
 # finetuned model saved path
-output_dir = Path("saved_results/models/qwen3b-grpo-lora-fp16")
+output_dir = Path("results/models/qwen3b-grpo-lora-fp16")
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # training args

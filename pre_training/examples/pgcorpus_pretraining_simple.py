@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--data_dir', type=str, default='gutenberg/data',
                         help='Directory containing the training data')
-    parser.add_argument('--output_dir', type=str, default='model_checkpoints',
+    parser.add_argument('--output_dir', type=str, default='results/model_checkpoints',
                         help='Directory where the model checkpoints will be saved')
     parser.add_argument('--n_epochs', type=int, default=1,
                         help='Number of epochs to train the model')

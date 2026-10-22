@@ -31,6 +31,7 @@
 | `utils/` | [50-development/utils.md](../50-development/utils.md) |
 | `tests/` | [50-development/testing.md](../50-development/testing.md) |
 | `dataset/` | [50-development/datasets.md](../50-development/datasets.md) |
+| `results/`（模型输出目录） | [00-overview/architecture.md](architecture.md) |
 | 文档结构本身 | [50-development/docs-maintenance.md](../50-development/docs-maintenance.md)、[AGENTS.md](../../AGENTS.md) |
 
 ## 规则

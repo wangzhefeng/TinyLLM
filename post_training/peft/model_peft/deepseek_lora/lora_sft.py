@@ -207,7 +207,7 @@ def main():
     # 数据集路径
     data_path = "dataset/finetuning/medical/AI-ModelScope/medical-o1-reasoning-SFT/medical_o1_sft_Chinese.json"
     # 微调后模型保存路径
-    output_path = "saved_results/finetuned_models/medical_o1_sft_Chinese"
+    output_path = "results/finetuned_models/medical_o1_sft_Chinese"
     os.makedirs(output_path, exist_ok=True)
 
     # 模型微调

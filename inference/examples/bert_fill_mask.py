@@ -34,7 +34,7 @@ MASK_TOKEN = "[MASK]"
 
 def args_parse():
     parser = argparse.ArgumentParser(description="BERT fill-mask / NSP inference demo")
-    parser.add_argument("--checkpoint", type=str, default="./checkpoints/bert/bert_pretrain_best.pt", help="checkpoint from run_bert.py")
+    parser.add_argument("--checkpoint", type=str, default="./results/checkpoints/bert/bert_pretrain_best.pt", help="checkpoint from run_bert.py")
     parser.add_argument("--vocab", type=str, default="./dataset/finetuning/THUCNews/index_2_word.txt", help="vocab file (one token per line)")
     parser.add_argument("--text1", type=str, default="今天天气[MASK]好", help="sentence A, use [MASK] to mark positions to predict")
     parser.add_argument("--text2", type=str, default="我们决定去公园散步", help="sentence B (for NSP); empty string to skip")

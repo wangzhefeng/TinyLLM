@@ -74,7 +74,7 @@ def args_parse():
                         help="pretrained model path")
     parser.add_argument("--pretrained_model_source", type=str, required=False, default="huggingface_gpt2",
                         help="pretrained model source")
-    parser.add_argument("--finetuned_model_path", type=str, required=False, default="./saved_results/finetuned_models",
+    parser.add_argument("--finetuned_model_path", type=str, required=False, default="./results/finetuned_models",
                         help="finetuned model path")
     parser.add_argument("--finetune_method", type=str, required=False, default="last_transformer_stage",
                         choices=["last_layer", "last_transformer_stage", "all_layers", "lora"],
@@ -102,9 +102,9 @@ def args_parse():
     parser.add_argument("--patience", type=int, default=7, 
                         help="early stopping patience")
     parser.add_argument("--checkpoints", type=str, 
-                        default="./saved_results/finetuned_models", 
+                        default="./results/finetuned_models", 
                         help="checkpoints path")
-    parser.add_argument("--test_results", type=str, default="./saved_results/test_results",
+    parser.add_argument("--test_results", type=str, default="./results/test_results",
                         help="test results path")
     parser.add_argument("--use_amp", type=int, default=1,
                         help="Use amp")

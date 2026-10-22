@@ -46,8 +46,8 @@ python -u run_gpt2_124M.py \
     --itrs 1 \
     --train_epochs 100 \
     --patience 14 \
-    --checkpoints ./saved_results/pretrained_models/ \
-    --test_results ./saved_results/test_results/ \
+    --checkpoints ./results/pretrained_models/ \
+    --test_results ./results/test_results/ \
     --max_new_tokens 50 \
     --use_cache 0 \
     --use_gpu 1 \

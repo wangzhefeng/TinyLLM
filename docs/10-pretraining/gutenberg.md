@@ -51,7 +51,7 @@ $ python pre_training/examples/pgcorpus_pretraining_simple.py \
 $   --data_dir "gutenberg_preprocessed" \
 $   --n_epochs 1 \
 $   --batch_size 4 \
-$   --output_dir model_checkpoints
+$   --output_dir results/model_checkpoints
 ```
 
 # 参考

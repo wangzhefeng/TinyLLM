@@ -69,7 +69,7 @@ python run_bert.py --max_samples 20000 --train_epochs 10
 python pre_training/experiments/bert/dapt_data.py
 python run_bert.py --data_dir ./dataset/finetuning/sentiment --task_file task2_sentiment.csv \
   --vocab_file <abs_path>/dataset/finetuning/THUCNews/index_2_word.txt \
-  --resume ./checkpoints/bert/bert_pretrain_best.pt --train_epochs 5 --checkpoints ./checkpoints/bert_dapt/
+  --resume ./results/checkpoints/bert/bert_pretrain_best.pt --train_epochs 5 --checkpoints ./results/checkpoints/bert_dapt/
 # 三模式微调对照
 python post_training/sft/bert_sentiment/run.py --init_mode pretrained --max_samples 8000 --train_epochs 3
 python post_training/sft/bert_sentiment/run.py --init_mode scratch   --max_samples 8000 --train_epochs 3

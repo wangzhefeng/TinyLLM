@@ -17,6 +17,7 @@ TinyLLM/
 ├── layers/                # 共享层、tokenizer、生成原语
 ├── config/、utils/        # 共享配置与工具
 ├── dataset/               # 本地数据（gitignored）
+├── results/               # 模型输出：checkpoints / finetuned_models / test_results（gitignored）
 ├── tests/                 # unit / integration
 ├── docs/                  # 文档中心
 ├── scripts/               # 仓库级工具脚本
@@ -25,6 +26,8 @@ TinyLLM/
 ├── run_qwen.py            # Qwen3 预训练入口（tiny 演示配置）
 └── run_bert.py            # BERT 预训练入口（MLM + NSP）
 ```
+
+> **输出约定**：所有训练/推断产出的模型文件（checkpoint、微调权重、采样与测试结果）统一写入 `results/`（gitignored），不散落在仓库根目录。
 
 ## 2. 三个主域与工具库
 
