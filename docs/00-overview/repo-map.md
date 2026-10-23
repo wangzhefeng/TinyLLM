@@ -12,7 +12,7 @@
 | `post_training/sft/bert_sentiment/` | [20-post-training/finetuning/index.md](../20-post-training/finetuning/index.md)、[40-models/bert.md](../40-models/bert.md) |
 | `pre_training/examples/` | [10-pretraining/examples.md](../10-pretraining/examples.md) |
 | `pre_training/references/` | [10-pretraining/extras.md](../10-pretraining/extras.md) |
-| `tools/distributed/` | [70-tools/distributed.md](../70-tools/distributed.md) |
+| `tools/distributed/` | [70-tools/distributed.md](../70-tools/distributed.md)、[distributed-frameworks.md](../70-tools/distributed-frameworks.md)、[distributed-roadmap.md](../70-tools/distributed-roadmap.md) |
 | `tools/profiling/` | [70-tools/profiling.md](../70-tools/profiling.md) |
 | `tools/checkpoint/` | [70-tools/checkpoint.md](../70-tools/checkpoint.md) |
 | `tools/data/` | [70-tools/data.md](../70-tools/data.md) |

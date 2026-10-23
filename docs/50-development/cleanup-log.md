@@ -97,6 +97,15 @@
     - 填充 `models/llama/llama31_8B.py`、`llama32_1B.py`（复用 Llama3 Model + 新 config），
       `config/llama/model_cfgs.py` 新增 `LLAMA32_CONFIG_1B`。
 
+- 2026-10-24 `tools/distributed/` 重构（重排为 00–08 学习动线，见 [distributed](../70-tools/distributed.md)）：
+    - 删除：整个旧 `ddp/`（含 `DDP-script.py`、`nn_ddp/`）、旧 `dp/`、旧 `fsdp/`
+      （含 auto_wrapping/manual_wrapping）、`fairscale/`、旧 `deepspeed_zero/` 空壳、
+      `tensor_parallelism/`（含 461 行 torchtitan `llama2_model.py` 拷贝）、`log_utils.py`；
+    - 理由：空壳 / 过时 FSDP1 / 整段外部拷贝 / 零引用孤儿 / 名不副实；实质资产已迁入新单元结构；
+    - 新增：03/05/06/07 与单进程基线的数值等价验证（全部 PASS）、
+      `tests/unit/test_tools_distributed.py`（27 项，慢速层由 `TINYLLM_SLOW_TESTS=1` 启用）；
+    - 顺带修复 `utils/ddp_utils.py` 的 `wrap_model`：`device_ids` 由 global_rank 改为 local_rank。
+
 ## 2. 数据
 
 - `dataset/` 从约 76 GB 清理到约 5.8 GB。

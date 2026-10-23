@@ -19,7 +19,7 @@
 
 ## 当前参考项目
 
-- `tools/distributed/`：FSDP/TP/DeepSpeed 参考。
+- `tools/distributed/`：分布式并行教学参考（DP/DDP/ZeRO/FSDP2/TP/PP/组合 + accelerate/DeepSpeed 对照）；Megatron-LM / torchtitan 上游导读见 [distributed-frameworks](../70-tools/distributed-frameworks.md)。
 - `pre_training/references/nanotron/`：nanotron 配置参考。
 
 ## 说明

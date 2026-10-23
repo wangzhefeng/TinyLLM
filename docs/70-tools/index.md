@@ -8,7 +8,7 @@
 
 | 工具 | 内容 | 文档 |
 |---|---|---|
-| `distributed/` | DP、DDP、FSDP、TP、DeepSpeed ZeRO、fairscale | [distributed.md](distributed.md) |
+| `distributed/` | 分布式并行学习动线 00→08：单卡/DP/DDP/ZeRO/FSDP2/TP/PP/组合/成熟框架 | [distributed.md](distributed.md)、[distributed-frameworks.md](distributed-frameworks.md)、[distributed-roadmap.md](distributed-roadmap.md) |
 | `profiling/` | 参数量、吞吐、显存、FLOPs/MFU | [profiling.md](profiling.md) |
 | `checkpoint/` | 原子保存/恢复、轮转、latest | [checkpoint.md](checkpoint.md) |
 | `data/` | JSONL 读写、精确去重、packing | [data.md](data.md) |

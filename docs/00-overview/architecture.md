@@ -12,7 +12,7 @@ TinyLLM/
 ├── pre_training/          # 预训练
 ├── post_training/         # 后训练：SFT / PEFT / preference / reasoning
 ├── inference/             # 模型推断：serving / api / evaluation / loaders / apps
-├── tools/                 # 独立工具库：distributed
+├── tools/                 # 独立工具库：checkpoint / data / distributed / profiling
 ├── models/                # 共享模型定义
 ├── layers/                # 共享层、tokenizer、生成原语
 ├── config/、utils/        # 共享配置与工具
@@ -89,7 +89,7 @@ python inference/loaders/qwen3/qwen3_06B_load.py   # USE_CACHE=True 即 KV cache
 
 | 目录 | 职责 |
 |---|---|
-| `distributed/` | DP/DDP/FSDP/TP/DeepSpeed/fairscale 参考实现 |
+| `distributed/` | 分布式并行教学单元 00–08：单卡/DP/DDP/ZeRO/FSDP2/TP/PP/组合/accelerate/DeepSpeed |
 | `profiling/` | 参数量、吞吐、显存、FLOPs/MFU |
 | `checkpoint/` | 原子保存/恢复、轮转 |
 | `data/` | JSONL、去重、packing |
@@ -125,3 +125,5 @@ python inference/loaders/qwen3/qwen3_06B_load.py   # USE_CACHE=True 即 KV cache
   各域数据目录统一命名为 `data_provider/`。通用数据算法在 `tools/data/`。
 - 2026-10-18：`pre_training/legacy/` 与 `analysis/` 已解散；Llama/Qwen 入口修复并提升到根目录；
   FLOPs 分析并入 `pre_training/examples/`。
+- 2026-10-24：`tools/distributed/` 重构为 00–08 学习动线单元（旧 `ddp/`、`dp/`、`fsdp/`、
+  `fairscale/`、`tensor_parallelism/` 等已删除），详见 [cleanup-log](../50-development/cleanup-log.md)。

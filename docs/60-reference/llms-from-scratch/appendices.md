@@ -4,7 +4,7 @@
 
 | 附录 | 内容 | 本项目 |
 |---|---|---|
-| A | PyTorch 基础 + DDP | ✅ 远超：`tools/distributed/` 覆盖 DP/DDP/FSDP/TP/DeepSpeed |
+| A | PyTorch 基础 + DDP | ✅ 远超：`tools/distributed/` 覆盖 DP/DDP/ZeRO/FSDP2/TP/PP/组合并行（TP 为手写教学实现），另有 accelerate/DeepSpeed 对照示例 |
 | B | 参考文献 | ➖ |
 | C | 习题解答索引 | ➖ |
 | D | 训练循环增强：warmup、cosine decay、梯度裁剪 | 🟡 `test/train_loop_template.py` 与 smolGPT 有实现，主 exp 未接入 |

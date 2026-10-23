@@ -1,0 +1,27 @@
+{
+  "train_batch_size": 64,
+  "train_micro_batch_size_per_gpu": 32,
+  "gradient_accumulation_steps": 1,
+  "optimizer": {
+    "type": "SGD",
+    "params": {
+      "lr": 0.1
+    }
+  },
+  "fp16": {
+    "enabled": false
+  },
+  "bf16": {
+    "enabled": false
+  },
+  "zero_optimization": {
+    "stage": 2,
+    "allgather_partitions": true,
+    "allgather_bucket_size": 200000000,
+    "overlap_comm": false,
+    "reduce_scatter": true,
+    "reduce_bucket_size": 200000000,
+    "contiguous_gradients": true
+  },
+  "wall_clock_breakdown": false
+}

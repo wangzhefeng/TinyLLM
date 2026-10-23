@@ -69,7 +69,7 @@
 
 | # | 仓库内容 | TinyLLM 对应 | 状态 | 说明 |
 |---:|---|---|:--:|---|
-| 47 | 附录 A：PyTorch + DDP | `tools/distributed/` | ✅ | 且扩展到 FSDP/TP/DeepSpeed |
+| 47 | 附录 A：PyTorch + DDP | `tools/distributed/` | ✅ | 扩展到 ZeRO/FSDP2/TP/PP/组合；TP 为手写教学实现，DeepSpeed 仅守卫式示例未实测 |
 | 48 | 附录 B/C：文献/习题 | — | ➖ | 文档性质 |
 | 49 | 附录 D：warmup/cosine/clip | `test/train_loop_template.py`、smolGPT | 🟡 | 有样板，未进主循环 |
 | 50 | 附录 E：LoRA | `test/minimind/model/model_lora.py` | 🟡 | 仅 MiniMind，无 GPT-2 通用 LoRA |

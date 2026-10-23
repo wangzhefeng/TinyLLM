@@ -44,7 +44,6 @@ def is_dist():
 #         dist.init_process_group(backend="nccl")
 
 
-# TODO
 def init_dist(rank, world_size):
     """
     function to initialize a distributed process group(1 process/GPU)
@@ -178,7 +177,9 @@ def dist_gather(o):
 
 
 def wrap_model(model):
-    model = DDP(model, device_ids=[get_global_rank()])
+    # device_ids 应为本机内的设备编号（LOCAL_RANK）：单机时与 global rank 相同，
+    # 多机时各节点 rank 重复从 0 开始，不能用 global rank
+    model = DDP(model, device_ids=[get_local_rank()])
 
     return model
 
