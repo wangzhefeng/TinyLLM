@@ -22,7 +22,7 @@ inference/
 ├── loading.py        # load_model 统一门面，调用 models/io
 ├── generation.py     # generate_text / generate_text_stream
 ├── generate_core.py  # 教材解码与实验后端
-├── strategies/       # self-consistency / Best-of-N / self-refinement
+├── strategies/       # self-consistency / Best-of-N / self-refinement / 投机解码
 ├── serving/          # nano_vllm
 ├── api/              # Ollama / OpenAI 客户端
 ├── evaluation/       # benchmarks / judges / leaderboards / 统一 judge
@@ -47,7 +47,7 @@ text = generate_text(
 )
 ```
 
-`generate_text` 与 stream 均只返回**新增文本**，不包含 prompt。GPT-2/Qwen3 默认使用外部 KV cache；其他模型需显式 `use_cache=False`。`generate_core.py` 的 optimized/batched 变体是实验后端，默认链路使用统一 facade。
+`generate_text` 与 stream 均只返回**新增文本**，不包含 prompt。GPT-2/Qwen3 默认使用外部 KV cache；其他模型需显式 `use_cache=False`。`generate_core.py` 的 optimized/batched 变体是实验后端，默认链路使用统一 facade。`beam_search_generate`（2026-10-24 升级）支持多 beam、逐 beam 真实生成长度的长度惩罚（`score = Σlogp / len^length_penalty`）与 EOS 冻结；beam 分叉的 cache 回滚复杂，教学实现每步整段重算（见 docstring）。
 
 ## 入口
 

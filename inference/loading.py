@@ -59,6 +59,10 @@ def load_model(model_key: str, source: str = "auto", weights_dir: str | None = N
         return _load_qwen3(spec, weights_dir, device)
     elif spec.family == "llama":
         return _load_llama(spec, weights_dir, device)
+    elif spec.family == "gemma3":
+        return _load_gemma3(spec, weights_dir, device)
+    elif spec.family == "phi":
+        return _load_phi(spec, weights_dir, device)
     else:
         raise NotImplementedError(f"family '{spec.family}' 的加载路径未实现")
 
@@ -126,3 +130,39 @@ def _load_llama(spec, weights_dir: str, device: str):
     model.to(device)
     model.eval()
     return model, config, {}
+
+
+def _load_gemma3(spec, weights_dir: str, device: str):
+    from config.gemma3.model_cfgs import GEMMA3_CONFIG_270M
+    from models.gemma3.Gemma3_270M import Model
+    from models.io.gemma3 import download_weights, load_weights_into_gemma
+    from layers.tokenizers.gemma import ensure_gemma_tokenizer
+    from utils.args_tools import DotDict
+
+    config = DotDict(GEMMA3_CONFIG_270M)
+    local_dir = Path(weights_dir) / Path(spec.repo_id).name
+    weights_dict = download_weights(spec.config_key, spec.repo_id, str(local_dir))
+    tokenizer_file_path = ensure_gemma_tokenizer(spec.repo_id, str(local_dir))
+    model = Model(cfg=config)
+    load_weights_into_gemma(model, config, weights_dict)
+    del weights_dict
+    model.to(device)
+    model.eval()
+    return model, config, {"tokenizer_file_path": tokenizer_file_path}
+
+
+def _load_phi(spec, weights_dir: str, device: str):
+    from config.phi.model_cfgs import PHI15_CONFIG
+    from models.phi.phi15 import Model
+    from models.io.phi.load_phi15_weights import download_phi15, load_weights_into_phi
+    from utils.args_tools import DotDict
+
+    config = DotDict(PHI15_CONFIG)
+    local_dir = Path(weights_dir) / Path(spec.repo_id).name
+    weights_dict, tokenizer_dir = download_phi15(str(local_dir))
+    model = Model(config)
+    load_weights_into_phi(model, weights_dict)
+    del weights_dict
+    model.to(device)
+    model.eval()
+    return model, config, {"tokenizer_file_path": str(Path(tokenizer_dir) / "tokenizer.json")}

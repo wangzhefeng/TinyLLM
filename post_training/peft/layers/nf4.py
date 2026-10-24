@@ -11,9 +11,10 @@
 # *               的分位数（QLoRA 论文附录 A 的标准码本）。
 # *               流程：分块 absmax 归一化 -> 最近码本索引（uint8 存储）
 # *                     + 每块 scale -> 反量化重建。
+# *               double quantization：对每块 scale 再做组内 uint8 二次量化
+# *               （quantize_scales/dequantize_scales），平均 4.127 bit/参数。
 # *               注意：QLoRA 完整流程 = 4bit 存储 + bf16 计算 + LoRA 旁路，
 # *               本模块只覆盖量化/反量化原语（训练与旁路请组合 layers/lora.py）。
-# *               double quantization（对每块 scale 再量化）未实现——留作练习。
 # * Link        : QLoRA https://arxiv.org/abs/2305.14314
 # * Requirement : torch
 # ***************************************************
@@ -22,6 +23,10 @@ __all__ = [
     "NF4_CODEBOOK",
     "nf4_quantize",
     "nf4_dequantize",
+    "quantize_scales",
+    "dequantize_scales",
+    "nf4_double_quantize",
+    "nf4_double_dequantize",
 ]
 
 # python libraries
@@ -104,6 +109,67 @@ def nf4_dequantize(indices: torch.Tensor, scales: torch.Tensor,
     values = codebook[blocks_idx.long()]                        # (num_blocks, block_size) ∈ [-1, 1]
     recon = values * scales.to(indices.device).unsqueeze(1)     # 乘回每块 absmax
     return recon.reshape(-1)[:n].reshape(shape)
+
+
+def quantize_scales(scales: torch.Tensor, group_size: int = 256):
+    """double quantization 第一步：对每块 absmax scale 再量化（QLoRA §4）。
+
+    每 ``group_size`` 个 block 的 scale 一组，组内 absmax 归一化后量化为
+    uint8（round(x·255)），仅保留每组一个 fp32 absmax：
+    32 bit/块 -> 8 bit/块 + 32 bit/组，
+    平均 4 + 8/64 + 32/(64·256) ≈ 4.127 bit/参数。
+
+    Returns:
+        (scale_indices, group_absmax, n_scales)：uint8 索引、每组 absmax、
+        原始 scale 数量（去 padding 用）
+    """
+    flat = scales.reshape(-1).float()
+    n = flat.numel()
+    pad = (-n) % group_size
+    if pad:
+        flat = torch.cat([flat, torch.zeros(pad, device = scales.device)])
+    groups = flat.reshape(-1, group_size)                        # (num_groups, group_size)
+    group_absmax = groups.abs().amax(dim = 1)                    # (num_groups,)
+    group_absmax = torch.where(group_absmax == 0, torch.ones_like(group_absmax), group_absmax)
+    normed = groups / group_absmax.unsqueeze(1)                  # ∈ [0, 1]
+    scale_indices = torch.round(normed * 255).to(torch.uint8)
+    # 截断 padding，避免小张量下组填充吞掉存储收益
+    return scale_indices.reshape(-1)[:n], group_absmax, n
+
+
+def dequantize_scales(scale_indices: torch.Tensor, group_absmax: torch.Tensor,
+                      n_scales: int, group_size: int = 256) -> torch.Tensor:
+    """double quantization 反向：uint8 索引 + 组 absmax 还原 fp32 scales。"""
+    flat_idx = scale_indices.reshape(-1)
+    pad = (-flat_idx.numel()) % group_size
+    if pad:
+        flat_idx = torch.cat([flat_idx, torch.zeros(pad, dtype = torch.uint8, device = scale_indices.device)])
+    # 先按组 reshape 再乘组 absmax：(n,) × (num_groups, 1) 直接广播会让所有元素都乘到第一组的 absmax
+    groups = (
+        flat_idx.reshape(-1, group_size).float() / 255
+        * group_absmax.to(scale_indices.device).unsqueeze(1)
+    )
+    return groups.reshape(-1)[:n_scales]
+
+
+def nf4_double_quantize(x: torch.Tensor, block_size: int = 64, group_size: int = 256):
+    """NF4 + double quantization（QLoRA 完整存储格式）。
+
+    Returns:
+        (indices, scale_indices, group_absmax, shape, block_size, group_size)
+    """
+    indices, scales, shape, bs = nf4_quantize(x, block_size)
+    scale_indices, group_absmax, _ = quantize_scales(scales, group_size)
+    return indices, scale_indices, group_absmax, shape, bs, group_size
+
+
+def nf4_double_dequantize(indices: torch.Tensor, scale_indices: torch.Tensor,
+                          group_absmax: torch.Tensor, shape, block_size: int = 64,
+                          group_size: int = 256) -> torch.Tensor:
+    """nf4_double_quantize 的反量化。"""
+    n_scales = (indices.numel() + block_size - 1) // block_size
+    scales = dequantize_scales(scale_indices, group_absmax, n_scales, group_size)
+    return nf4_dequantize(indices, scales, shape, block_size)
 
 
 # 测试代码 main 函数（误差演示；规范测试见 tests/unit/test_nf4.py）

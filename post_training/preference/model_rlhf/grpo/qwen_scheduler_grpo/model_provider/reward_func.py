@@ -65,11 +65,11 @@ def time_to_minutes(time_str):
     return hours * 60 + mins
 
 
-# TODO
+# 整体结构校验：<think> + <schedule> 含至少一个完整 <event>
 overall_pattern = r"<think>.+</think>.*<schedule>.*(<event>.*<name>.+</name>.*<start>\d{2}:\d{2}</start>.*<end>\d{2}:\d{2}</end>.*</event>)+.*</schedule>"
 overall_regex = re.compile(overall_pattern, re.DOTALL)
 
-# TODO
+# 捕获单个 <event> 的 name/start/end 字段（配合整体校验使用）
 capture_pattern = r"""
     <event>\s*
         <name>([^<]+)</name>\s*

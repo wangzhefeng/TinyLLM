@@ -7,9 +7,8 @@
 # * Date        : 2025-03-21
 # * Version     : 2.0.102021
 # * Description : Llama 3.2 1B。架构与 Llama 3 相同（GQA + RoPE + SwiGLU），
-# *               差异：层数 16、rope_freq factor=32。
-# *               注：官方 1B 权重还启用 tie_word_embeddings（out_head 与
-# *               tok_embed 共享），教学实现未 tying，加载官方权重时需注意。
+# *               差异：层数 16、rope_freq factor=32、tie_word_embeddings=True
+# *               （官方 1B 权重 out_head 与 tok_embed 共享，配置默认开启）。
 # * Link        : https://www.llama.com/docs/model-cards-and-prompt-formats/llama3_2
 # * Requirement : torch
 # ***************************************************
@@ -38,7 +37,7 @@ def main():
     # model
     model = Model(cfg)
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"Total parameters: {total_params:,}")   # ≈ 1.5B（未 tying；官方 tying 后 ≈ 1.24B）
+    print(f"Total parameters: {total_params:,}")   # tying 后 ≈ 1.24B
     model_memory_size(model, input_dtype=torch.bfloat16)
 
 if __name__ == "__main__":

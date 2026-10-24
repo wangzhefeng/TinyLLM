@@ -64,7 +64,7 @@ python post_training/run.py --task dpo --help
 |---|---|
 | `registry.py`、`loading.py` | 模型注册与统一加载；权重实现调用 `models/io/` |
 | `generation.py`、`generate_core.py` | 统一生成 facade 与教材解码 |
-| `strategies/` | self-consistency、best-of-n、self-refinement |
+| `strategies/` | self-consistency、best-of-n、self-refinement、投机解码 |
 | `serving/nano_vllm/` | 独立 serving 优化栈 |
 | `api/` | Ollama / OpenAI 客户端 |
 | `evaluation/` | benchmarks、judges、leaderboards 与统一 judge |
@@ -81,7 +81,7 @@ python post_training/run.py --task dpo --help
 | `training/distributed.py` | 主链路分布式兼容接口 |
 | `training/callbacks/` | early stopping、采样等可选回调 |
 | `models/base.py` | CausalLM/EncoderLM 轻量协议 |
-| `models/io/` | GPT-2/Qwen3/Llama/Gemma3 权重加载唯一实现 |
+| `models/io/` | GPT-2/Qwen3/Llama/Gemma3/Phi-1.5 权重加载唯一实现 |
 | `layers/` | attention、block、FFN、norm、RoPE、MoE、cache、tokenizers |
 | `config/` | `ModelConfig`、`TrainConfig`、`GenerationConfig` 与兼容适配 |
 | `tools/` | checkpoint、data、profiling、distributed；不依赖三个主域 |

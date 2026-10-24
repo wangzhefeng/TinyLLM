@@ -241,9 +241,3 @@ if __name__ == "__main__":
     # Initiate training
     ###########################
     main(args, global_rank, world_size, local_rank)
-    ###########################
-    # TODO After training
-    ###########################
-    # Only create 1 plot
-    if global_rank == 0:
-        pass

@@ -103,11 +103,19 @@ MODEL_REGISTRY = {
         family="llama", config_key="llama3", repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
         sources=("hf_gated",), tokenizer_model="llama3-8B", eos_token_id=128009, chat=True,
     ),
-    # ---------------- Gemma3（WIP：模型组装未闭环） ----------------
+    # ---------------- Phi-1.5（HF 下载；partial RoPE 教学版） ----------------
+    "phi-15": ModelSpec(
+        family="phi", config_key="phi-1_5", repo_id="microsoft/phi-1_5",
+        sources=("hf",), eos_token_id=50256,
+        note="vocab 51200 自带 tokenizer（随权重目录下载）；"
+             "partial RoPE 0.5 教学实现，无 KV cache 路径",
+    ),
+    # ---------------- Gemma3（HF 下载；weight tying） ----------------
     "gemma3-270m": ModelSpec(
         family="gemma3", config_key="270m", repo_id="google/gemma-3-270m",
-        sources=("hf_snapshot",), available=False,
-        note="WIP：loaders/gemma3 只有下载与加载函数，模型组装未接入",
+        sources=("hf_snapshot",), eos_token_id=1,
+        note="教学版结构对齐官方 270m；out_head 与 tok_embed tying；"
+             "base 版 eos 为 <eos>=1，-it 版应改用 <end_of_turn>",
     ),
 }
 

@@ -24,6 +24,7 @@ import torch
 import torch.nn as nn
 
 from layers.transformer_block import TransformerBlockQwen3
+from layers.kv_cache import KVCache, SharedKVCache
 from layers.normalization.rms_norm import RMSNorm_Qwen3
 from layers.position_encoding.RoPE import precompute_rope_params
 
@@ -43,6 +44,18 @@ class Model(nn.Module):
         self.trf_blocks = nn.ModuleList(
             [TransformerBlockQwen3(cfg) for _ in range(cfg.n_layers)]
         )
+        # 跨层 KV 共享（CLA）：每 share_span 层共享 KV 投影（W_key/W_value/k_norm），
+        # 组内只有底层追加 K/V，上层置 reuse_kv_only 只读复用（推断路径）
+        self.kv_sharing_span = getattr(cfg, "kv_sharing_span", 1) or 1
+        if self.kv_sharing_span > 1:
+            for g in range(0, cfg.n_layers, self.kv_sharing_span):
+                first_attn = self.trf_blocks[g].attn
+                for blk in self.trf_blocks[g + 1 : g + self.kv_sharing_span]:
+                    blk.attn.W_key = first_attn.W_key
+                    blk.attn.W_value = first_attn.W_value
+                    if first_attn.k_norm is not None:
+                        blk.attn.k_norm = first_attn.k_norm
+                    blk.attn.reuse_kv_only = True
         # RMSNorm
         self.final_norm = RMSNorm_Qwen3(cfg.embed_dim)
         # output head linear
@@ -99,6 +112,12 @@ class Model(nn.Module):
     
     def reset_kv_cache(self):
         self.current_pos = 0
+
+    def new_cache(self):
+        """按是否启用跨层 KV 共享创建对应的外部 cache。"""
+        if self.kv_sharing_span > 1:
+            return SharedKVCache(self.cfg.n_layers, self.kv_sharing_span)
+        return KVCache(self.cfg.n_layers)
 
 
 

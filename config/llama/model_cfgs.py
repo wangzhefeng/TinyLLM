@@ -81,7 +81,8 @@ LLAMA32_CONFIG_1B = {
         "low_freq_factor": 1.0,
         "high_freq_factor": 4.0,
         "original_context_length": 8192,
-    }
+    },
+    "tie_word_embeddings": True,   # NEW: 官方 1B 权重 out_head 与 tok_embed 共享
 }
 
 

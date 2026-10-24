@@ -38,7 +38,6 @@ class PositionalEncoding(nn.Module):
 
         # create positional encoding matrix
         pe = torch.zeros(max_len, d_model).float()
-        # TODO pe.requires_grad = False
         # pos
         position = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
         # 1 / 10000^{2i/d_model}

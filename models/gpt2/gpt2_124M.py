@@ -46,8 +46,12 @@ class Model(nn.Module):
         self.final_norm = LayerNorm(cfg.embed_dim)
         # output head linear
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False)
+        # weight tying：out_head 与 tok_embed 共享权重（GPT-2 官方权重两者同值）
+        if getattr(cfg, "tie_word_embeddings", False):
+            self.out_head.weight = self.tok_embed.weight
 
-    def forward(self, x, use_cache=False, cache=None, attention_mask=None, position_ids=None):
+    def forward(self, x, use_cache=False, cache=None, attention_mask=None, position_ids=None,
+                output_hidden_states=False):
         _, seq_len = x.shape
         external_cache = cache is not None
         if position_ids is not None:
@@ -79,7 +83,10 @@ class Model(nn.Module):
             cache.advance(seq_len)
         elif use_cache:
             self.ptr_current_pos += seq_len
-        return self.out_head(self.final_norm(x))
+        final_hidden = self.final_norm(x)
+        if output_hidden_states:
+            return self.out_head(final_hidden), final_hidden
+        return self.out_head(final_hidden)
     
     def reset_kv_cache(self):
         for blk in self.trf_blocks:

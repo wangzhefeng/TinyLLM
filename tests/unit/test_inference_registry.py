@@ -13,8 +13,8 @@ class TestModelRegistry(unittest.TestCase):
         spec = get_model_spec("gpt2-124m")
         self.assertEqual(spec.family, "gpt2")
         self.assertEqual(spec.eos_token_id, 50256)
-        # gemma3 标记为 WIP
-        self.assertFalse(MODEL_REGISTRY["gemma3-270m"].available)
+        # gemma3 加载已闭环（tests/unit/test_gemma3_loading.py）
+        self.assertTrue(MODEL_REGISTRY["gemma3-270m"].available)
 
     def test_unknown_key_error(self):
         from inference import get_model_spec
@@ -39,10 +39,11 @@ class TestModelRegistry(unittest.TestCase):
 
 
 class TestLoadModelErrors(unittest.TestCase):
-    def test_unavailable_model(self):
-        from inference import load_model
-        with self.assertRaises(NotImplementedError):
-            load_model("gemma3-270m")
+    def test_all_registry_entries_available(self):
+        # 推断链路闭环约束：注册表不允许残留 WIP 条目
+        from inference import MODEL_REGISTRY
+        unavailable = [k for k, s in MODEL_REGISTRY.items() if not s.available]
+        self.assertEqual(unavailable, [])
 
     def test_bad_source(self):
         from inference import load_model

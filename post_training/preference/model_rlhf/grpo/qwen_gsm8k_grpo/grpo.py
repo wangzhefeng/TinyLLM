@@ -44,7 +44,8 @@ def extract_xml_answer(text: str) -> str:
 
 def correctness_reward_func(prompts, completions, answer, **kwargs) -> List[float]:
     """
-    TODO
+    答案正确性 reward（unsloth/TRL 参考实验）：从 <answer> 标签抽取答案，
+    与标准答案做子串匹配，命中 1.0 否则 0.0。
     """
     responses = [c[0]["content"] for c in completions]
     extracted = [extract_xml_answer(r) for r in responses]
@@ -61,7 +62,8 @@ def correctness_reward_func(prompts, completions, answer, **kwargs) -> List[floa
 
 def soft_format_reward_func(completions, **kwargs) -> List[float]:
     """
-    TODO
+    宽松格式 reward（unsloth/TRL 参考实验）：<reasoning>/<answer> 标签结构
+    存在即得 2.0（不校验首尾边界），否则 0.0。
     """
     pattern = r"<reasoning>.*?</reasoning>\s*<answer>.*?</answer>"
     responses = [c[0]["content"] for c in completions]
@@ -78,7 +80,8 @@ def soft_format_reward_func(completions, **kwargs) -> List[float]:
 
 def strict_format_reward_func(completions, **kwargs) -> List[float]:
     """
-    TODO
+    严格格式 reward（unsloth/TRL 参考实验）：整个 completion 必须恰好是
+    <reasoning>/<answer> 结构（锚定首尾空白），命中 4.0 否则 0.0。
     """
     pattern = r"^\s*<reasoning>.*?</reasoning>\s*<answer>.*?</answer>\s*$"
     responses = [c[0]["content"] for c in completions]

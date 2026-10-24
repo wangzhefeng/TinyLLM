@@ -133,6 +133,35 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "num_experts_per_tok": 8,
             "moe_intermediate_size": 768,
         }
+    elif CHOOSE_MODEL == "Qwen3.5-4B":
+        # 官方 config.json 已核实：https://huggingface.co/Qwen/Qwen3.5-4B（text_config）
+        # 多模态视觉塔与 MTP（多 token 预测）头不在本教学实现范围内
+        # （models/qwen3/qwen3_5.py 仅实现文本栈）
+        # 结构：3:1 混合层（gated delta net 线性注意力 + full attention），
+        # full 层带 sigmoid 输出门控与 partial RoPE(25%)，权重共享 output head
+        QWEN3_CONFIG = {
+            "vocab_size": 248_320,
+            "context_length": 262_144,
+            "embed_dim": 2_560,
+            "n_heads": 16,
+            "n_layers": 32,
+            "d_ff": 9_216,
+            "head_dim": 256,
+            "qk_norm": True,                 # full 层逐 head QK-norm（恒开启）
+            "n_kv_groups": 4,
+            "rope_base": 10_000_000.0,
+            "dtype": torch.bfloat16,
+            "num_experts": 0,
+            "full_attention_interval": 4,    # 每 4 层 1 层 full attention，其余 linear attention
+            "attn_output_gate": True,        # full 层 q_proj 输出二分为 query+gate，sigmoid 门控
+            "partial_rotary_factor": 0.25,   # 仅前 25% head 维度参与 RoPE
+            "linear_num_key_heads": 16,      # 线性注意力 key 头数
+            "linear_key_head_dim": 128,      # 线性注意力 key 头维
+            "linear_num_value_heads": 32,    # 线性注意力 value 头数
+            "linear_value_head_dim": 128,    # 线性注意力 value 头维
+            "linear_conv_kernel_dim": 4,     # 线性注意力因果 depthwise 卷积核
+            "tie_word_embeddings": True,
+        }
     else:
         raise ValueError(f"{CHOOSE_MODEL} is not supported.")
 

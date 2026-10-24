@@ -9,7 +9,8 @@
 # * Description : DeepSeek 风格 decoder-only 模型组装（教学版）：
 # *               MLA 注意力 + RMSNorm + SwiGLU FFN，支持 KV cache 增量解码。
 # *               完整 DeepSeek-V3 还需要 DeepSeekMoE（shared + routed experts，
-# *               见 layers/moe.py 的扩展点）与 MTP（多 token 预测，未实现）。
+# *               见 layers/moe.py 的扩展点）与 MTP（多 token 预测，
+# *               见 models/deepseek/mtp.py）。
 # * Link        : https://github.com/deepseek-ai/DeepSeek-V3
 # ***************************************************
 
@@ -86,7 +87,8 @@ class DeepSeekModel(nn.Module):
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False, dtype=cfg.dtype)
         self.current_pos = 0
 
-    def forward(self, x, cache=None, attention_mask=None, position_ids=None):
+    def forward(self, x, cache=None, attention_mask=None, position_ids=None,
+                output_hidden_states=False):
         num_tokens = x.shape[1]
         if position_ids is not None:
             pos_start = int(position_ids[0, 0].item())
@@ -110,14 +112,35 @@ class DeepSeekModel(nn.Module):
             cache.advance(num_tokens)
 
         x = self.final_norm(x)
-        return self.out_head(x.to(self.out_head.weight.dtype))
+        logits = self.out_head(x.to(self.out_head.weight.dtype))
+        if output_hidden_states:
+            return logits, x
+        return logits
 
     def reset_kv_cache(self):
         self.current_pos = 0
 
+    def attach_mtp(self, n_mtp=1):
+        """挂载 ``n_mtp`` 个 MTP 模块（DeepSeek-V3 §2.5.1 训练专用组件）。
 
-# MTP（Multi-Token Prediction）为 V3 训练专用组件，教学版暂不实现；
-# 需要时参考 https://arxiv.org/abs/2412.19437 §2.5.1 与 docs/40-models/deepseek.md。
+        与论文的共享设计一致：每个 ``MTPHead`` 复用主模型的 ``tok_embed`` /
+        ``final_norm`` / ``out_head``，只新增 ``combine_norm`` + ``projection``
+        + 一个 ``DeepSeekBlock`` 的参数。不改变 ``forward`` 签名；
+        训练循环按需调用 ``self.mtp_heads[k]`` 并用其输出的 ``h_new`` 级联下一级。
+        """
+        from models.deepseek.mtp import MTPHead
+
+        self.mtp_heads = nn.ModuleList([
+            MTPHead(self.cfg, self.tok_embed, self.final_norm, self.out_head)
+            for _ in range(n_mtp)
+        ])
+        return self.mtp_heads
+
+
+# MTP（Multi-Token Prediction，多 token 预测）为 V3 训练专用组件，
+# 教学实现见 models/deepseek/mtp.py（MTPHead + deepseek_mtp_loss），
+# 通过 DeepSeekModel.attach_mtp() 挂载并与主模型共享 embedding/norm/out_head；
+# 论文参考 https://arxiv.org/abs/2412.19437 §2.5.1 与 docs/40-models/deepseek.md。
 
 # 测试代码 main 函数
 def main():

@@ -11,7 +11,7 @@
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
-__all__ = ["KVCache", "KVCache_optimized", "trim_kv_cache_window"]
+__all__ = ["KVCache", "SharedKVCache", "KVCache_optimized", "trim_kv_cache_window"]
 
 # python libraries
 from pathlib import Path
@@ -46,6 +46,35 @@ class KVCache:
         for i in range(len(self.cache)):
             self.cache[i] = None
         self.position = 0
+
+
+class SharedKVCache(KVCache):
+    """跨层 KV 共享 cache（Cross-Layer Attention / CLA）。
+
+    每相邻 ``share_span`` 层共用一个 cache 槽位（组），cache 条目数从
+    ``n_layers`` 降为 ``ceil(n_layers / share_span)``。正确性要求模型的
+    KV 投影按相同 span 共享、且组内只有底层追加 K/V（上层只复用，
+    见 ``GroupedQueryAttention_Qwen3.reuse_kv_only`` 与
+    ``models/qwen3`` 的 ``kv_sharing_span`` 接线）。
+    """
+
+    def __init__(self, n_layers, share_span = 2):
+        if share_span < 1:
+            raise ValueError("share_span must be >= 1")
+        self.share_span = share_span
+        self.n_layers = n_layers
+        super().__init__(n_layers = (n_layers + share_span - 1) // share_span)
+
+    @property
+    def n_groups(self):
+        """实际的 cache 组数（= ceil(n_layers / share_span)）。"""
+        return len(self.cache)
+
+    def get(self, layer_idx):
+        return self.cache[layer_idx // self.share_span]
+
+    def update(self, layer_idx, value):
+        self.cache[layer_idx // self.share_span] = value
 
 
 class KVCache_optimized:

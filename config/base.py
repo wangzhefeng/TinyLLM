@@ -63,6 +63,20 @@ class ModelConfig(ConfigMixin):
     num_experts: int = 0
     num_experts_per_tok: int = 0
     moe_intermediate_size: int | None = None
+    tie_word_embeddings: bool = False
+    kv_sharing_span: int = 1
+    partial_rotary_factor: float = 1.0
+    # 混合注意力（Olmo 3 滑窗/full 间隔层；Qwen3.5 linear/full 间隔层）
+    sliding_window: int | None = None
+    full_attention_interval: int = 0
+    # Qwen3.5 full-attention 层的 sigmoid 输出门控
+    attn_output_gate: bool = False
+    # Qwen3.5 linear-attention（gated delta net）层
+    linear_num_key_heads: int | None = None
+    linear_key_head_dim: int | None = None
+    linear_num_value_heads: int | None = None
+    linear_value_head_dim: int | None = None
+    linear_conv_kernel_dim: int = 4
 
     @classmethod
     def from_dict(cls, values):
@@ -104,3 +118,4 @@ class GenerationConfig(ConfigMixin):
     top_p: float | None = None
     eos_token_id: int | None = None
     use_cache: bool = True
+    draft_model_key: str | None = None

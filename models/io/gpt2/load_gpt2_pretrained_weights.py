@@ -65,6 +65,7 @@ def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gp
         "n_layers": cfgs.n_layers,              # Number of layers: 12
         "n_heads": cfgs.n_heads,                # Number of heads: 12
         "dtype": getattr(cfgs, "dtype", None) or torch.float32,  # layers/feed_forward.py 需要
+        "tie_word_embeddings": getattr(cfgs, "tie_word_embeddings", False),  # weight tying 开关
     }
     base_config.update(gpt2_model_configs[cfgs.pretrained_model])
     # GPT-2 FFN 维度 = 4 × embed_dim（需在 config 表覆盖后计算，换 medium/large 才对）
@@ -107,6 +108,9 @@ def model_with_gpt2_weights(cfgs, model_cls, model_source: str = "huggingface_gp
 
     # model inference mode
     model.eval()
+    # weight tying：加载过程可能替换掉共享的 Parameter，此处重新建立共享
+    if base_config.tie_word_embeddings:
+        model.out_head.weight = model.tok_embed.weight
 
     return model, base_config
 

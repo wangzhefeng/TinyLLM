@@ -136,6 +136,28 @@ class ModelFinetuningInstructionFlow:
         model_dir = experiment_paths(self.args.finetuned_model_path, setting, training_iter)
         self.model_path = model_dir / f"{re.sub(r'[ ()]', '', self.args.pretrained_model)}-sft.pth"
 
+    def _load_backbone(self):
+        """
+        加载预训练底座：默认 GPT-2 官方权重；
+        ``args.backbone == "phi15"`` 时改用 phi-1.5（LLMs-from-scratch ch07 路线）。
+        """
+        if getattr(self.args, "backbone", "gpt2") == "phi15":
+            from models.io.phi.load_phi15_weights import model_with_phi15_weights
+
+            model, base_config = model_with_phi15_weights(
+                model_path = getattr(self.args, "pretrained_model_path", None),
+            )
+        else:
+            model, base_config = model_with_gpt2_weights(
+                cfgs = self.args,
+                model_cls = Model,
+                model_source = self.args.pretrained_model_source,
+            )
+        model = self._load_model(model)
+        model.to(self.device)
+
+        return model, base_config
+
     def _get_results_path(self, setting, training_iter):
         return results_paths(self.args.test_results, setting, training_iter)
 
@@ -303,15 +325,8 @@ class ModelFinetuningInstructionFlow:
             valid_data, valid_dataset, valid_loader,
         ) = self._get_data()
         
-        # TODO load model
         self._get_model_path(setting, training_iter)
-        model, base_config = model_with_gpt2_weights(
-            cfgs = self.args, 
-            model_cls = Model, 
-            model_source = self.args.pretrained_model_source
-        )
-        model = self._load_model(model)
-        model.to(self.device)
+        model, base_config = self._load_backbone()
         
         # inference
         torch.manual_seed(self.args.seed)
@@ -339,15 +354,7 @@ class ModelFinetuningInstructionFlow:
         """
         build instruction data with response
         """
-        # TODO load model
-        # model = self._load_model()
-        model, base_config = model_with_gpt2_weights(
-            cfgs = self.args, 
-            model_cls = Model, 
-            model_source = self.args.pretrained_model_source
-        )
-        model = self._load_model(model)
-        model.to(self.device)
+        model, base_config = self._load_backbone()
 
         # data process
         for i, entry in tqdm(enumerate(eval_data), total = len(eval_data)):
@@ -370,18 +377,9 @@ class ModelFinetuningInstructionFlow:
         with open(self.args.eval_data_path, "w") as file:
             json.dump(eval_data, file, indent = 4)
 
-    # TODO
     def inference(self, entry, training_iter = None,setting = None):
-        # TODO load model
-        # model = self._load_model()
         self._get_model_path(setting, training_iter)
-        model, base_config = model_with_gpt2_weights(
-            cfgs = self.args, 
-            model_cls = Model, 
-            model_source = self.args.pretrained_model_source
-        )
-        model = self._load_model(model)
-        model.to(self.device)
+        model, base_config = self._load_backbone()
 
         # inference
         input_text = instruction_format.format_input_alpaca(entry)

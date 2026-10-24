@@ -144,43 +144,7 @@ def main():
     # ------------------------------
     # parms
     # ------------------------------
-    GEMMA3_CONFIG_270M = {
-        "vocab_size": 262_144,
-        "context_length": 32_768,
-        "embed_dim": 640,
-        "n_heads": 4,
-        "n_layers": 18,
-        "hidden_dim": 2048,
-        "d_ff": 2048,
-        "head_dim": 256,
-        "qk_norm": True,
-        "n_kv_groups": 1,
-        "rope_local_base": 10_000.0,
-        "rope_base": 1_000_000.0,
-        "sliding_window": 512,
-        "layer_types": [
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "full_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "full_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "sliding_attention",
-            "full_attention",
-        ],
-        "dtype": torch.bfloat16,
-        "query_pre_attn_scalar": 256,
-    }
+    from config.gemma3.model_cfgs import GEMMA3_CONFIG_270M
     from utils.args_tools import DotDict
     GEMMA3_CONFIG_270M = DotDict(GEMMA3_CONFIG_270M)
     # ------------------------------

@@ -21,7 +21,6 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import re
-import logging  # TODO
 from typing import Optional
 from datetime import datetime
 from dataclasses import dataclass

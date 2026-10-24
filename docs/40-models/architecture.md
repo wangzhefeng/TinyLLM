@@ -103,6 +103,26 @@ Position Embeddings:
 - `layers/lora.py`：LoRA/DoRA 通用层（`post_training/peft/layers/lora_dora.py` 为兼容 shim）
 - `layers/normalization/`：目录名由 normailzation 修正为 normalization
 
+## 新增组件（2026-10-24）
+
+- `layers/position_encoding/RoPE.py`：补齐模块化 `RoPE(nn.Module)`（cos/sin 注册为
+  buffer，`forward(x, offset)` / `forward_with_pos_ids`），与函数式实现等价
+- `layers/kv_cache.py`：新增 `SharedKVCache`（跨层 KV 共享 / CLA），
+  配合 `GroupedQueryAttention_Qwen3.reuse_kv_only` 与 `cfg.kv_sharing_span`：
+  每组只有底层追加 K/V，上层只读复用，cache 条目数降为 ceil(n_layers/span)
+- weight tying：`config.base.ModelConfig.tie_word_embeddings` 开关，
+  GPT-2（`models/gpt2/`）与 Llama3（`models/llama/`，Llama 3.2 1B 配置默认开启）支持，
+  `models/io/` 各 loader 加载后重新建立共享
+- 推断时扩展：投机解码 `inference/strategies/speculative.py`（draft-target 验证采样）
+- `layers/sparse_attention.py`（2026-10-24）：`NativeSparseAttention`——DeepSeek-V3 NSA
+  教学版，compressed（块池化粗注意力）+ selected（每 query top-N 块精确注意力，
+  gather 实现）+ sliding window 三分支，每头 sigmoid 门控融合（论文 §2.2 式(5)）
+- `layers/gated_delta_rule.py`（2026-10-24）：`GatedDeltaNet`——线性注意力
+  （arXiv:2412.06464）教学版，带门控 delta rule 状态更新
+  `S_t = g_t(I−β_t k_t k_tᵀ)S_{t−1} + β_t k_t v_tᵀ`；提供 recurrent（ground
+  truth）与 chunked 精确并行（WY 表示：`(I+diag(β)tril(KKᵀ,−1))⁻¹` 三角求逆 +
+  块内累积门控展开）双实现，逐 token 门控下两路径逐元素等价（误差 ~5e-7）
+
 ## 计算优化
 
 注意力机制近似：注意力计算的时间复杂度为 $\mathbb{O}(n2)$，

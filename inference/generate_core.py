@@ -662,40 +662,57 @@ def repetition_penalty(logits: torch.Tensor, token_ids: torch.Tensor, penalty: f
 
 @torch.inference_mode()
 def beam_search_generate(model, token_ids: torch.Tensor, max_new_tokens: int = 20,
-                         beam_size: int = 3, context_length: int | None = None,
+                         num_beams: int = 3, context_length: int | None = None,
                          length_penalty: float = 1.0, eos_token_id: int | None = None,
-                         repetition_pen: float = 1.0, return_beams: bool = False):
+                         repetition_pen: float = 1.0, return_beams: bool = False,
+                         beam_size: int | None = None):
     """Beam search 解码（教学实现，batch=1，无 KV cache）。
 
-    每步保留累计 log-prob 最高的 ``beam_size`` 条候选；已遇到 EOS 的 beam
-    被冻结（只允许延续 EOS 且不加分），全部完成或步数用尽后停止。
-    最终按**长度归一化**的累计 log-prob 选最优 beam。
+    算法要点：
+    - 每步保留累计 log-prob 之和最高的 ``num_beams`` 条候选（多 beam 展开）；
+    - 长度惩罚：排序分数 = logprob 总和 / gen_len ** length_penalty，
+      gen_len 为该 beam 实际生成的 token 数（含 EOS；冻结后填充的 EOS 不计入）；
+    - EOS 冻结：某 beam 生成 eos 后冻结为完成候选，不再扩展——实现上只允许
+      延续 EOS 且累计分不变（填充仅为保持张量等宽，不参与打分与长度）；
+    - 停止条件：达到 max_new_tokens，或全部 beam 完成；
+    - 最终按归一化分数取最优 beam。
+
+    为什么不用 KV cache：beam 每步会在候选间分叉/回溯，cache 需要 按
+    beam 复制、重排与回滚，教学实现为了逻辑清晰选择每步整段重算前缀
+    （代价 O(T^2) 前向，beam 数多时更明显）。
 
     Args:
         model: forward(x) 返回 (B, T, V) logits 的模型
-        token_ids: (1, T) prompt
-        beam_size: beam 宽度；beam_size=1 退化为 greedy
-        length_penalty: 最终排序的长度归一指数（1.0=按长度归一，0=不归一）
+        token_ids: (1, T) prompt（batch 目前仅支持 1）
+        num_beams: beam 宽度；num_beams=1 且 length_penalty=0 时退化为 greedy
+        context_length: 模型支持的最大上下文长度；None 时自动推断
+        length_penalty: 长度归一化指数（0=只比 logprob 总和，1.0=按长度平均）
+        eos_token_id: 结束 token id；None 表示不启用提前停止
         repetition_pen: 传给 repetition_penalty 的惩罚系数
-        return_beams: True 时返回全部 beam（beam_size, T+L）供对比
+        return_beams: True 时返回全部 beam（num_beams, T+L），按分数降序
+        beam_size: ``num_beams`` 的旧别名（向后兼容），显式传入时优先于 num_beams
 
     Returns:
-        (1, T+L) 最优序列（或 (beam_size, T+L) 全部 beam）
+        (1, T+L) 最优序列（含 prompt）；return_beams=True 时为 (num_beams, T+L)
     """
+    if beam_size is not None:
+        num_beams = beam_size
+    if num_beams < 1:
+        raise ValueError("num_beams must be >= 1")
     model.eval()
     ctx_len = _resolve_ctx_len(model, context_length)
     with torch.no_grad():
         prompt = token_ids[:, -ctx_len:]
         assert prompt.size(0) == 1, "beam search 教学实现要求 batch=1"
-        input_len = prompt.size(1)
         device = prompt.device
-        beams = prompt.repeat(beam_size, 1)                  # (beam, T)
-        scores = torch.full((beam_size,), float("-inf"), device=device)
+        beams = prompt.repeat(num_beams, 1)                  # (num_beams, T)
+        scores = torch.full((num_beams,), float("-inf"), device=device)
         scores[0] = 0.0                                      # 初始只有第 0 条有效
-        finished = torch.zeros(beam_size, dtype=torch.bool, device=device)
+        beam_lens = torch.zeros(num_beams, dtype=torch.long, device=device)
+        finished = torch.zeros(num_beams, dtype=torch.bool, device=device)
 
         for _ in range(max_new_tokens):
-            logits = model(beams)[:, -1, :]                  # (beam, V)
+            logits = model(beams)[:, -1, :]                  # (num_beams, V)
             if repetition_pen != 1.0:
                 logits = repetition_penalty(logits, beams, repetition_pen)
             logprobs = torch.log_softmax(logits.float(), dim=-1)
@@ -703,23 +720,28 @@ def beam_search_generate(model, token_ids: torch.Tensor, max_new_tokens: int = 2
                 # 冻结已完成的 beam：只能延续 EOS 且不改变累计分
                 logprobs[finished] = float("-inf")
                 logprobs[finished, eos_token_id] = 0.0
-            cand = scores.unsqueeze(1) + logprobs           # (beam, V)
-            top_scores, top_idx = cand.view(-1).topk(beam_size)
-            beam_idx = torch.div(top_idx, logprobs.size(-1), rounding_mode="floor")
-            token_idx = top_idx % logprobs.size(-1)
+            cand = scores.unsqueeze(1) + logprobs           # (num_beams, V)
+            top_scores, top_idx = cand.view(-1).topk(num_beams)
+            vocab_size = logprobs.size(-1)
+            beam_idx = torch.div(top_idx, vocab_size, rounding_mode="floor")
+            token_idx = top_idx % vocab_size
+            was_finished = finished[beam_idx]
             beams = torch.cat([beams[beam_idx], token_idx.unsqueeze(1)], dim=1)
             scores = top_scores
+            # 冻结 beam 延续的 EOS 只是填充，不计入已生成长度
+            beam_lens = beam_lens[beam_idx] + (~was_finished).long()
             if eos_token_id is not None:
-                finished = finished[beam_idx] | (token_idx == eos_token_id)
+                finished = was_finished | (token_idx == eos_token_id)
                 if bool(finished.all()):
                     break
 
-        # 长度归一化排序（生成部分长度）
-        gen_len = torch.tensor(max(beams.size(1) - input_len, 1), device=device, dtype=torch.float32)
+        # 结束时按归一化分数排序：logprob 总和 / gen_len ** length_penalty
+        gen_len = beam_lens.clamp(min=1).to(scores.dtype)
         normed = scores / gen_len.pow(length_penalty)
+        order = normed.argsort(descending=True)
         if return_beams:
-            return beams[normed.argsort(descending=True)]
-        return beams[normed.argmax():normed.argmax()+1]
+            return beams[order]
+        return beams[order[:1]]
 
 
 

@@ -267,8 +267,6 @@ class MultiHeadAttentionCombinedQKV(nn.Module):
         attn_scores = queries @ keys.transpose(-2, -1)
         attn_scores = attn_scores.masked_fill(self.mask[:num_tokens, :num_tokens], -torch.inf)
         # ------------------------------
-        # TODO attention weights
-        # ------------------------------
         attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
         # ------------------------------
@@ -575,7 +573,6 @@ class MHAPyTorchFlexAttention(nn.Module):
         return context_vec
 
 
-# TODO
 class MultiHeadAttentionRoPE(nn.Module):
     
     def __init__(self, d_model: int, d_out: int, n_heads: int, context_length: int, dtype = None):
@@ -789,6 +786,8 @@ class GroupedQueryAttention_Qwen3(nn.Module):
         else:
             self.q_norm = None
             self.k_norm = None
+        # 跨层 KV 共享（CLA）：组内上层置 True 时只复用共享 K/V、不追加
+        self.reuse_kv_only = False
 
     def forward(self, x, mask, cos, sin, start_pos=0, cache=None):
         batch_size, num_tokens, embed_dim = x.shape
@@ -808,9 +807,14 @@ class GroupedQueryAttention_Qwen3(nn.Module):
         keys_new = compute_rope(keys_new, cos, sin, offset=start_pos)
         if cache is not None:
             prev_k, prev_v = cache
-            keys = torch.cat([prev_k, keys_new], dim=2)
-            values = torch.cat([prev_v, values_new], dim=2)
-            next_cache = (keys, values)
+            if getattr(self, "reuse_kv_only", False):
+                # 跨层 KV 共享（CLA）组内上层：只复用组内底层写入的 K/V，不追加
+                keys, values = prev_k, prev_v
+                next_cache = (prev_k, prev_v)
+            else:
+                keys = torch.cat([prev_k, keys_new], dim=2)
+                values = torch.cat([prev_v, values_new], dim=2)
+                next_cache = (keys, values)
         else:
             start_pos = 0  # reset RoPE
             keys, values = keys_new, values_new

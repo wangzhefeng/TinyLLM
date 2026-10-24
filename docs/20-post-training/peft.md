@@ -30,6 +30,7 @@
 | `model_peft/uniem_finetune/` | 嵌入模型微调 | 超出文本 LLM 主线 |
 | `model_peft/unsloth_exps/`、`lit_gpt_exps/` | 外部工具实验 | 参考 |
 | `layers/merge_adapte_weights.py` | 权重合并 re-export | shim（文件名历史拼写保留） |
+| `layers/nf4.py` | NF4 量化原语 + double quantization | ✅ 自研（≈4.127 bit/参数，测试 9 项） |
 | `run/run_gpt_lora_sft.py` | 自研 LoRA SFT 入口 | 空壳（用自研层请走 `run_gpt_clf_sft.py --finetune_method lora`） |
 
 ## 端到端自研 LoRA 实验
@@ -56,4 +57,6 @@ python post_training/peft/run_peft.py   # 教程拼接参考，不可直接运�
 - [ ] `model_peft/lora_qlora/scratch_exps/lora_dora_from_scratch.py` 四重断链（import、`Exp_Basic` 签名、空 `model_dict`、缺 args 键），整体不可运行。
 - [ ] `run_peft.py` 为两段教程拼接（TrainingArguments/Trainer 未导入、数据集未定义、训练 mt0-large 推断 opt-350m）。
 - [ ] `deepseek_lora/model_eval.py` 的 `merge_and_unload()` 使对比评测变成模型自比；collator 无 -100 mask。
-- [ ] QLoRA 训练组合仍全依赖 bitsandbytes；NF4 **量化原语**已自研（`peft/layers/nf4.py`，量化/反量化往返 + 6 项测试），double quantization 与 4bit+LoRA 组合训练留作下一步。
+- [ ] QLoRA 训练组合仍全依赖 bitsandbytes；NF4 **量化原语与 double quantization** 已自研
+  （`peft/layers/nf4.py`：量化/反量化、scale 组内 uint8 二次量化 ≈4.127 bit/参数，测试 9 项），
+  4bit 存储 + LoRA 旁路组合训练留作下一步。

@@ -84,7 +84,8 @@ def get_dataset():
         )
         # save datasets to disk
         dataset.to_json(train_path, orient="records")
-    # TODO Load dataset
+    # unsloth/TRL 参考实验线：数据处理到此为止，训练入口未接线；
+    # from-scratch GRPO 主线见 post_training/rl/core.py（有测试覆盖）
     # train_dataset = load_dataset("json", data_files=str(train_path), split="train")
 
     # return train_dataset

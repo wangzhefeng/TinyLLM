@@ -11,7 +11,7 @@
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
-__all__ = []
+__all__ = ["download_weights", "load_weights_into_gemma"]
 
 # python libraries
 from pathlib import Path
@@ -42,8 +42,8 @@ def load_weights_into_gemma(model, param_config, params):
 
     # Embedding weights
     if "model.embed_tokens.weight" in params:
-        model.tok_emb.weight = assign(
-            model.tok_emb.weight,
+        model.tok_embed.weight = assign(
+            model.tok_embed.weight,
             params["model.embed_tokens.weight"],
             "model.embed_tokens.weight",
         )
@@ -51,7 +51,7 @@ def load_weights_into_gemma(model, param_config, params):
     # Iterate over transformer layers
     for l in range(param_config["n_layers"]):
         block = model.blocks[l]
-        att = block.att
+        att = block.attn
         # Attention projections
         att.W_query.weight = assign(
             att.W_query.weight,
@@ -142,7 +142,7 @@ def load_weights_into_gemma(model, param_config, params):
             "lm_head.weight",
         )
     else:
-        model.out_head.weight = model.tok_emb.weight
+        model.out_head.weight = model.tok_embed.weight
         print("Model uses weight tying.")
 
 
@@ -172,7 +172,7 @@ def download_weights(CHOOSE_MODEL, repo_id, local_dir):
 
 # 测试代码 main 函数
 def main():
-    # WIP：仅演示权重下载与加载函数；模型组装见 models/gemma3/
+    # 权重下载 + 加载已闭环：组装入口见 inference/loading.py 的 _load_gemma3
     USE_INSTRUCT_MODEL = False
     CHOOSE_MODEL = "270m"
     

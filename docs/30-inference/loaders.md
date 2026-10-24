@@ -8,8 +8,9 @@
 |---|---|---|
 | `models/io/gpt2/` | GPT-2 系列 | HF / safetensors / 官方 TF checkpoint、分类头加载 |
 | `models/io/qwen3/` | Qwen3 dense/MoE | 下载、权重映射、加载示例 |
-| `models/io/gemma3/` | Gemma3 270M | safetensors 加载（WIP） |
-| `models/io/llama/` | Llama 2 / 3 | Meta/HF 权重加载 |
+| `models/io/gemma3/` | Gemma3 270M | safetensors 下载与映射（已闭环，2026-10-24：属性名对齐模型、tying 分支、`_load_gemma3` 接入 registry） |
+| `models/io/llama/` | Llama 2 / 3 | Meta/HF 权重加载（Llama 3.2 1B tying 支持） |
+| `models/io/phi/` | Phi-1.5 | HF safetensors 下载与 Wqkv 拆分映射（2026-10-24） |
 
 ## 使用约定
 

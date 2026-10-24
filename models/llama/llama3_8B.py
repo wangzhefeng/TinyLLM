@@ -39,6 +39,9 @@ class Model(nn.Module):
         self.final_norm = RMSNorm(cfg.embed_dim)
         # output head linear
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias = False, dtype=cfg.dtype)
+        # weight tying：out_head 与 tok_embed 共享（官方 Llama 3.2 1B 启用）
+        if getattr(cfg, "tie_word_embeddings", False):
+            self.out_head.weight = self.tok_embed.weight
 
     def forward(self, in_idx):
         # in_idx size

@@ -2,7 +2,8 @@
 
 # DeepSeek（独立模型目录）
 
-DeepSeek V2/V3/R1 架构学习与从零实现。**MLA 与模型组装已实现**（2026-10-20，教学小配置版）。
+DeepSeek V2/V3/R1 架构学习与从零实现。**MLA、模型组装与 MTP 已实现**
+（教学小配置版，2026-10-20 / 2026-10-24）。
 
 ## 目录
 
@@ -10,6 +11,7 @@ DeepSeek V2/V3/R1 架构学习与从零实现。**MLA 与模型组装已实现**
 models/deepseek/
 ├── model.py       # DeepSeekModel / DeepSeekBlock（MLA + RMSNorm + SwiGLU，支持 KV cache）
 ├── mla.py         # MultiHeadLatentAttention 完整实现（低秩 latent + decoupled RoPE）
+├── mtp.py         # MTPHead 多 token 预测头 + deepseek_mtp_loss（V3 §2.5.1，2026-10-24）
 └── __init__.py
 ```
 
@@ -25,41 +27,38 @@ models/deepseek/
 5. Cache 协议与 Qwen3 一致：`forward(x, cache)`，`KVCache` 每层存 `(c_kv, k_rope)`；
    增量解码与整段前向逐 token 一致（回归测试覆盖）。
 
+## MTP 实现要点（`mtp.py`，2026-10-24）
+
+1. `MTPHead`：`RMSNorm(2d)` 归一化 concat[h_prev, embed(x)] → `Linear(2d→d)` 投影 →
+   复用 `DeepSeekBlock` → 共享主模型的 `final_norm` / `out_head`（论文共享设计）。
+2. `forward(input_ids, h_prev, start_pos, cache)` 返回 `(logits, h_new)`，
+   `h_new` 供下一深度 MTP 级联；cache/start_pos 语义与 `DeepSeekBlock` 一致。
+3. `DeepSeekModel.attach_mtp(n_mtp)` 构建共享参数的 `ModuleList`，不改变 forward 签名。
+4. 测试：`tests/unit/test_mtp.py`（形状、loss 反传、共享对象同一性、参数去重、cache 两段前向）。
+
 ## 与 V3 的差距（尚未覆盖）
 
 1. **DeepSeekMoE**：shared expert + routed experts + 无辅助损失负载均衡（扩展点：`layers/moe.py`）。
-2. **Multi-Token Prediction（MTP）**：训练时多 token 预测头（V3 引入）。
-3. **权重加载与配置**：V3/R1 的 HuggingFace 权重映射、tokenizer。
-4. MLA 的 weight-absorption 推断优化与 serving 集成。
+2. **权重加载与配置**：V3/R1 的 HuggingFace 权重映射、tokenizer。
+3. MLA 的 weight-absorption 推断优化与 serving 集成。
+4. MTP 与训练循环的完整整合（当前提供模块与损失，训练编排待接线）。
 
 ## 当前项目中与 DeepSeek 相关的内容
 
 | 位置 | 内容 | 是否归入本目录 | 说明 |
 |---|---|---|---|
-| `models/deepseek/model.py` | 原 `todo/other/architectures/deepseek/model.py` 的空壳 | ✅ 已迁入 | 改为带说明的 `DeepSeekModel` 占位 |
-| `layers/attention.py::MultiHeadLatentAttention` | MLA 空类 | ✅ 已迁入 `mla.py` | 从共享 attention 中移出，避免 DeepSeek 专属逻辑污染通用层 |
-| `layers/moe.py` | SparseMoE / MoE FeedForward，注释引用 DeepSeek MoE | ❌ 保留共享 | DeepSeekMoE 的 shared/routed expert 可在此基础上扩展，但通用 MoE 仍服务 Qwen3 等模型 |
+| `models/deepseek/model.py` | `DeepSeekModel` 组装 | ✅ 已迁入 | MLA + SwiGLU，支持 KV cache |
+| `models/deepseek/mla.py` | MLA 完整实现 | ✅ 已迁入 | 从共享 attention 中移出，避免 DeepSeek 专属逻辑污染通用层 |
+| `layers/moe.py` | SparseMoE / MoE FeedForward | ❌ 保留共享 | DeepSeekMoE 可在此基础上扩展，但通用 MoE 仍服务 Qwen3 等模型 |
 | `post_training/peft/model_peft/deepseek_lora/` | DeepSeek-R1-Distill-Qwen-7B 的 LoRA SFT / 评测 | ❌ 留在后训练 | 它实际是 Qwen2 架构的蒸馏模型，不是 DeepSeek V3 架构 |
-| `docs/00-overview/architecture.md`、`README.md` | DeepSeek 架构索引/链接 | ❌ 文档 | 仅引用 |
-| `docs/30-inference/serving.md` | 提到 DeepSeek-V3 作为推断对象 | ❌ 文档 | 无代码 |
 
-## 尚未覆盖、需要补的内容
-
-DeepSeek V3/R1 的完整实现至少包含：
-
-1. **MLA**：Q/K/V 低秩压缩、decoupled RoPE、只缓存 latent。
-2. **DeepSeekMoE**：1 个 shared expert + 多个 routed experts，top-k 路由与负载均衡。
-3. **Multi-Token Prediction（MTP）**：训练时的多 token 预测头（V3 引入）。
-4. **RMSNorm + SwiGLU + RoPE**：可与 `layers/` 现有组件复用。
-5. **权重加载与配置**：V3/R1 的 HuggingFace 权重映射、tokenizer。
-6. **推断**：MLA 的 KV cache 与 `inference/` 的 serving 逻辑。
-
-## 实现顺序建议（已完成 1–3）
+## 实现顺序（已完成 1–4）
 
 1. ✅ 小配置实现 MLA，与 GQA/MHA 做数值/显存对比（`tests/unit/test_mla.py`）。
 2. ⬜ DeepSeekMoE：复用 `layers/moe.py`，扩展 shared expert 与 top-k 负载均衡。
 3. ✅ 组装 `DeepSeekModel`，随机输入前向/反向 + cache 生成跑通。
-4. ⬜ 权重加载与生成，最后补 MTP 训练。
+4. ✅ MTP 多 token 预测头（`mtp.py`，2026-10-24）。
+5. ⬜ 权重加载与生成。
 
 ## 参考
 

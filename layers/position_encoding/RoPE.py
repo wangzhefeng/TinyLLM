@@ -12,7 +12,13 @@
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
-__all__ = []
+__all__ = [
+    "yarn_attention_mscale",
+    "precompute_rope_params",
+    "compute_rope",
+    "compute_rope_with_pos_ids",
+    "RoPE",
+]
 
 # python libraries
 from pathlib import Path
@@ -194,14 +200,33 @@ def compute_rope_with_pos_ids(x, cos, sin, pos_ids):
     return x_rotated.to(dtype=x.dtype)
 
 
-# TODO
 class RoPE(nn.Module):
-    
-    def __init__(self):
+    """模块化 RoPE：预计算 cos/sin 注册为 buffer，forward 时应用旋转。
+
+    与函数式 ``precompute_rope_params`` + ``compute_rope`` 等价，
+    便于按 nn.Module 方式组装进模型；``rope_freq`` 透传 Llama-3
+    分段频率缩放配置。
+    """
+
+    def __init__(self, head_dim, theta_base = 10_000.0, context_length = 4096,
+                 rope_freq = None, dtype = torch.float32):
         super().__init__()
-    
-    def forward(self, x):
-        pass
+
+        cos, sin = precompute_rope_params(
+            head_dim = head_dim,
+            theta_base = theta_base,
+            context_length = context_length,
+            freq_config = rope_freq,
+            dtype = dtype,
+        )
+        self.register_buffer("cos", cos, persistent = False)
+        self.register_buffer("sin", sin, persistent = False)
+
+    def forward(self, x, offset = 0):
+        return compute_rope(x, self.cos, self.sin, offset = offset)
+
+    def forward_with_pos_ids(self, x, pos_ids):
+        return compute_rope_with_pos_ids(x, self.cos, self.sin, pos_ids)
 
 
 

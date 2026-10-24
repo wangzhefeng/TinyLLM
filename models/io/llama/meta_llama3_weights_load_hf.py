@@ -138,7 +138,9 @@ def load_weights_into_llama(model, params, param_config):
     if "lm_head.weight" in params.keys():
         model.out_head.weight = assign(model.out_head.weight, params["lm_head.weight"], "lm_head.weight")
     else:
-        model.out_head.weight = assign(model.out_head.weight, params["model.embed_tokens.weight"], "model.embed_tokens.weight")
+        # 官方 tied 权重（如 Llama 3.2 1B）：out_head 与 tok_embed 真共享
+        # （tok_embed 已在上方加载完成；直接引用而非复制，保持参数共享）
+        model.out_head.weight = model.tok_embed.weight
         print("Model uses weight tying")
 
     return model

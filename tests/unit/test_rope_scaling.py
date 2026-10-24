@@ -55,5 +55,41 @@ class TestYaRN(unittest.TestCase):
         self.assertAlmostEqual(yarn_attention_mscale(1.0), 1.0, places=6)
 
 
+class TestRoPEModule(unittest.TestCase):
+    def test_module_matches_functional(self):
+        """模块化 RoPE 与函数式 precompute + compute 输出一致。"""
+        from layers.position_encoding.RoPE import (
+            RoPE,
+            compute_rope_with_pos_ids,
+        )
+
+        torch.manual_seed(0)
+        head_dim, L = 32, 128
+        module = RoPE(head_dim=head_dim, theta_base=10_000.0, context_length=L)
+        cos, sin = precompute_rope_params(head_dim, context_length=L)
+        x = torch.randn(1, 4, 16, head_dim)
+        torch.testing.assert_close(module(x), compute_rope(x, cos, sin))
+        # 偏移应用（增量解码场景）
+        torch.testing.assert_close(module(x, offset=3), compute_rope(x, cos, sin, offset=3))
+        # pos_ids 版本（批量解码场景）
+        pos_ids = torch.arange(16).unsqueeze(0).expand(1, 16)
+        torch.testing.assert_close(
+            module.forward_with_pos_ids(x, pos_ids),
+            compute_rope_with_pos_ids(x, cos, sin, pos_ids),
+        )
+
+    def test_buffers_registered(self):
+        """cos/sin 注册为 buffer：随模块移动、不进入 state_dict 持久化。"""
+        from layers.position_encoding.RoPE import RoPE
+
+        module = RoPE(head_dim=16, context_length=32)
+        named = dict(module.named_buffers())
+        self.assertIn("cos", named)
+        self.assertIn("sin", named)
+        self.assertEqual(named["cos"].shape, (32, 16))
+        # persistent=False：不出现在 state_dict
+        self.assertNotIn("cos", module.state_dict())
+
+
 if __name__ == "__main__":
     unittest.main()

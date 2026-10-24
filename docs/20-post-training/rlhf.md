@@ -10,6 +10,7 @@
 | GRPO（RLVR 主线） | `post_training/rl/core.py` + `objectives.py` | ✅ from scratch（completion mask + clip + 可选 KL + 多 prompt 批处理） |
 | DPO | `post_training/preference/`（自研）+ `model_rlhf/grpo/*`（TRL 参考） | ✅ 自研可运行 |
 | PPO | `post_training/preference/model_rlhf/ppo/main.py` | ✅ from scratch（序列级 bandit：critic 价值基线 + clip + 可选 k3 KL；与 GRPO 对照——GRPO 用组归一化优势替代 critic） |
+| Reward Model（RLHF 一阶段） | `post_training/preference/rm/`（2026-10-24） | ✅ from scratch（价值头 + BT 成对损失） |
 
 ## DPO 要点（2026-10-21 修复后）
 
@@ -24,6 +25,19 @@
 - 也可用 `value_fn=` 注入外部 baseline（与 critic 互斥）。
 - 教学差异：同玩具任务下 PPO+常数基线的优势幅度（±0.5）弱于 GRPO 组归一化（±2），
   梯度信号更弱——对照实验见 tests/unit/test_ppo.py。
+
+## RM 要点（2026-10-24 新增，RLHF 一阶段）
+
+- `RewardModel`（`post_training/preference/rm/rm_head.py`）：causal LM backbone +
+  `v_head = Linear(embed_dim, 1)` 逐 token 标量 reward；序列得分取最后一个
+  非 pad token 位置（右 padding 约定，与 DPO collate 一致）；
+- `bradley_terry_loss`：`-log σ(r_chosen - r_rejected)`；`rm_pairwise_step`
+  封装单步成对训练（前向/反传/更新，返回 loss 与 reward margin）；
+- 数据复用 DPO 偏好对（`data_provider/dpo`）；训练编排见
+  `exp/exp_train_rm.py`；GPT-2 `forward` 新增 `output_hidden_states`
+  选项暴露 final hidden（默认行为不变）；
+- 训练后的 RM 可作为 PPO（`model_rlhf/ppo/main.py`）的 learned reward，
+  补全 SFT → RM → PPO 的完整 RLHF 三阶段。
 
 ## GRPO 参考
 

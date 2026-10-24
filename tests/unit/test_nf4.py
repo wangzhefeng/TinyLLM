@@ -7,6 +7,10 @@ from post_training.peft.layers.nf4 import (
     NF4_CODEBOOK,
     nf4_quantize,
     nf4_dequantize,
+    quantize_scales,
+    dequantize_scales,
+    nf4_double_quantize,
+    nf4_double_dequantize,
 )
 
 
@@ -82,6 +86,36 @@ class TestQuantizeRoundtrip(unittest.TestCase):
         orig_bytes = x.numel() * 4
         quant_bytes = idx.numel() * 1 + scales.numel() * 4
         self.assertLess(quant_bytes, orig_bytes)
+
+
+class TestDoubleQuantization(unittest.TestCase):
+    def test_scale_roundtrip(self):
+        """对 scales 的二次量化往返误差很小（uint8 + 组 absmax）。"""
+        torch.manual_seed(0)
+        scales = torch.rand(300) * 3.0
+        idx, gmax, n = quantize_scales(scales, group_size=64)
+        rec = dequantize_scales(idx, gmax, n, group_size=64)
+        rel = (scales - rec).norm() / scales.norm()
+        self.assertLess(float(rel), 0.01)
+
+    def test_double_quant_roundtrip_error_bounded(self):
+        """double quantization 后 NF4 往返误差仍然有界（比单次略差）。"""
+        torch.manual_seed(0)
+        x = torch.randn(64, 128)
+        idx, sidx, gmax, shape, bs, gs = nf4_double_quantize(x)
+        x_hat = nf4_double_dequantize(idx, sidx, gmax, shape, bs, gs)
+        rel_err = (x - x_hat).norm() / x.norm()
+        self.assertLess(float(rel_err), 0.13)
+        self.assertTrue(torch.isfinite(x_hat).all())
+
+    def test_storage_beats_single_quant(self):
+        """double quantization 存储量小于单次量化（≈4.127 < 4.5 bit/参数）。"""
+        x = torch.randn(4, 256)          # 1024 元素 -> 16 块
+        idx, scales, _, _ = nf4_quantize(x)
+        _, sidx, gmax, _, _, _ = nf4_double_quantize(x)
+        single_bytes = idx.numel() * 1 + scales.numel() * 4
+        double_bytes = idx.numel() * 1 + sidx.numel() * 1 + gmax.numel() * 4
+        self.assertLess(double_bytes, single_bytes)
 
 
 if __name__ == "__main__":

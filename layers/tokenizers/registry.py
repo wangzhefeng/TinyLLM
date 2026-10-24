@@ -16,6 +16,8 @@ def _factory(module: str, class_name: str) -> Callable:
 _TOKENIZERS = {
     "simple_custom": _factory("layers.tokenizers.simple_custom", "SimpleTokenizer"),
     "simple_bpe": _factory("layers.tokenizers.bpe.simple_bpe", "BPETokenizerSimple"),
+    # 从零 Unigram：返回未训练的实例，需再调用 train(corpus) 或 load(path)
+    "unigram": _factory("layers.tokenizers.unigram.unigram", "UnigramTokenizer"),
     "tiktoken_gpt2_bpe": _factory("layers.tokenizers.bpe.tiktoken_bpe", "TiktokenBPE"),
     "gpt2": _factory("layers.tokenizers.bpe.tiktoken_bpe", "TiktokenBPE"),
     "openai_gpt2_bpe": _factory("layers.tokenizers.bpe.openai_gpt2_bpe", "OpenaiGPT2BPE"),

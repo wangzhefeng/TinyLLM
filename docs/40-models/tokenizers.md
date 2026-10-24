@@ -26,9 +26,12 @@ qwen = choose_tokenizer("qwen3", tokenizer_file_path="/path/tokenizer.json")
 | 类型 | 实现 |
 |---|---|
 | 主链路 | tiktoken GPT-2、SentencePiece Llama2、tiktoken Llama3、Qwen3、Gemma3 |
-| 教学 | SimpleTokenizer、自研 BPE、OpenAI GPT-2 移植、HF 对照 |
+| 教学 | SimpleTokenizer、自研 BPE、自研 Unigram、OpenAI GPT-2 移植、HF 对照 |
 | 扩展 | `ExtendedTokenizer`、词表 padding、embedding resize |
-| 未完成 | `unigram/`，不属于可用能力 |
+
+自研 Unigram（`layers/tokenizers/unigram/unigram.py`，2026-10-24）：种子词表（字符 +
+高频子串）→ hard-EM 重估 → 按似然损失剪枝，Viterbi 切分 + unk 兜底，JSON save/load。
+注册名 `unigram` 返回未训练实例，需调用方 `train(corpus)` 或 `load(path)`。
 
 Qwen3 的 base/chat eos 通过 `base_model` 显式指定，不再根据文件名猜测。OpenAI 词表下载通过显式 `ensure_openai_gpt2_vocab()` 调用，Gemma 使用 `ensure_gemma_tokenizer()`；构造器不主动联网。
 
