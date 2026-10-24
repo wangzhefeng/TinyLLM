@@ -34,14 +34,14 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 # 测试代码 main 函数
 def main():
     # instruction data path
-    data_path="./dataset/finetune/instruction-example.json"
+    data_path="./dataset/finetuning/instruction-example.json"
 
     # load instruction data
     json_data = load_json_data(data_path)
 
     # openai client
     client = create_client()
-    
+
     # data process
     for i, entry in tqdm(enumerate(json_data), total=len(json_data)):
         text = entry["output"]

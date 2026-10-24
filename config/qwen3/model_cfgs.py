@@ -12,17 +12,9 @@
 # ***************************************************
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-import warnings
-warnings.filterwarnings("ignore")
 
 import torch
-
-from utils.args_tools import DotDict
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -144,9 +136,9 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
     else:
         raise ValueError(f"{CHOOSE_MODEL} is not supported.")
 
-    QWEN3_CONFIG = DotDict(QWEN3_CONFIG)
-    
-    return QWEN3_CONFIG
+    from config.base import ModelConfig
+
+    return ModelConfig.from_dict(QWEN3_CONFIG)
 
 
 

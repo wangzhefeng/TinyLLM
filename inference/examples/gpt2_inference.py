@@ -74,7 +74,7 @@ def gpt2_124M_model_inference_test(tokenizer, GPT2_124M_CONFIG, device, temperat
             temperature = temperature,
             top_k = top_k,
             eos_token_id = eos_id,
-            use_cache=False,  # GPT-2 注意力未实现 KV cache，不能用 use_cache=True
+            use_cache=False,  # 演示非缓存路径；GPT-2 已实现 KV cache，也可用 use_cache=True
         )
     else:
         # out = generate_simple(

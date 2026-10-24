@@ -7,7 +7,7 @@
 | 方法 | 实现 | 状态 |
 |---|---|---|
 | REINFORCE / with-baseline | `post_training/reasoning/training/reinforce.py` | ✅ from scratch |
-| GRPO（RLVR 主线） | `post_training/reasoning/training/reinforcement_learning.py` | ✅ from scratch（completion mask + clip + 可选 KL + 多 prompt 批处理） |
+| GRPO（RLVR 主线） | `post_training/rl/core.py` + `objectives.py` | ✅ from scratch（completion mask + clip + 可选 KL + 多 prompt 批处理） |
 | DPO | `post_training/preference/`（自研）+ `model_rlhf/grpo/*`（TRL 参考） | ✅ 自研可运行 |
 | PPO | `post_training/preference/model_rlhf/ppo/main.py` | ✅ from scratch（序列级 bandit：critic 价值基线 + clip + 可选 k3 KL；与 GRPO 对照——GRPO 用组归一化优势替代 critic） |
 

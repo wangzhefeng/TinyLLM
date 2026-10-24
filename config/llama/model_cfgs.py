@@ -12,13 +12,7 @@
 # ***************************************************
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-import warnings
-warnings.filterwarnings("ignore")
 
 import torch
 
@@ -91,6 +85,21 @@ LLAMA32_CONFIG_1B = {
 }
 
 
+
+
+def get_config(name="llama3_8b"):
+    from config.base import ModelConfig
+
+    configs = {
+        "llama2": LLAMA2_CONFIG_7B,
+        "llama3_8b": LLAMA3_CONFIG_8B,
+        "llama31_8b": LLAMA31_CONFIG_8B,
+        "llama32_1b": LLAMA32_CONFIG_1B,
+    }
+    key = name.lower()
+    if key not in configs:
+        raise ValueError(f"Unknown Llama config '{name}'; choose from {sorted(configs)}")
+    return ModelConfig.from_dict(configs[key])
 
 
 # 测试代码 main 函数

@@ -40,7 +40,7 @@ dataset/
 | `post_training/sft/data_provider/text_clf/data_config.py` | `dataset/finetuning/sms_spam_collection[.zip]` |
 | `post_training/peft/model_peft/deepseek_lora/` | `dataset/finetuning/medical/AI-ModelScope/...` |
 | `post_training/preference/model_rlhf/grpo/qwen_gsm8k_grpo/` | `dataset/finetuning/math/gsm8k/...` |
-| `post_training/reasoning/evaluation/.../math_verifiers.py` | `dataset/evaluation/math500/math500_test.json` |
+| `inference/evaluation/benchmarks/math_verifiers.py` | `dataset/evaluation/math500/math500_test.json` |
 
 ## 说明
 

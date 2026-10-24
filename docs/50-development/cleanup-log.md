@@ -123,8 +123,8 @@
 - `post_training/sft/run_sft.py` 的 `TrlParser` 用法与当前 `trl` 版本不兼容（`tokenizer=` 已弃用改 `processing_class`）。
 - `post_training/peft/.../lora_dora_from_scratch.py` 引用不存在的 `data_provider.lora`（四重断链，整体不可运行）。
 - `post_training/peft/run_peft.py` 是教程拼接（TrainingArguments/Trainer 未导入、数据集未定义），会尝试下载 HF 模型，离线/受限环境不可直接运行。
-- `post_training/preference/model_rlhf/ppo/` 仍为空壳（docs 中已如实标注未实现）。
-- `post_training/peft/model_peft/prompt_tuning/` 仍为空壳（仅 import 无实现）。
+- `post_training/preference/model_rlhf/grpo/` 的部分 TRL 参考脚本仍需按各自依赖与 import 方式修复，不属于默认主链路。
+- `post_training/peft/model_peft/` 的部分外部框架实验需要单独依赖和数据，不属于默认可运行入口。
 
 ## 5. 验证
 
@@ -141,3 +141,10 @@ python scripts/check_docs.py              # OK
 - 空壳补全：`preference/model_rlhf/ppo/main.py`（最小 PPO）、`peft/model_peft/prompt_tuning/main.py`（自研 SoftPromptGPT）、新增 `peft/layers/nf4.py`（NF4 量化原语）；
 - 端到端验证：`run_gpt_clf_sft.py` 全链路冒烟通过（130/19/38 批次与书一致，随机权重 30 步 loss 0.699→0.663、valid acc 58.3%>50%、checkpoint 保存 198 keys）；
   HF 权重下载（548MB）在本会话网络下反复 IncompleteRead/停滞（hf-mirror 仅 ~60KB/s），真实权重训练未能在会话内完成——属网络环境问题，代码链路已验证到下载前一步。
+
+- 2026-10-24 四阶段重构：新增 `training/` 与 `models/base.py`，统一 cache/config/tokenizer/checkpoint 契约。
+  - 权重实现 `inference/loaders/` → `models/io/`；reasoning 推断/评测 → `inference/strategies/`、`inference/evaluation/`。
+  - GRPO 核 → `post_training/rl/`，PPO/GRPO 共用 objective；chat template → `layers/tokenizers/chat.py`；旧路径保留 shim。
+  - 修复 DDP、nano_vllm RoPE/config、SFT/DPO 数据与评估、MoE eval、生成 facade；预训练/SFT/DPO 共用 `training.Trainer`。
+  - 删除危险历史 `scripts/update_codes.sh`；`scripts/config.json` → `config.example.json`；移除 Flask 并增加 CI。
+  - 新增 tiny 预训练 resume、SFT、DPO 集成测试及模块契约测试；CUDA/NCCL 与真实外部服务不在离线验收范围。

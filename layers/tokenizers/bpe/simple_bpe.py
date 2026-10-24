@@ -18,7 +18,6 @@ from pathlib import Path
 import json
 from typing import List
 from collections import Counter, deque
-from functools import lru_cache
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -357,7 +356,6 @@ class BPETokenizerSimple:
                 new_id = merge["new_id"]
                 self.bpe_merges[pair] = new_id
 
-    @lru_cache(maxsize=None)
     def get_special_token_id(self, token):
         return self.inverse_vocab.get(token, None)
 

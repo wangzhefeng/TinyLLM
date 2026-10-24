@@ -58,9 +58,11 @@ class RotaryEmbedding(nn.Module):
         t = torch.arange(max_position_embeddings, dtype=torch.float32)
         # freqs[pos, i] = pos * inv_freq[i], shape [max_position, rotary_dim / 2]
         freqs = torch.outer(t, inv_freq)
-        # half-split 旋转需要把 cos/sin 拼接为完整维度: [max_position, rotary_dim]
-        cos = freqs.cos().repeat_interleave(2, dim=-1)
-        sin = freqs.sin().repeat_interleave(2, dim=-1)
+        # half-split 布局(与 HF Qwen3、layers/position_encoding/RoPE.py 一致):
+        # 维度 i 与 i + rotary_dim/2 配对，共用频率 freqs[i]，
+        # 因此 cos/sin 按 [f, f] 拼接(而非交错 repeat_interleave)
+        cos = torch.cat([freqs.cos(), freqs.cos()], dim=-1)
+        sin = torch.cat([freqs.sin(), freqs.sin()], dim=-1)
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
 

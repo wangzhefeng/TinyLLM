@@ -36,6 +36,15 @@ from layers.normalization.rms_norm import (
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
+def _expand_grouped_kv(x, group_size, n_heads):
+    if group_size == 1:
+        return x
+    batch_size, num_groups, seq_len, head_dim = x.shape
+    return x[:, :, None, :, :].expand(
+        batch_size, num_groups, group_size, seq_len, head_dim
+    ).reshape(batch_size, n_heads, seq_len, head_dim)
+
+
 class CausalAttention(nn.Module):
     """
     Causal Self Attention（单头，因果掩码）
@@ -124,7 +133,7 @@ class MultiHeadAttention(nn.Module):
         self.register_buffer("cache_v", None, persistent=False)
         # self.ptr_current_pos = 0
     
-    def forward(self, x, use_cache=False):
+    def forward(self, x, use_cache=False, cache=None, attention_mask=None, return_cache=False):
         # shape: [batch_size, num_tokens, d_model]
         batch_size, num_tokens, embed_dim = x.shape
         # Query, Key, Value
@@ -143,20 +152,26 @@ class MultiHeadAttention(nn.Module):
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
         # KV-Cache
-        if use_cache:
+        new_cache = None
+        if return_cache:
+            if cache is not None:
+                previous_k, previous_v = cache
+                keys = torch.cat((previous_k, keys), dim=2)
+                values = torch.cat((previous_v, values), dim=2)
+            new_cache = (keys, values)
+        elif use_cache:
             if self.cache_k is None or self.cache_k.size(0) != batch_size:
                 self.cache_k = torch.zeros(batch_size, self.n_heads, self.window_size, self.head_dim, device=x.device, dtype=x.dtype)
                 self.cache_v = torch.zeros_like(self.cache_k)
                 self.ptr_cur = 0  # pointer to next free slot
-            
+
             # if incoming chunk would overflow discard oldest tokens
             if self.ptr_cur + num_tokens > self.window_size:
                 overflow = self.ptr_cur + num_tokens - self.window_size
-                # shift everything left by 'overflow' (cheap view-copy)
                 self.cache_k[:, :, :-overflow, :] = self.cache_k[:, :, overflow:, :].clone()
                 self.cache_v[:, :, :-overflow, :] = self.cache_v[:, :, overflow:, :].clone()
                 self.ptr_cur -= overflow  # pointer after shift
-            
+
             self.cache_k[:, :, self.ptr_cur:(self.ptr_cur + num_tokens), :] = keys
             self.cache_v[:, :, self.ptr_cur:(self.ptr_cur + num_tokens), :] = values
             self.ptr_cur += num_tokens
@@ -164,7 +179,6 @@ class MultiHeadAttention(nn.Module):
             keys = self.cache_k[:, :, :self.ptr_cur, :]
             values = self.cache_v[:, :, :self.ptr_cur, :]
         else:
-            keys, values = keys, values
             self.ptr_cur = 0  # keep pointer sane if you interleave modes
         # ------------------------------
         # scaled dot-product attention(aka self-attention) with a causal mask
@@ -193,24 +207,20 @@ class MultiHeadAttention(nn.Module):
             col_idx = torch.arange(K, device=x.device).unsqueeze(0)           # (1, K)
             causal_mask = row_idx + offset < col_idx                          # True where j > i+offset
         
-        # use the mask to fill attention scores, [batch_size, n_heads, num_tokens, num_tokens]
-        attn_scores.masked_fill_(causal_mask.unsqueeze(0).unsqueeze(0), -torch.inf)
-        # ------------------------------
-        # attention weights
-        # ------------------------------
-        # [batch_size, n_heads, num_tokens, num_tokens]
+        causal_mask = causal_mask.unsqueeze(0).unsqueeze(0)
+        if attention_mask is not None:
+            if attention_mask.ndim == 2:
+                attention_mask = attention_mask[:, None, None, :]
+            causal_mask = causal_mask | attention_mask
+        attn_scores = attn_scores.masked_fill(causal_mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
-        # ------------------------------
-        # context vector
-        # ------------------------------
-        # shape:[_, _, num_tokens, num_tokens]@[_, _, num_tokens, head_dim]->[batch_size, num_tokens, n_heads, head_dim]
         context_vec = (attn_weights @ values).transpose(1, 2)
-        # combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)
-        # optional projection
         context_vec = self.out_proj(context_vec)
 
+        if return_cache:
+            return context_vec, new_cache
         return context_vec
     
     def reset_cache(self):
@@ -718,8 +728,8 @@ class GroupedQueryAttention(nn.Module):
 
         # Expand keys and values to match the number of heads
         # Shape: (batch_size, n_heads, num_tokens, head_dim)
-        keys = keys.repeat_interleave(self.group_size, dim=1)  # Shape: (batch_size, n_heads, num_tokens, head_dim)
-        values = values.repeat_interleave(self.group_size, dim=1)  # Shape: (batch_size, n_heads, num_tokens, head_dim)
+        keys = _expand_grouped_kv(keys, self.group_size, self.n_heads)  # Shape: (batch_size, n_heads, num_tokens, head_dim)
+        values = _expand_grouped_kv(values, self.group_size, self.n_heads)  # Shape: (batch_size, n_heads, num_tokens, head_dim)
         # For example, before repeat_interleave along dim=1 (query groups):
         #   [K1, K2]
         # After repeat_interleave (each query group is repeated group_size times):
@@ -806,8 +816,8 @@ class GroupedQueryAttention_Qwen3(nn.Module):
             keys, values = keys_new, values_new
             next_cache = (keys, values)
         # Expand K and V to match number of heads
-        keys = keys.repeat_interleave(self.group_size, dim=1)
-        values = values.repeat_interleave(self.group_size, dim=1)
+        keys = _expand_grouped_kv(keys, self.group_size, self.n_heads)
+        values = _expand_grouped_kv(values, self.group_size, self.n_heads)
         # Attention
         attn_scores = queries @ keys.transpose(2, 3)
         attn_scores = attn_scores.masked_fill(mask, -torch.inf)
@@ -833,34 +843,7 @@ def sdpa_exact():
             yield
 
 
-class GroupedQueryAttention_Qwen3_optimized(nn.Module):
-
-    def __init__(self, d_model, n_heads, num_kv_groups, head_dim=None, qk_norm=False, dtype=None):
-        super().__init__()
-
-        assert n_heads % num_kv_groups == 0, "n_heads must be divisible by num_kv_groups"
-        if head_dim is None:
-            assert d_model % n_heads == 0, "`d_model` must be divisible by `n_heads` if `head_dim` is not set"
-            head_dim = d_model // n_heads
-        
-        self.n_heads = n_heads
-        self.num_kv_groups = num_kv_groups
-        self.head_dim = head_dim
-        self.d_out = n_heads * head_dim
-        self.group_size = n_heads // num_kv_groups
-        # query, key, value weights
-        self.W_key = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
-        self.W_value = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
-        self.W_query = nn.Linear(d_model, self.d_out, bias=False, dtype=dtype)
-        # out projection
-        self.out_proj = nn.Linear(self.d_out, d_model, bias=False, dtype=dtype)
-        # RMSNorm
-        if qk_norm:
-            self.q_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
-            self.k_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
-        else:
-            self.q_norm = None
-            self.k_norm = None
+class GroupedQueryAttention_Qwen3_optimized(GroupedQueryAttention_Qwen3):
 
     def forward(self, x, mask, cos, sin, start_pos=0, cache=None, layer_idx=None, exact=False):
         batch_size, num_tokens, embed_dim = x.shape
@@ -928,34 +911,7 @@ class GroupedQueryAttention_Qwen3_optimized(nn.Module):
         return projection
 
 
-class GroupedQueryAttention_Qwen3_batched(nn.Module):
-
-    def __init__(self, d_model, n_heads, num_kv_groups, head_dim=None, qk_norm=False, dtype=None):
-        super().__init__()
-
-        assert n_heads % num_kv_groups == 0, "n_heads must be divisible by num_kv_groups"
-        if head_dim is None:
-            assert d_model % n_heads == 0, "`d_model` must be divisible by `n_heads` if `head_dim` is not set"
-            head_dim = d_model // n_heads
-        
-        self.n_heads = n_heads
-        self.num_kv_groups = num_kv_groups
-        self.head_dim = head_dim
-        self.d_out = n_heads * head_dim
-        self.group_size = n_heads // num_kv_groups
-        # query, key, value weights
-        self.W_key = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
-        self.W_value = nn.Linear(d_model, num_kv_groups * head_dim, bias=False, dtype=dtype)
-        self.W_query = nn.Linear(d_model, self.d_out, bias=False, dtype=dtype)
-        # out projection
-        self.out_proj = nn.Linear(self.d_out, d_model, bias=False, dtype=dtype)
-        # RMSNorm
-        if qk_norm:
-            self.q_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
-            self.k_norm = RMSNorm_Qwen3(head_dim, eps=1e-6)
-        else:
-            self.q_norm = None
-            self.k_norm = None
+class GroupedQueryAttention_Qwen3_batched(GroupedQueryAttention_Qwen3):
 
     def forward(self, x, mask, cos, sin, cache=None, pos_ids=None):
         batch_size, num_tokens, embed_dim = x.shape
@@ -982,8 +938,8 @@ class GroupedQueryAttention_Qwen3_batched(nn.Module):
             keys, values = keys_new, values_new
             next_cache = (keys, values)
         # Expand K and V to match number of heads
-        keys = keys.repeat_interleave(self.group_size, dim=1)
-        values = values.repeat_interleave(self.group_size, dim=1)
+        keys = _expand_grouped_kv(keys, self.group_size, self.n_heads)
+        values = _expand_grouped_kv(values, self.group_size, self.n_heads)
 
         # Attention scores
         attn_scores = torch.matmul(queries.to(torch.float32), keys.transpose(2, 3).to(torch.float32))
@@ -1064,8 +1020,8 @@ class GroupedQueryAttention_Gemma3(nn.Module):
         queries = compute_rope(queries, cos, sin)
         keys = compute_rope(keys, cos, sin)
         # Expand K and V to match number of heads
-        keys = keys.repeat_interleave(self.group_size, dim=1)
-        values = values.repeat_interleave(self.group_size, dim=1)
+        keys = _expand_grouped_kv(keys, self.group_size, self.n_heads)
+        values = _expand_grouped_kv(values, self.group_size, self.n_heads)
         # Scale queries
         queries = queries * self.scaling
         # Attention

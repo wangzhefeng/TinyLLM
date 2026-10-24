@@ -30,12 +30,13 @@ from models.gpt2.gpt2_124M import Model
 from post_training.sft.layers.clf_head import finetune_model
 # other model
 from layers.tokenizers.tokenization import choose_tokenizer
-from inference.loaders.gpt2.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
-from inference.loaders.gpt2.load_pretrained_weights import load_pretrained_model
+from models.io.gpt2.load_gpt2_pretrained_weights import model_with_gpt2_weights, gpt2_model_configs
+from models.io.gpt2.load_pretrained_weights import load_pretrained_model
 # training
 from utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.calc_accuracy import calc_accuracy_loader, calc_final_accuracy
 from utils.optimizer import select_optimizer
+from training.trainer import Trainer
 from utils.plot_losses import plot_values_classifier
 # utils
 from utils.device import device_setting
@@ -178,10 +179,17 @@ class ModelFinetuningClassifier:
         self.model.to(self.device)
         # optimizer
         self.optimizer = select_optimizer(
-            self.model, 
-            self.args.learning_rate, 
+            self.model,
+            self.args.learning_rate,
             self.args.weight_decay
         )
+        trainer = Trainer(self.model, self.optimizer, self.device, grad_clip=0.0)
+
+        def train_loss_fn(batch):
+            input_ids, targets = batch
+            return calc_loss_batch(
+                self.args.task_name, input_ids, targets, self.model, device=self.device
+            )
 
         # checkpoint path
         best_model_path = self._get_model_path(setting)
@@ -202,21 +210,13 @@ class ModelFinetuningClassifier:
             # Set model to training mode
             self.model.train()
             # batch training
-            for input_batch, target_batch in train_loader:
-                # Reset loss gradients from previous batch iteration
-                self.optimizer.zero_grad()
-                # Calculate loss
-                loss = calc_loss_batch(
-                    self.args.task_name, 
-                    input_batch, 
-                    target_batch, 
-                    self.model, 
-                    self.device
+            for batch_idx, (input_batch, target_batch) in enumerate(train_loader):
+                trainer.train_step(
+                    (input_batch, target_batch),
+                    train_loss_fn,
+                    batch_idx=batch_idx,
+                    num_batches=len(train_loader),
                 )
-                # Calculate loss gradients
-                loss.backward()
-                # Update model weights using loss gradients
-                self.optimizer.step()
                 # track examples instead of tokens
                 examples_seen += input_batch.shape[0]
                 global_step += 1

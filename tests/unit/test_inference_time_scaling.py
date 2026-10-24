@@ -4,11 +4,11 @@ from types import SimpleNamespace
 
 import torch
 
-from post_training.reasoning.inference.advance_text_generation import (
+from inference.strategies.advance_text_generation import (
     generate_with_self_refinement,
     refine_until_stable,
 )
-from post_training.reasoning.inference.voting_and_verification import (
+from inference.strategies.voting_and_verification import (
     best_of_n,
     extract_boxed_answer,
     self_consistency,
@@ -132,14 +132,14 @@ class TestMajorityVoteTieRule(unittest.TestCase):
     """平票规则：并列最高票时取首次出现最早的答案（不再静默依赖排序行为）。"""
 
     def test_tie_picks_earliest_occurrence(self):
-        from post_training.reasoning.inference.voting_and_verification import (
+        from inference.strategies.voting_and_verification import (
             _majority_vote,
         )
         self.assertEqual(_majority_vote(["b", "a", "b", "a"]), "b")
         self.assertEqual(_majority_vote(["a", "b", "b", "a"]), "a")
 
     def test_clear_majority(self):
-        from post_training.reasoning.inference.voting_and_verification import (
+        from inference.strategies.voting_and_verification import (
             _majority_vote,
         )
         self.assertEqual(_majority_vote(["x", "x", "y"]), "x")
@@ -165,7 +165,7 @@ class TestMathVerifierNormalize(unittest.TestCase):
     """normalize_text 补齐原书两段逻辑：Unicode 上标与多项选择标签剥离。"""
 
     def test_superscript_conversion(self):
-        from post_training.reasoning.evaluation.benchmark_based_eval.math_verifiers import (
+        from inference.evaluation.benchmarks.math_verifiers import (
             normalize_text,
         )
         self.assertEqual(normalize_text("2²"), "2**2")
@@ -173,14 +173,14 @@ class TestMathVerifierNormalize(unittest.TestCase):
         self.assertEqual(normalize_text("10⁻¹"), "10**-1")
 
     def test_multiple_choice_label_strip(self):
-        from post_training.reasoning.evaluation.benchmark_based_eval.math_verifiers import (
+        from inference.evaluation.benchmarks.math_verifiers import (
             normalize_text,
         )
         self.assertEqual(normalize_text("B. 7"), "7")
         self.assertEqual(normalize_text("c: 2"), "2")
 
     def test_grade_answer_with_new_normalization(self):
-        from post_training.reasoning.evaluation.benchmark_based_eval.math_verifiers import (
+        from inference.evaluation.benchmarks.math_verifiers import (
             grade_answer,
         )
         self.assertTrue(grade_answer("B. 7", "7"))
@@ -230,7 +230,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
 
     def test_predict_choice_logprob_favors_rigged_token(self):
         """chr('B')=66, 66%32=2：把 favored token 钉在 id=2 应稳定预测 B。"""
-        from post_training.reasoning.evaluation.benchmark_based_eval.multiple_choice import (
+        from inference.evaluation.benchmarks.multiple_choice import (
             predict_choice_logprob,
         )
         model = _RiggedLM(vocab_size=32, favored_token_id=2)
@@ -247,7 +247,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
 
     def test_first_new_token_id_alignment(self):
         """continuation 产生的新 token 需经公共前缀对齐（BPE 合并差异处理）。"""
-        from post_training.reasoning.evaluation.benchmark_based_eval.multiple_choice import (
+        from inference.evaluation.benchmarks.multiple_choice import (
             common_prefix_len,
             first_new_token_id,
         )
@@ -260,7 +260,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
 
     def test_evaluate_mmlu_int_and_str_answer(self):
         """评测循环：answer 兼容 int（映射 ABCD）与 str；mock 模型可预测。"""
-        from post_training.reasoning.evaluation.benchmark_based_eval.multiple_choice import (
+        from inference.evaluation.benchmarks.multiple_choice import (
             evaluate_mmlu,
             predict_choice_logprob,
         )
@@ -278,7 +278,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
         self.assertEqual(results["accuracy"], 1.0)
 
     def test_evaluate_mmlu_max_examples(self):
-        from post_training.reasoning.evaluation.benchmark_based_eval.multiple_choice import (
+        from inference.evaluation.benchmarks.multiple_choice import (
             evaluate_mmlu,
         )
         model = _RiggedLM(vocab_size=32)
@@ -292,7 +292,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
         self.assertEqual(results["num_examples"], 3)
 
     def test_random_guess_baseline(self):
-        from post_training.reasoning.evaluation.benchmark_based_eval.multiple_choice import (
+        from inference.evaluation.benchmarks.multiple_choice import (
             random_guess_baseline,
         )
         b = random_guess_baseline(num_questions=500, num_choices=4, seed=123)
@@ -305,7 +305,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
         self.assertEqual(b["empirical"], b2["empirical"])
 
     def test_gold_letter(self):
-        from post_training.reasoning.evaluation.benchmark_based_eval.multiple_choice import (
+        from inference.evaluation.benchmarks.multiple_choice import (
             gold_letter,
         )
         self.assertEqual(gold_letter(0), "A")

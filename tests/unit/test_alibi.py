@@ -58,6 +58,31 @@ class TestAlibiBias(unittest.TestCase):
         bias8 = build_alibi_bias(2, 8)
         torch.testing.assert_close(bias8[..., :4, :4], bias4)
 
+    def test_default_dtype_is_float32(self):
+        """不传 dtype 时保持历史行为：float32。"""
+        bias = build_alibi_bias(2, 4)
+        self.assertEqual(bias.dtype, torch.float32)
+
+    def test_explicit_dtype(self):
+        """dtype 参数生效，数值与 float32 版一致（含 -inf 的未来位置）。"""
+        bias32 = build_alibi_bias(2, 4)
+        bias16 = build_alibi_bias(2, 4, dtype=torch.float16)
+        self.assertEqual(bias16.dtype, torch.float16)
+        self.assertEqual(bias16.shape, bias32.shape)
+        torch.testing.assert_close(
+            bias16, bias32.to(torch.float16), rtol=1e-3, atol=1e-3
+        )
+
+    def test_dtype_usable_with_sdpa(self):
+        """float16 bias 可与 float16 q/k/v 一起用于 SDPA。"""
+        q = torch.randn(1, 2, 4, 8, dtype=torch.float16)
+        k = torch.randn(1, 2, 4, 8, dtype=torch.float16)
+        v = torch.randn(1, 2, 4, 8, dtype=torch.float16)
+        bias = build_alibi_bias(2, 4, dtype=torch.float16)
+        out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=bias)
+        self.assertEqual(out.dtype, torch.float16)
+        self.assertTrue(torch.isfinite(out).all())
+
 
 if __name__ == "__main__":
     unittest.main()

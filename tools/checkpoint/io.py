@@ -39,13 +39,25 @@ def save_checkpoint(
     The file is written to a temporary path first, then atomically replaced.
     """
     path = Path(path).expanduser()
-    payload: dict[str, Any] = {"step": int(step), "extra": extra or {}}
+    metadata = extra or {}
+    payload: dict[str, Any] = {
+        "step": int(step),
+        "epoch": int(metadata.get("epoch", 0)),
+        "config": metadata.get("config"),
+        "extra": metadata,
+    }
     if model is not None:
-        payload["model_state_dict"] = model.state_dict()
+        state = model.state_dict()
+        payload["model"] = state
+        payload["model_state_dict"] = state
     if optimizer is not None:
-        payload["optimizer_state_dict"] = optimizer.state_dict()
+        state = optimizer.state_dict()
+        payload["optimizer"] = state
+        payload["optimizer_state_dict"] = state
     if scheduler is not None:
-        payload["scheduler_state_dict"] = scheduler.state_dict()
+        state = scheduler.state_dict()
+        payload["scheduler"] = state
+        payload["scheduler_state_dict"] = state
     _atomic_torch_save(payload, path)
     return path
 
@@ -75,13 +87,13 @@ def load_checkpoint(
         model.load_state_dict(state, strict=strict)
 
     if optimizer is not None:
-        state = payload.get("optimizer_state_dict")
+        state = payload.get("optimizer_state_dict", payload.get("optimizer", payload.get("optmizer")))
         if state is None:
             raise KeyError(f"checkpoint has no optimizer state: {path}")
         optimizer.load_state_dict(state)
 
     if scheduler is not None:
-        state = payload.get("scheduler_state_dict")
+        state = payload.get("scheduler_state_dict", payload.get("scheduler"))
         if state is None:
             raise KeyError(f"checkpoint has no scheduler state: {path}")
         scheduler.load_state_dict(state)

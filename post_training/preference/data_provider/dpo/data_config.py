@@ -26,10 +26,10 @@ from utils.log_util import logger
 LOGGING_LABEL = Path(__file__).name[:-3]
 
 
-instruction_data_path = "./dataset/finetune/instruction-data.json"
+instruction_data_path = "./dataset/finetuning/instruction-data.json"
 logger.info(f"instruction_data_path: {instruction_data_path}")
 
-instruction_data_with_preference_path = "./dataset/finetune/instruction-preference-data.json"
+instruction_data_with_preference_path = "./dataset/finetuning/instruction-preference-data.json"
 logger.info(f"instruction_data_with_preference_path: {instruction_data_with_preference_path}")
 
 

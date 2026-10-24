@@ -61,16 +61,22 @@ def _download_tokenzier(model_path):
 
 
 class Llama27bTokenizer:
-    
-    def __init__(self):
-        # model path
-        model_path = "downloaded_models/llama_model/Llama-2-7b/tokenizer.model"
-        assert os.path.isfile(model_path), f"Model file {model_path} not found"
-        # sp tokenizer
+
+    def __init__(self, tokenizer_file_path=None):
+        if tokenizer_file_path is None:
+            tokenizer_file_path = Path(__file__).resolve().parents[4] / "downloaded_models/llama_model/Llama-2-7b/tokenizer.model"
+        model_path = Path(tokenizer_file_path).expanduser().resolve()
+        if not model_path.is_file():
+            raise FileNotFoundError(f"Model file {model_path} not found")
         sp = spm.SentencePieceProcessor()
-        sp.load(model_path)
+        sp.load(str(model_path))
         self.tokenizer = sp
-    
+        self.n_vocab = self.tokenizer.vocab_size()
+        self.eos_token_id = self.tokenizer.eos_id()
+        self.pad_token_id = self.tokenizer.pad_id()
+        if self.pad_token_id < 0:
+            self.pad_token_id = self.eos_token_id
+
     def encode(self, text):
         return self.tokenizer.encode_as_ids(text)
     

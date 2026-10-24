@@ -47,17 +47,17 @@ def args_parse():
                         help="task name")
     parser.add_argument("--model_name", type=str, required=False,
                         default="gpt_instruction_sft",
-                        help="model name") 
+                        help="model name")
     # data params
     parser.add_argument("--data_path", type=str, required=False,
-                        default="./dataset/finetune/instruction-data-with-response.json", 
+                        default="./dataset/finetuning/instruction-data-with-response.json",
                         help="data path")
     parser.add_argument("--train_ratio", type=float, required=False,
                         default=0.85,
                         help="train data ratio")
     parser.add_argument("--test_ratio", type=float, required=False,
                         default=0.10,
-                        help="test data ratio") 
+                        help="test data ratio")
     # model params
     parser.add_argument("--inference_server", type=str, required=False,
                         default="ollama",
@@ -71,7 +71,7 @@ def args_parse():
     parser.add_argument("--num_ctx", type=int, required=False,
                         default=2048,
                         help="number of context")
-    parser.add_argument("--iters", type=int, required=False, default=10, 
+    parser.add_argument("--iters", type=int, required=False, default=10,
                         help="number of iterations")
     parser.add_argument("--seed", type=int, required=False,
                         default=123,
@@ -81,13 +81,13 @@ def args_parse():
                         default=0,
                         help="num_workers")
     parser.add_argument("--use_gpu", type=int, required=False,
-                        default=1, 
+                        default=1,
                         help="user gpu")
     parser.add_argument("--use_multi_gpu", type=int, required=False,
-                        default=0, 
+                        default=0,
                         help="use multi gpu")
     parser.add_argument("--gpu_type", type=str, required=False,
-                        default="cuda", 
+                        default="cuda",
                         help="gpu type")
     parser.add_argument("--devices", type=str, required=False,
                         default="0,1,2,3,4,5,6,7",
@@ -111,7 +111,7 @@ def args_parse():
         args.gpu = args.devices
     elif args.use_gpu and not args.use_multi_gpu:
         args.gpu = args.device_ids[0]
-    
+
     logger.info(f"Args in experiment: \n{args}")
 
     return args
@@ -125,7 +125,7 @@ def run(args):
         Exp = ModelFinetuningInstructionFlowEvaluate
     else:
         Exp = ModelFinetuningInstructionFlowEvaluate
-    
+
     # setting record of experiments
     setting = f"{args.task_name}_{args.model_name}_{Path(args.data_path).name[:-5]}"
     # ------------------------------

@@ -145,14 +145,23 @@ class Encoder:
         return text
 
 
-def get_encoder(model_name="gpt2_model", model_dir=Path("./layers/tokenizers/models")):
-    # model files path
-    model_file_path = model_dir.joinpath(model_name)
-    
-    # model file download
+def ensure_openai_gpt2_vocab(model_file_path):
     from layers.tokenizers.bpe.vocab_download import download_vocab
-    download_vocab(model_file_path=model_file_path, model_name="117M")
-    
+
+    download_vocab(model_file_path=Path(model_file_path), model_name="117M")
+
+
+def get_encoder(model_name="gpt2_model", model_dir=None, download=False):
+    if model_dir is None:
+        model_dir = Path(__file__).resolve().parents[2] / "models"
+    model_file_path = Path(model_dir).joinpath(model_name)
+    if download:
+        ensure_openai_gpt2_vocab(model_file_path)
+    if not model_file_path.joinpath("encoder.json").is_file():
+        raise FileNotFoundError(
+            f"GPT-2 vocab not found at {model_file_path}; call ensure_openai_gpt2_vocab() explicitly"
+        )
+
     # encoder.json file
     with open(model_file_path.joinpath('encoder.json'), 'r') as f:
         encoder = json.load(f)
@@ -171,17 +180,11 @@ def get_encoder(model_name="gpt2_model", model_dir=Path("./layers/tokenizers/mod
 
 class OpenaiGPT2BPE:
 
-    def __init__(self, tokenizer_model: str = "gpt2"):
-        # model name
-        model_name = "gpt2_model"
-        # model path
-        model_dir = Path("./layers/tokenizers/models")
-        # tokenizer
-        self.tokenizer = get_encoder(model_name=model_name, model_dir=model_dir)
-    
-    @property
-    def n_vocab(self):
-        return self.tokenizer.n_vocab
+    def __init__(self, tokenizer_model: str = "gpt2", model_dir=None, download: bool = False):
+        self.tokenizer = get_encoder(model_dir=model_dir, download=download)
+        self.n_vocab = len(self.tokenizer.encoder)
+        self.eos_token_id = self.tokenizer.encoder.get("<|endoftext|>")
+        self.pad_token_id = self.eos_token_id
 
     def encode(self, text: str):
         """

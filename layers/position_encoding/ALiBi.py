@@ -53,7 +53,7 @@ def get_alibi_slopes(n_heads: int) -> torch.Tensor:
 
 
 def build_alibi_bias(n_heads: int, seq_len: int, device=None,
-                     causal: bool = True) -> torch.Tensor:
+                     causal: bool = True, dtype=None) -> torch.Tensor:
     """构造可加到 attention 分数上的 ALiBi 偏置。
 
     ``bias[h, i, j] = -slope_h * (i - j)``（j<=i，距离越远惩罚越大）；
@@ -61,8 +61,11 @@ def build_alibi_bias(n_heads: int, seq_len: int, device=None,
 
     可直接传给 ``scaled_dot_product_attention(attn_mask=bias)``。
 
+    Args:
+        dtype: 输出 dtype；None（默认）保持 float32，内部始终以 float32 计算后再转换。
+
     Returns:
-        (1, n_heads, seq_len, seq_len) float32
+        (1, n_heads, seq_len, seq_len)，dtype 为 dtype 或 float32
     """
     slopes = get_alibi_slopes(n_heads).to(device)                      # (H,)
     pos = torch.arange(seq_len, device=device, dtype=torch.float32)
@@ -73,6 +76,8 @@ def build_alibi_bias(n_heads: int, seq_len: int, device=None,
             torch.ones(seq_len, seq_len, device=device, dtype=torch.bool), diagonal=1
         )
         bias = bias.masked_fill(future.view(1, 1, seq_len, seq_len), float("-inf"))
+    if dtype is not None:
+        bias = bias.to(dtype)
     return bias
 
 

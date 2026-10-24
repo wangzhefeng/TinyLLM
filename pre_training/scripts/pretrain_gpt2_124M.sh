@@ -12,7 +12,7 @@ python -u run_gpt2_124M.py \
     --is_inference 0 \
     --data_source local \
     --data_url "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt" \
-    --data_path ./dataset/pretraininging \
+    --data_path ./dataset/pretraining \
     --data_file the-verdict.txt \
     --data_name the-verdict \
     --train_ratio 0.95 \

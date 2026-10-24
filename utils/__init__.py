@@ -11,7 +11,7 @@ TinyLLM 内部工具包（vendored from the author's shared `utils` repository�
 原先的 `utils/llm/` 子包已扁平化到 `utils/` 下，import 路径由 `utils.llm.xxx`
 改为 `utils.xxx`。
 
-与上游共享仓库的差异见 `utils/README.md`。
+训练专用新代码使用顶层 `training/`；本包保留通用工具和旧 API 兼容。
 """
 
 __all__ = []

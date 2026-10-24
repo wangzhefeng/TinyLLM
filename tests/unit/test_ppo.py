@@ -19,7 +19,7 @@ from post_training.preference.model_rlhf.ppo.main import (
     compute_ppo_actor_loss,
     ppo_update_step,
 )
-from post_training.reasoning.training.reinforcement_learning import (
+from post_training.rl.core import (
     completion_mask,
     generate_group_samples,
 )

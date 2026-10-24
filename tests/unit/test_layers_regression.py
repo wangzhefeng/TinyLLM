@@ -212,7 +212,7 @@ class TestQwen3BookStateDictRemap(unittest.TestCase):
 
     def test_remap_is_identity_on_canonical_and_roundtrip(self):
         from models.qwen3.qwen3 import Model as Qwen3Model
-        from inference.loaders.qwen3.load_weights import remap_book_state_dict
+        from models.io.qwen3.load_weights import remap_book_state_dict
         cfg = SimpleNamespace(
             vocab_size=64, context_length=16, embed_dim=32, n_heads=4,
             n_layers=2, head_dim=8, qk_norm=True, n_kv_groups=2,

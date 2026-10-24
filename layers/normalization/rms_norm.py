@@ -1,182 +1,51 @@
-# -*- coding: utf-8 -*-
-
-# ***************************************************
-# * File        : rms_norm.py
-# * Author      : Zhefeng Wang
-# * Email       : zfwang7@gmail.com
-# * Date        : 2025-03-21
-# * Version     : 1.0.032122
-# * Description : description
-# * Link        : https://arxiv.org/pdf/1910.07467
-# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# ***************************************************
-
-__all__ = []
-
-# python libraries
-from pathlib import Path
-
 import torch
 import torch.nn as nn
 
-# global variable
-LOGGING_LABEL = Path(__file__).name[:-3]
+__all__ = ["RMSNorm", "RMSNorm_Qwen3", "RMSNorm_Gemma3"]
+
+
+class _RMSNorm(nn.Module):
+    def __init__(self, embed_dim, eps, bias=False, compatible=True, zero_init_gamma=False):
+        super().__init__()
+        self.eps = eps
+        self.embed_dim = embed_dim
+        self.compatible = compatible
+        self.zero_init_gamma = zero_init_gamma
+        self.scale = nn.Parameter(torch.ones(embed_dim))
+        self.shift = nn.Parameter(torch.zeros(embed_dim)) if bias else None
+
+    def forward(self, x):
+        input_dtype = x.dtype
+        normalized = x.float() if self.compatible else x
+        variance = normalized.pow(2).mean(dim=-1, keepdim=True)
+        normalized = normalized * torch.rsqrt(variance + self.eps)
+        scale = 1.0 + self.scale if self.zero_init_gamma else self.scale
+        normalized = normalized * scale
+        if self.shift is not None:
+            normalized = normalized + self.shift
+        return normalized.to(input_dtype)
 
 
 class RMSNorm(nn.Module):
-    """
-    Root Mean Square Layer Normalization (RMSNorm) implementation.
-    
-    Args:
-        embed_dim (int): Dimension of the input embeddings
-        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-5.
-    
-    Attributes:
-        eps (float): Small value for numerical stability
-        embed_dim (int): Dimension of the input embeddings
-        weight (nn.Parameter): Learnable scaling parameter
-    """
     def __init__(self, embed_dim: int, eps: float = 1e-5):
         super().__init__()
-
         self.eps = eps
         self.embed_dim = embed_dim
-        # self.weight = nn.Parameter(torch.ones(embed_dim, dtype=torch.float32))
         self.weight = nn.Parameter(torch.ones(embed_dim)).float()
-    
+
     def forward(self, x):
-        """
-        Forward pass for RMSNorm.
-        
-        Args:
-            x (torch.Tensor): Input tensor of shape (..., dim)
-            
-        Returns:
-            torch.Tensor: Normalized output tensor
-        """
-        # 与 RMSNorm_Qwen3 / RMSNorm_Gemma3 保持一致：在 float32 下计算均方根，
-        # 避免 bf16/fp16 输入下方差精度损失
         input_dtype = x.dtype
-        x = x.to(torch.float32)
-        variance = x.pow(2).mean(dim=-1, keepdim=True)
-        x_normed = x * torch.rsqrt(variance + self.eps)
-
-        return (x_normed * self.weight.float()).to(input_dtype)
-
-
-class RMSNorm_Qwen3(nn.Module):
-    """
-    Root Mean Square Layer Normalization (RMSNorm) implementation.
-    
-    Args:
-        embed_dim (int): Dimension of the input embeddings
-        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-5.
-    
-    Attributes:
-        eps (float): Small value for numerical stability
-        embed_dim (int): Dimension of the input embeddings
-        weight (nn.Parameter): Learnable scaling parameter
-    """
-    def __init__(self, embed_dim: int, eps: float = 1e-6, bias: bool=False, compatible: bool=True):
-        super().__init__()
-
-        self.eps = eps
-        self.compatible = compatible
-        self.scale = nn.Parameter(torch.ones(embed_dim))
-        self.shift = nn.Parameter(torch.zeros(embed_dim)) if bias else None
-    
-    def forward(self, x):
-        """
-        Forward pass for RMSNorm.
-        
-        Args:
-            x (torch.Tensor): Input tensor of shape (..., dim)
-            
-        Returns:
-            torch.Tensor: Normalized output tensor
-        """
-        # input dtype
-        input_dtype = x.dtype
-        # compatible
-        if self.compatible:
-            x = x.to(torch.float32)
-        # Compute mean square with inplace operations for memory efficiency
-        variance = x.pow(2).mean(dim=-1, keepdim=True)
-        # Use fused operation for better numerical stability
-        norm_x = x * torch.rsqrt(variance + self.eps)
-        norm_x = norm_x * self.scale
-
-        if self.shift is not None:
-            norm_x = norm_x + self.shift
-
-        return norm_x.to(input_dtype)
+        normalized = x.float()
+        variance = normalized.pow(2).mean(dim=-1, keepdim=True)
+        normalized = normalized * torch.rsqrt(variance + self.eps)
+        return (normalized * self.weight.float()).to(input_dtype)
 
 
-class RMSNorm_Gemma3(nn.Module):
-    """
-    Root Mean Square Layer Normalization (RMSNorm) implementation.
-    
-    Args:
-        embed_dim (int): Dimension of the input embeddings
-        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-5.
-    
-    Attributes:
-        eps (float): Small value for numerical stability
-        embed_dim (int): Dimension of the input embeddings
-        weight (nn.Parameter): Learnable scaling parameter
-    """
-    def __init__(self, embed_dim: int, eps: float = 1e-6, bias: bool=False):
-        super().__init__()
-
-        self.eps = eps
-        self.scale = nn.Parameter(torch.ones(embed_dim))
-        self.shift = nn.Parameter(torch.zeros(embed_dim)) if bias else None
-    
-    def forward(self, x):
-        """
-        Forward pass for RMSNorm.
-        
-        Args:
-            x (torch.Tensor): Input tensor of shape (..., dim)
-            
-        Returns:
-            torch.Tensor: Normalized output tensor
-        """
-        # Match HF Gemma3: compute norm in float32, then scale by (1 + w)
-        # input dtype
-        input_dtype = x.dtype
-        # compatible
-        x = x.float()
-        # Compute mean square with inplace operations for memory efficiency
-        variance = x.pow(2).mean(dim=-1, keepdim=True)
-        # Use fused operation for better numerical stability
-        x_norm = x * torch.rsqrt(variance + self.eps)
-        out = x_norm * (1.0 + self.scale.float())
-
-        if self.shift is not None:
-            out = out + self.shift.float()
-
-        return out.to(input_dtype)
+class RMSNorm_Qwen3(_RMSNorm):
+    def __init__(self, embed_dim: int, eps: float = 1e-6, bias: bool = False, compatible: bool = True):
+        super().__init__(embed_dim, eps, bias=bias, compatible=compatible)
 
 
-
-
-# 测试代码 main 函数
-def main():
-    torch.manual_seed(123)
-
-    # input
-    example_batch = torch.randn(2, 3, 4)
-    # RMSNorm
-    rms_norm = RMSNorm(embed_dim=example_batch.shape[-1], eps=1e-5)
-    rms_norm_pytorch = nn.RMSNorm(example_batch.shape[-1], eps=1e-5)
-    rms_norm_qwen = RMSNorm_Qwen3(embed_dim=example_batch.shape[-1], eps=1e-5)
-    print(rms_norm(example_batch))
-    print(rms_norm_pytorch(example_batch))
-    print(rms_norm_qwen(example_batch))
-
-    assert torch.allclose(rms_norm(example_batch), rms_norm_pytorch(example_batch)), "RMSNorm test failed"
-    assert torch.allclose(rms_norm(example_batch), rms_norm_qwen(example_batch)), "RMSNorm_Qwen test failed"
-
-if __name__ == "__main__":
-    main()
+class RMSNorm_Gemma3(_RMSNorm):
+    def __init__(self, embed_dim: int, eps: float = 1e-6, bias: bool = False):
+        super().__init__(embed_dim, eps, bias=bias, zero_init_gamma=True)

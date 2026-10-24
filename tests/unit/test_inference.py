@@ -78,7 +78,7 @@ class TestGenerate(unittest.TestCase):
         self.assertEqual(out.shape, (1, 11))
 
     def test_kv_cache_matches_no_cache_greedy(self):
-        # GPT-2 attention has no KV cache; use a tiny Qwen3 which implements it
+        # GPT-2 与 Qwen3 均已实现 KV cache；此处用 Qwen3 验证 cached/uncached 一致性
         from models.qwen3.qwen3 import Model as Qwen3Model
         cfg = SimpleNamespace(
             vocab_size=128, context_length=32, embed_dim=32, n_heads=4,
@@ -95,6 +95,16 @@ class TestGenerate(unittest.TestCase):
         out_cache = generate_qwen3(model, prompt.clone(), max_new_tokens=6,
                                    context_length=32, use_cache=True)
         self.assertEqual(out_plain.shape, (1, 6))
+        self.assertTrue(torch.equal(out_plain, out_cache))
+
+    def test_gpt2_kv_cache_matches_no_cache_greedy(self):
+        # GPT-2（models/gpt2/gpt2_124M.py）已实现 KV cache：
+        # cached 与 uncached 贪心生成必须逐 token 一致
+        out_plain = generate(self.model, self.prompt.clone(), max_new_tokens=6,
+                             context_length=self.cfg.context_length, use_cache=False)
+        out_cache = generate(self.model, self.prompt.clone(), max_new_tokens=6,
+                             context_length=self.cfg.context_length, use_cache=True)
+        self.assertEqual(out_cache.shape, (1, 11))
         self.assertTrue(torch.equal(out_plain, out_cache))
 
     def test_eos_early_stop(self):

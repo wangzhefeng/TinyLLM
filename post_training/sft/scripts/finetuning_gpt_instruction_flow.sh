@@ -8,7 +8,7 @@ python -u ./post_training/sft/run/run_gpt_instruction_sft.py \
     --is_test 1 \
     --is_eval 0 \
     --is_inference 1 \
-    --data_path ./dataset/finetune/instruction-data.json \
+    --data_path ./dataset/finetuning/instruction-data.json \
     --context_length 1024 \
     --train_ratio 0.85 \
     --test_ratio 0.10 \
@@ -32,7 +32,7 @@ python -u ./post_training/sft/run/run_gpt_instruction_sft.py \
     --weight_decay 0.1 \
     --checkpoints ./results/finetuned_models \
     --test_results ./results/test_results \
-    --eval_data_path ./dataset/finetune/instruction-data-with-response.json \
+    --eval_data_path ./dataset/finetuning/instruction-data-with-response.json \
     --num_workers 0 \
     --use_gpu 1 \
     --use_multi_gpu 0 \

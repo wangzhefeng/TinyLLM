@@ -197,10 +197,11 @@ class DdpUtilsTest(unittest.TestCase):
         os.environ["WORLD_SIZE"] = "8"
         self.assertEqual(ddp_utils.get_global_rank(), 3)
         self.assertEqual(ddp_utils.get_world_size(), 8)
-        # LOCAL_RANK 与 is_master 仅在进程组已初始化时看环境变量，
-        # 非分布式下分别恒为 0 / True
+        # torchrun 在进程组初始化之前就注入 LOCAL_RANK，
+        # 入口需要在 init 前读到它绑定 GPU，因此不依赖 is_dist()
         os.environ["LOCAL_RANK"] = "2"
-        self.assertEqual(ddp_utils.get_local_rank(), 0)
+        self.assertEqual(ddp_utils.get_local_rank(), 2)
+        # is_master 仍仅在进程组已初始化时看 rank，非分布式下恒为 True
         self.assertTrue(ddp_utils.is_master())
 
 

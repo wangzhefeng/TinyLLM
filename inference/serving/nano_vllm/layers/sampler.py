@@ -56,13 +56,14 @@ class Sampler(nn.Module):
         # 温度缩放(贪心行温度置 1，避免除零)
         safe_temps = torch.where(greedy, torch.ones_like(temperatures), temperatures)
         logits = logits / safe_temps.unsqueeze(dim=1)
-        # top_k 截断：按行屏蔽不在前 k 名的 token
+        # top_k 截断：批量计算每行阈值，避免逐行 Python topk/masked_fill
         if top_ks is not None:
-            ks = top_ks.tolist()
-            for i, k in enumerate(ks):
-                if 0 < k < logits.size(-1):
-                    threshold = logits[i].topk(k).values[-1]
-                    logits[i] = logits[i].masked_fill(logits[i] < threshold, float("-inf"))
+            vocab_size = logits.size(-1)
+            ks = top_ks.to(device=logits.device, dtype=torch.long).clamp(1, vocab_size)
+            max_k = int(ks.max().item())
+            sorted_values = logits.topk(max_k, dim=-1).values
+            thresholds = sorted_values.gather(1, (ks - 1).unsqueeze(1))
+            logits = logits.masked_fill(logits < thresholds, float("-inf"))
         probs = torch.softmax(logits, dim=-1)
         sample_tokens = torch.empty(logits.size(0), dtype=torch.long, device=logits.device)
         if greedy.all():

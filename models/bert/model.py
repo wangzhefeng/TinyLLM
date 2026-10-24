@@ -244,7 +244,7 @@ class Model(nn.Module):
             nn.init.ones_(module.weight)
             nn.init.zeros_(module.bias)
 
-    def forward(self, batch_idx, batch_seg_idx, batch_mask_val=None, batch_label=None):
+    def forward(self, batch_idx, batch_seg_idx, batch_mask_val=None, batch_label=None, return_preds: bool=False):
         # Encoder output
         bert_out1, bert_out2 = self.bert(batch_idx, batch_seg_idx)
         # MLM layer pred out
@@ -259,6 +259,9 @@ class Model(nn.Module):
             loss_next = self.loss_fun_next(pre_next, batch_label)
             # Loss
             loss = loss_mask + loss_next
+            if return_preds:
+                # 单次前向同时返回预测结果，评估时无需第二次前向
+                return loss, torch.argmax(pre_mask, dim=-1), torch.argmax(pre_next, dim=-1)
             return loss
         else:
             # return pred out

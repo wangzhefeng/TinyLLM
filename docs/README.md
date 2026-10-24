@@ -19,7 +19,7 @@
 | 模型 | [40-models/index.md](40-models/index.md) |
 | 开发 / 测试 / 数据 / 清理 | [50-development/index.md](50-development/index.md) |
 | 参考 / 分析 / 迁移 | [60-reference/index.md](60-reference/index.md) |
-| 工具库 | [70-tools/index.md](70-tools/index.md) | distributed / profiling / checkpoint / data |
+| 工具库 | [70-tools/index.md](70-tools/index.md) |
 | 归档 | [archive/](archive/)（二进制/历史材料） |
 
 ## 渐进式披露约定

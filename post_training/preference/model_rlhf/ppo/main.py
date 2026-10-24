@@ -8,7 +8,7 @@
 # * Version     : 1.0.102121
 # * Description : PPO（Proximal Policy Optimization）from scratch，
 # *               面向 LLM 的**序列级 bandit**教学实现（reasoning-from-scratch
-# *               ch06 教学链的又一环，与 reasoning/training/reinforcement_learning.py
+# *               ch06 教学链的又一环，与 post_training/rl/core.py
 # *               的 GRPO 形成对照）：
 # *               1. 对同一 prompt 采样 N 条生成，缓存旧策略 logprob
 # *               2. critic（价值头）估计 V(s)，优势 A_i = r_i - V(s)
@@ -37,11 +37,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from post_training.reasoning.training.reinforcement_learning import (
-    completion_mask,
-    generate_group_samples,
-    token_logprobs,
-)
+from post_training.rl import generate_group_samples
+from post_training.rl.objectives import compute_clipped_policy_loss
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -104,31 +101,11 @@ def compute_ppo_actor_loss(model, samples, old_logprobs, advantages, prompt_len,
         completion_lengths: (N,) 每条生成的真实 completion 长度；
             提供时 padding 位不进入梯度与 KL
     """
-    new_logprobs = token_logprobs(model, samples, start_pos=prompt_len)  # (N, L)
-    ratio = torch.exp(new_logprobs - old_logprobs)                       # (N, L)
-    adv = advantages.unsqueeze(1)                                        # (N, 1)
-    unclipped = ratio * adv
-    clipped = torch.clamp(ratio, 1 - clip_eps, 1 + clip_eps) * adv
-    token_obj = torch.min(unclipped, clipped)                            # (N, L)
-
-    if completion_lengths is not None:
-        mask = completion_mask(completion_lengths, new_logprobs.shape[1]).float()
-        policy_loss = -(token_obj * mask).sum() / mask.sum().clamp(min=1.0)
-    else:
-        policy_loss = -token_obj.mean()
-
-    if kl_beta > 0.0 and ref_model is not None:
-        with torch.no_grad():
-            ref_logprobs = token_logprobs(ref_model, samples, start_pos=prompt_len)
-        # 逐 token 前向 KL 近似：log(π/π_ref) → exp(x) - x - 1（k3 估计，非负）
-        log_ratio = new_logprobs - ref_logprobs
-        kl = torch.exp(log_ratio) - log_ratio - 1.0
-        if completion_lengths is not None:
-            kl_term = (kl * mask).sum() / mask.sum().clamp(min=1.0)
-        else:
-            kl_term = kl.mean()
-        policy_loss = policy_loss + kl_beta * kl_term
-    return policy_loss
+    return compute_clipped_policy_loss(
+        model, samples, old_logprobs, advantages, prompt_len,
+        clip_eps=clip_eps, kl_beta=kl_beta, ref_model=ref_model,
+        completion_lengths=completion_lengths,
+    )
 
 
 def compute_critic_loss(values: torch.Tensor, rewards: torch.Tensor) -> torch.Tensor:

@@ -1,85 +1,62 @@
-"""
-日志工具模块
+"""Console and daily rotating file logging with lazy filesystem initialization."""
 
-该模块提供了日志记录功能，包括：
-- 控制台日志输出
-- 按天轮转的文件日志
-- 日志级别通过环境变量SERVICE_LOG_LEVEL配置
-"""
-
-import os
-import sys
-import re
 import logging
+import os
+import re
+import sys
+import threading
 from logging import handlers
 from pathlib import Path
 
-
-# 项目根路径
-ROOT_PATH = Path.cwd()
-
-# 日志路径（LOG_NAME 未设置时落到 logs/default，避免生成 logs/None）
+ROOT_PATH = Path(__file__).resolve().parents[1]
 LOG_NAME = os.environ.get("LOG_NAME") or "default"
-LOG_DIR = Path(f"{ROOT_PATH}/logs/{LOG_NAME}")
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-LOG_PATH = LOG_DIR.joinpath("service")
-
-# 日志级别，默认为INFO
+LOG_DIR = ROOT_PATH / "logs" / LOG_NAME
 LOG_LEVEL = os.environ.get("SERVICE_LOG_LEVEL", "INFO")
-
-# 默认日志格式
-default_formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d:%(funcName)s] %(message)s")
-
-# ------------------------------
-# 控制台日志处理器
-# stream haddler
-# ------------------------------
-stream_handler = logging.StreamHandler(stream=sys.stderr)
-stream_handler.setLevel(LOG_LEVEL)
-stream_handler.setFormatter(default_formatter)
-
-# ------------------------------
-# time rotating file handler
-# ------------------------------
-# 按天轮转的文件日志处理器
-time_rotating_file_handler = handlers.TimedRotatingFileHandler(
-    filename=LOG_PATH, 
-    when="MIDNIGHT", 
-    interval=1, 
-    backupCount=10,
-    encoding="utf-8",
-)
-time_rotating_file_handler.suffix = "%Y-%m-%d.log"
-# 需要注意的是 suffix 和 extMatch 一定要匹配的上，如果不匹配，过期日志不会被删除。
-time_rotating_file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}.log$")
-time_rotating_file_handler.setLevel(LOG_LEVEL)
-time_rotating_file_handler.setFormatter(default_formatter)
-
-# ------------------------------
-# logger
-# 主日志记录器
-# ------------------------------
-logger = logging.getLogger(__name__)
-logger.addHandler(stream_handler)
-logger.addHandler(time_rotating_file_handler)
-logger.setLevel(LOG_LEVEL)
-logger.propagate = False
+_LOCK = threading.Lock()
+_LOGGER = None
 
 
+def get_logger():
+    global _LOGGER
+    if _LOGGER is not None:
+        return _LOGGER
+    with _LOCK:
+        if _LOGGER is not None:
+            return _LOGGER
+        formatter = logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d:%(funcName)s] %(message)s"
+        )
+        stream_handler = logging.StreamHandler(stream=sys.stderr)
+        stream_handler.setLevel(LOG_LEVEL)
+        stream_handler.setFormatter(formatter)
+
+        log_dir = ROOT_PATH / "logs" / (os.environ.get("LOG_NAME") or "default")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        file_handler = handlers.TimedRotatingFileHandler(
+            filename=log_dir / "service",
+            when="MIDNIGHT",
+            interval=1,
+            backupCount=10,
+            encoding="utf-8",
+        )
+        file_handler.suffix = "%Y-%m-%d.log"
+        file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}.log$")
+        file_handler.setLevel(LOG_LEVEL)
+        file_handler.setFormatter(formatter)
+
+        logger = logging.getLogger("tinyllm")
+        logger.handlers.clear()
+        logger.addHandler(stream_handler)
+        logger.addHandler(file_handler)
+        logger.setLevel(LOG_LEVEL)
+        logger.propagate = False
+        _LOGGER = logger
+        return _LOGGER
 
 
-def main():
-    """日志功能演示"""
-    # 测试不同级别的日志
-    logger.debug("这是一条调试信息")
-    logger.info("这是一条普通信息")
-    logger.warning("这是一条警告信息")
-    logger.error("这是一条错误信息")
-    logger.critical("这是一条严重错误信息")
-    
-    # 测试日志文件轮转
-    for i in range(100):
-        logger.info(f"测试日志轮转 - {i}")
+class _LazyLogger:
+    def __getattr__(self, name):
+        return getattr(get_logger(), name)
 
-if __name__ == "__main__":
-    main()
+
+logger = _LazyLogger()

@@ -1,0 +1,29 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-and-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - run: uv run python -m unittest discover -s tests/unit -v
+      - run: uv run python -m unittest discover -s tests/integration -v
+      - run: uv run python scripts/check_docs.py
+
+  slow-distributed:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - run: TINYLLM_SLOW_TESTS=1 uv run python -m unittest tests.unit.test_tools_distributed -v

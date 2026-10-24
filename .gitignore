@@ -187,3 +187,4 @@ checkpoints/
 .chainlit/
 pretraining/examples/gpt2_book/model.pth
 *.pth
+scripts/config.json

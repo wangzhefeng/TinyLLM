@@ -72,31 +72,29 @@ class TransformerBlockGPT2_124M(nn.Module):
         self.norm2 = LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
-    def forward(self, x, use_cache=False):
-        # shortcut connection for attention block
+    def forward(self, x, use_cache=False, cache=None, attention_mask=None, return_cache=False):
         shortcut = x
-        # LayerNorm 1
-        x = self.norm1(x)          # shape: [batch_size, num_tokens, embed_dim]
-        # Masked multi-head attention
-        x = self.attn(
-            x, 
+        x = self.norm1(x)
+        attention = self.attn(
+            x,
             use_cache=use_cache,
-        )  # shape: [batch_size, num_tokens, embed_dim]
-        # Dropout
-        x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
-        # Residual connection
-        x = shortcut + x           # shape: [batch_size, num_tokens, embed_dim]
-        # shortcut connection for feed forward block
+            cache=cache,
+            attention_mask=attention_mask,
+            return_cache=return_cache,
+        )
+        if return_cache:
+            x, new_cache = attention
+        else:
+            x = attention
+        x = self.drop_shortcut(x)
+        x = shortcut + x
         shortcut = x
-        # LayerNorm 2
-        x = self.norm2(x)          # shape: [batch_size, num_tokens, embed_dim]
-        # Feed Forward
-        x = self.ff(x)             # shape: [batch_size, num_tokens, embed_dim]
-        # Dropout
-        x = self.drop_shortcut(x)  # shape: [batch_size, num_tokens, embed_dim]
-        # Residual connection
-        x = shortcut + x           # shape: [batch_size, num_tokens, embed_dim]
-        
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = self.drop_shortcut(x)
+        x = shortcut + x
+        if return_cache:
+            return x, new_cache
         return x
 
 

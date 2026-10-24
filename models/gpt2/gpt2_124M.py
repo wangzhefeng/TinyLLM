@@ -47,41 +47,39 @@ class Model(nn.Module):
         # output head linear
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False)
 
-    def forward(self, x, use_cache=False):
-        # tokenized text shape
-        batch_size, seq_len = x.shape                    # shape: [batch_size, num_tokens(seq_len)]
-        # token embedding layer
-        tok_embeds = self.tok_embed(x)                   # shape: [batch_size, num_tokens, embed_dim]
-        # positional embedding layer
-        if use_cache:
-            pos_id = torch.arange(
-                self.ptr_current_pos, 
-                self.ptr_current_pos + seq_len, 
-                device=x.device, 
-                dtype=torch.long
-            )
-            self.ptr_current_pos += seq_len
+    def forward(self, x, use_cache=False, cache=None, attention_mask=None, position_ids=None):
+        _, seq_len = x.shape
+        external_cache = cache is not None
+        if position_ids is not None:
+            pos_id = position_ids
         else:
-            pos_id = torch.arange(
-                0, 
-                seq_len, 
-                device=x.device, 
-                dtype=torch.long
-            )                                            # shape: [batch_size, num_tokens, embed_dim]
-        pos_embeds = self.pos_embed(pos_id).unsqueeze(0) # shape: [batch_size, num_tokens, embed_dim]
-        # embedding
-        x = tok_embeds + pos_embeds                      # shape: [batch_size, num_tokens, embed_dim]
-        # dropout
-        x = self.drop_embed(x)                           # shape: [batch_size, num_tokens, embed_dim]
-        # transformer blocks
-        for block in self.trf_blocks:
-            x = block(x, use_cache=use_cache)            # shape: [batch_size, num_tokens, embed_dim]
-        # final layer norm
-        x = self.final_norm(x)                           # shape: [batch_size, num_tokens, embed_dim]
-        # linear output layer(head)
-        logits = self.out_head(x)                        # shape: [batch_size, num_tokens, vocab_size]
-
-        return logits
+            if external_cache:
+                pos_start = cache.position
+            elif use_cache:
+                pos_start = self.ptr_current_pos
+            else:
+                pos_start = 0
+            if pos_start + seq_len > self.pos_embed.num_embeddings:
+                raise IndexError("Position exceeds GPT-2 context length")
+            pos_id = torch.arange(pos_start, pos_start + seq_len, device=x.device, dtype=torch.long)
+        x = self.tok_embed(x) + self.pos_embed(pos_id).unsqueeze(0)
+        x = self.drop_embed(x)
+        for layer_idx, block in enumerate(self.trf_blocks):
+            if external_cache:
+                x, new_cache = block(
+                    x,
+                    cache=cache.get(layer_idx),
+                    attention_mask=attention_mask,
+                    return_cache=True,
+                )
+                cache.update(layer_idx, new_cache)
+            else:
+                x = block(x, use_cache=use_cache, attention_mask=attention_mask)
+        if external_cache:
+            cache.advance(seq_len)
+        elif use_cache:
+            self.ptr_current_pos += seq_len
+        return self.out_head(self.final_norm(x))
     
     def reset_kv_cache(self):
         for blk in self.trf_blocks:

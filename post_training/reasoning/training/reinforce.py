@@ -29,10 +29,7 @@ from pathlib import Path
 
 import torch
 
-from post_training.reasoning.training.reinforcement_learning import (
-    generate_group_samples,
-    token_logprobs,
-)
+from post_training.rl import generate_group_samples, token_logprobs
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

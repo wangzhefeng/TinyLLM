@@ -121,7 +121,7 @@ def test_training(tokenizer, GPT2_CONFIG, device):
     # model training
     # ------------------------------
     # data path
-    data_path = "./dataset/pretraininging"
+    data_path = "./dataset/pretraining"
     data_file = "the-verdict.txt" 
     # 数据加载
     raw_text = load_local_data(data_path=data_path, data_file=data_file)

@@ -7,11 +7,6 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "accelerate==1.5.2",
     "datasets==3.4.0",
-    "flask>=3.1.3",
-    "ipykernel==6.29.5",
-    "jupyter==1.1.1",
-    "jupyterlab==4.3.6",
-    "notebook==7.3.3",
     "numpy==2.2.3",
     "pandas==2.2.3",
     "peft==0.14.0",
@@ -21,19 +16,25 @@ dependencies = [
     "sentencepiece>=0.2.2",
     "tiktoken>=0.14.0",
     "tokenizers==0.21.1",
-    # NOTE: requirements.txt pins torch==2.5.1+cu121 (Linux/CUDA only).
-    # The +cu121 wheels do not exist for macOS, so the plain CPU/MPS builds
-    # are pinned here. On a Linux + NVIDIA box, use requirements.txt with
-    #   uv pip install -r requirements.txt \
-    #     --extra-index-url https://download.pytorch.org/whl/cu121
+    # macOS uses the default CPU/MPS wheels. On Linux + CUDA 12.1, run:
+    # uv pip install torch==2.5.1+cu121 torchaudio==2.5.1+cu121 torchvision==0.20.1+cu121 \
+    #   --extra-index-url https://download.pytorch.org/whl/cu121
     "torch==2.5.1",
     "torchaudio==2.5.1",
     "torchvision==0.20.1",
     "tqdm==4.67.1",
     "transformers==4.49.0",
     "trl==0.15.2",
-    "wandb==0.19.8",
 ]
+
+[dependency-groups]
+dev = [
+    "ipykernel==6.29.5",
+    "jupyter==1.1.1",
+    "jupyterlab==4.3.6",
+    "notebook==7.3.3",
+]
+reference = ["wandb==0.19.8"]
 
 [tool.uv]
 # This is a scripts/tutorial repository, not an installable package.

@@ -21,6 +21,7 @@ if ROOT not in sys.path:
 import numpy as np
 import torch
 
+from training.checkpoint import save_training_checkpoint
 from utils.log_util import logger
 
 # global variable
@@ -28,7 +29,7 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class EarlyStopping:
-    
+
     def __init__(self, patience=7, verbose=False, delta=0, use_ddp=False, gpu=0):
         self.patience = patience
         self.verbose = verbose
@@ -62,17 +63,28 @@ class EarlyStopping:
         # log
         if self.verbose:
             logger.info(f"\t\tEpoch {epoch+1}: Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...")
-        # checkpoint save
-        ckp = model.module.state_dict() if self.use_ddp else model.state_dict()
-        training_state = {
-            "epoch": epoch + 1,
-            "model": ckp,
-            "optmizer": optimizer.state_dict() if optimizer is not None else None,
-            "scheduler": scheduler.state_dict() if scheduler is not None else None,
-        }
-        torch.save(training_state, model_path)
+        raw_model = model.module if (self.use_ddp and hasattr(model, "module")) else model
+        save_training_checkpoint(
+            model_path,
+            model=raw_model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            epoch=epoch,
+        )
         # update minimum vali loss
         self.val_loss_min = val_loss
+
+
+def load_training_state(checkpoint_path: str, map_location=None):
+    """
+    读取 EarlyStopping 保存的 checkpoint，兼容历史笔误键 "optmizer"。
+
+    返回 dict，键统一为 "epoch" / "model" / "optimizer" / "scheduler"。
+    """
+    state = torch.load(checkpoint_path, map_location=map_location, weights_only=False)
+    if "optimizer" not in state and "optmizer" in state:
+        state["optimizer"] = state["optmizer"]
+    return state
 
 
 

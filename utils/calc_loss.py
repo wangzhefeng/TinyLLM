@@ -37,8 +37,10 @@ def calc_loss_batch(task_name, input_batch, target_batch, model, criterion=None,
         task_name: 任务名；分类任务（见 CLF_TASK_NAMES）取最后一个 token 的 logits
         criterion: 损失函数；None 时默认 F.cross_entropy
     """
-    # move data to device
-    input_batch, target_batch = input_batch.to(device), target_batch.to(device) 
+    device = torch.device(device)
+    non_blocking = device.type == "cuda"
+    input_batch = input_batch.to(device, non_blocking=non_blocking)
+    target_batch = target_batch.to(device, non_blocking=non_blocking)
     if criterion is None:
         criterion = F.cross_entropy
     # Logits of last output token, loss
@@ -62,8 +64,8 @@ def calc_loss_loader(task_name, data_loader, model, criterion=None, device="cpu"
     elif num_batches is None:
         num_batches = len(data_loader)
     else:
-        # Reduce the number of batches to match the total number of 
-        # batches in the data loader, if num_batches exceeds the number 
+        # Reduce the number of batches to match the total number of
+        # batches in the data loader, if num_batches exceeds the number
         # of batches in the data loader
         num_batches = min(num_batches, len(data_loader))
     # calculate loss
@@ -74,7 +76,7 @@ def calc_loss_loader(task_name, data_loader, model, criterion=None, device="cpu"
             total_loss += loss.item()
         else:
             break
-    
+
     return total_loss / num_batches
 
 
@@ -91,7 +93,7 @@ def calc_loss(task, model, criterion, train_loader, valid_loader, test_loader, d
         device (_type_): _description_
     """
     # Disable gradient tracking for efficiency because we are not training, yet
-    with torch.no_grad(): 
+    with torch.no_grad():
         train_loss = calc_loss_loader(task, train_loader, model, criterion, device, num_batches=5)
         val_loss = calc_loss_loader(task, valid_loader, model, criterion, device, num_batches=5)
         test_loss = calc_loss_loader(task, test_loader, model, criterion, device, num_batches=5)

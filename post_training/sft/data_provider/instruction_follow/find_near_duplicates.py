@@ -108,7 +108,7 @@ def args_parse():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--json_file", type=str, required=True,
-                        default="./dataset/finetune/instruction-example.json",
+                        default="./dataset/finetuning/instruction-example.json",
                         help=("Path to the dataset JSON file"))
     parser.add_argument("--threshold", type=float, 
                         default=0.9,
@@ -118,7 +118,7 @@ def args_parse():
                         help=("Removes duplicates based on the 'input' or 'output' keys "
                               " (but not the 'instruction') and saves the cleaned JSON file as --json_output_file"))
     parser.add_argument("--json_output_file", type=str, required=True,
-                        default="./dataset/finetune/instruction-example-without-duplicates.json",
+                        default="./dataset/finetuning/instruction-example-without-duplicates.json",
                         help="Path to the dataset JSON file")
     args = parser.parse_args()
 

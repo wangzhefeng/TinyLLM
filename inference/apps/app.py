@@ -9,7 +9,7 @@
 # * Description : Chainlit 聊天 UI（合并原 app_orig.py / app_own.py）。
 #               用环境变量 GPT2_WEIGHTS=orig|own（默认 own）选择权重来源：
 #                 - orig：官方 GPT-2 124M 权重（下载到 downloaded_models/gpt2）
-#                 - own ：自训 checkpoint（环境变量 GPT2_CHECKPOINT，默认 ./model.pth）
+#                 - own ：自训 checkpoint（环境变量 GPT2_CHECKPOINT，默认仓根下 model.pth）
 # * Link        : link
 # * Requirement : pip install chainlit（可选依赖，不在主 requirements 中）；
 #               orig 模式另需 tensorflow（仅读官方 TF checkpoint 时需要）
@@ -21,7 +21,9 @@ __all__ = []
 import os
 import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
+# 仓根路径由本文件位置推导（inference/apps/app.py -> 上两级），
+# 不依赖启动时的 cwd，保证从任意目录运行都能正确 import 与定位权重
+ROOT = str(Path(__file__).resolve().parents[2])
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 import warnings
@@ -77,7 +79,7 @@ def get_model_and_tokenizer():
         "top_k": 1,
         "temperature": 0.0,
         "eos_id": 50256,
-        "use_cache": False,  # GPT-2 注意力未实现 KV cache
+        "use_cache": True,  # GPT-2 已实现 KV cache（models/gpt2/gpt2_124M.py），开启可加速逐 token 生成
         "tokenizer_model": "tiktoken_gpt2_bpe",
     }
     model_config = DotDict(model_config)
@@ -88,18 +90,18 @@ def get_model_and_tokenizer():
     # model
     if WEIGHTS_SOURCE == "orig":
         # 官方 GPT-2 124M 权重（懒加载：tensorflow 仅在此模式下需要）
-        from inference.loaders.gpt2.openai_gpt2_weights_load import (
+        from models.io.gpt2.openai_gpt2_weights_load import (
             download_and_load_gpt2,
             load_weights_download,
         )
         settings, params = download_and_load_gpt2(
-            model_size="124M", models_dir="downloaded_models/gpt2"
+            model_size="124M", models_dir=str(Path(ROOT) / "downloaded_models" / "gpt2")
         )
         model = Model(model_config)
         load_weights_download(model, params)
     else:
-        # 自训 checkpoint（路径可用环境变量 GPT2_CHECKPOINT 覆盖）
-        model_path = Path(os.environ.get("GPT2_CHECKPOINT", "./model.pth"))
+        # 自训 checkpoint（路径可用环境变量 GPT2_CHECKPOINT 覆盖，默认仓根下 model.pth）
+        model_path = Path(os.environ.get("GPT2_CHECKPOINT", str(Path(ROOT) / "model.pth")))
         if not model_path.exists():
             logger.info(f"Could not find the {model_path} file.")
             sys.exit()

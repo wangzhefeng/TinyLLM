@@ -101,9 +101,9 @@ class Llama38bTokenizer:
                 "<|eot_id|>": 128009,
             }
             self.special_tokens.update({
-                f"<|reserved_{i}|>": 128002 + i 
-                for i in range(256) 
-                if (128002 + i) not in self.special_tokens.values()
+                f"<|reserved_{i}|>": 128000 + i
+                for i in range(256)
+                if (128000 + i) not in self.special_tokens.values()
             })
         else:
             self.special_tokens = [
@@ -140,7 +140,10 @@ class Llama38bTokenizer:
             # 添加特殊 token-id 对的字典
             special_tokens = self.special_tokens,
         )
-    
+        self.n_vocab = self.model.n_vocab
+        self.eos_token_id = self.special_tokens["<|end_of_text|>"]
+        self.pad_token_id = self.special_tokens["<|finetune_right_pad_id|>"] if "<|finetune_right_pad_id|>" in self.special_tokens else self.eos_token_id
+
     def encode(self, text, bos = False, eos = False, allowed_special = set(), disallowed_special = ()):
         # begin of text tokens
         if bos:

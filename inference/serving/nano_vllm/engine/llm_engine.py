@@ -61,6 +61,14 @@ class LLMEngine:
         self.ps: list[mp.Process] = []
         self.events: list = []
         tp = config.tensor_parallel_size
+        if tp > 1 and model is not None:
+            # 外部模型只存在于主进程；tp>1 时 worker 子进程会各自随机初始化，
+            # 与 rank0 的外部模型权重不一致，必须显式拒绝而非静默出错
+            raise ValueError(
+                "tensor_parallel_size > 1 时不支持传入外部 model："
+                "worker 子进程无法共享主进程的模型权重。"
+                "请用 Config.from_pretrained + 默认随机初始化，或改用 tensor_parallel_size=1。"
+            )
         shm_name = f"nano_vllm_{os.getpid()}" if tp > 1 else None
         if tp > 1:
             if config.tp_master_port == -1:

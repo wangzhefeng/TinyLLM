@@ -62,52 +62,40 @@ class Model(nn.Module):
         self.register_buffer("sin", sin, persistent=False)
         self.current_pos = 0  # Track current position in KV cache
     
-    def forward(self, x, cache=None):
-        # tokenized text shape
-        batch_size, num_tokens = x.shape
-        # token embedding layer
-        tok_embeds = self.tok_embed(x)
-        x = tok_embeds
-        # kv cache
-        if cache is not None:
-            pos_start = self.current_pos
-            pos_end = pos_start + num_tokens
-            # RoPE 越界防护：cos/sin 只预计算到 context_length，超出即报清晰错误
-            if pos_end > self.cfg.context_length:
-                raise IndexError(
-                    f"KV cache position {pos_end} exceeds context_length "
-                    f"{self.cfg.context_length}: RoPE cos/sin 预计算长度不足。"
-                    f"请调用 reset_kv_cache() 或减小 max_new_tokens。"
-                )
-            self.current_pos = pos_end
-            mask = torch.triu(
-                torch.ones(pos_end, pos_end, device=x.device, dtype=torch.bool), diagonal=1
-            )[pos_start:pos_end, :pos_end]
+    def forward(self, x, cache=None, attention_mask=None, position_ids=None):
+        _, num_tokens = x.shape
+        if position_ids is not None:
+            pos_start = int(position_ids[0, 0].item())
+        elif cache is not None:
+            pos_start = cache.position
         else:
-            pos_start = 0  # Not strictly necessary but helps torch.compile
-            mask = torch.triu(
-                torch.ones(num_tokens, num_tokens, device=x.device, dtype=torch.bool), diagonal=1
+            pos_start = 0
+        pos_end = pos_start + num_tokens
+        if pos_end > self.cfg.context_length:
+            raise IndexError(
+                f"Position {pos_end} exceeds context_length {self.cfg.context_length}"
             )
-        # Shape (1, 1, num_tokens, num_tokens) to broadcast across batch and heads
-        mask = mask[None, None, :, :]
-        # transformer block
+        key_len = pos_end if cache is not None else num_tokens
+        row = torch.arange(num_tokens, device=x.device).unsqueeze(1)
+        col = torch.arange(key_len, device=x.device).unsqueeze(0)
+        mask = (row + pos_start < col)[None, None, :, :]
+        if attention_mask is not None:
+            if attention_mask.ndim == 2:
+                attention_mask = attention_mask[:, None, None, :]
+            mask = mask | attention_mask
+        x = self.tok_embed(x)
         for i, block in enumerate(self.trf_blocks):
-            # get block cache
-            if cache is not None:
-                block_cache = cache.get(i)
-            else:
-                block_cache = None
-            # transformer block forward
-            x, new_block_cache = block(x, mask, self.cos, self.sin, start_pos=pos_start, cache=block_cache)
-            # update block cache
+            block_cache = cache.get(i) if cache is not None else None
+            x, new_block_cache = block(
+                x, mask, self.cos, self.sin,
+                start_pos=pos_start,
+                cache=block_cache,
+            )
             if cache is not None:
                 cache.update(i, new_block_cache)
-        # final RMSNorm
-        x = self.final_norm(x)
-        # linear output layer(head)
-        logits = self.out_head(x.to(self.cfg.dtype))
-
-        return logits
+        if cache is not None:
+            cache.advance(num_tokens)
+        return self.out_head(self.final_norm(x).to(self.out_head.weight.dtype))
     
     def reset_kv_cache(self):
         self.current_pos = 0

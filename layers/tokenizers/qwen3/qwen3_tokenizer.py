@@ -14,8 +14,6 @@
 # python libraries
 from pathlib import Path
 import re
-import warnings
-warnings.filterwarnings("ignore")
 
 from tokenizers import Tokenizer
 
@@ -35,36 +33,26 @@ class Qwen3Tokenizer:
     ]
     _SPLIT_RE = re.compile(r"(<\|[^>]+?\|>)")
 
-    def __init__(self, 
-                 tokenizer_file_path="tokenizer-base.json",
+    def __init__(self,
+                 tokenizer_file_path="tokenizer.json",
                  apply_chat_template=False,
-                 add_generation_prompt=False, 
-                 add_thinking=False):
-        # args
+                 add_generation_prompt=False,
+                 add_thinking=False,
+                 base_model=False):
         self.apply_chat_template = apply_chat_template
         self.add_generation_prompt = add_generation_prompt
         self.add_thinking = add_thinking
-        # tokenizer file path
-        tok_path = Path(tokenizer_file_path)
+        tok_path = Path(tokenizer_file_path).expanduser().resolve()
         if not tok_path.is_file():
-            raise FileNotFoundError(f"Tokenizer file '{tok_path}' not found. Please allocate it's available.")
-        # tokenizer init
+            raise FileNotFoundError(f"Tokenizer file '{tok_path}' not found")
         self._tok = Tokenizer.from_file(str(tok_path))
-        # special token id
         self._special_to_id = {t: self._tok.token_to_id(t) for t in self._SPECIALS}
-        # ------------------------------
-        # Property::pad_token_id
-        # ------------------------------
+        self.n_vocab = self._tok.get_vocab_size()
         self.pad_token_id = self._special_to_id.get("<|endoftext|>")
-        # ------------------------------
-        # Property::eos_token_id: Match HF behavior: chat model → <|im_end|>, base model → <|endoftext|>
-        # ------------------------------
-        fname = tok_path.name.lower()
-        if "base" in fname and "reasoning" not in fname:
-            eos_token = "<|endoftext|>"
-        else:
-            eos_token = "<|im_end|>"
+        eos_token = "<|endoftext|>" if base_model else "<|im_end|>"
         self.eos_token_id = self._special_to_id.get(eos_token)
+        if self.eos_token_id is None:
+            raise ValueError(f"Tokenizer does not define required eos token {eos_token}")
 
     def encode(self, prompt, chat_wrapped=None):
         # chat wrapped arg
@@ -92,17 +80,13 @@ class Qwen3Tokenizer:
         return self._tok.decode(token_ids, skip_special_tokens=False)
 
     def _wrap_chat(self, user_msg):
-        # user prompt
-        s = f"<|im_start|>user\n{user_msg}<|im_end|>\n"
-        # add generation prompt
-        if self.add_generation_prompt:
-            s += "<|im_start|>assistant"
-            # add thinking
-            if self.add_thinking:
-                s += "\n"  # insert no <think> tag, just a new line
-            else:
-                s += "\n<think>\n\n</think>\n\n"
-        return s
+        from layers.tokenizers.chat import format_qwen3_chat
+
+        return format_qwen3_chat(
+            user_msg,
+            add_generation_prompt=self.add_generation_prompt,
+            add_thinking=self.add_thinking,
+        )
 
 
 

@@ -15,15 +15,16 @@ export LOG_NAME=gpt2_124M_DP
 tk_model_name=tiktoken_gpt2_bpe
 lm_model_name=gpt2_124M
 
-python -u ./pre_training/experiments/exp_pretrain_gpt2_124M.py \
+# DP 为单进程多卡，直接调根入口（exp_pretrain_gpt2_124M.py 没有 __main__ 参数解析）
+python -u run_gpt2_124M.py \
     --task_name gpt2_124M_pretrain_DP \
     --des 'GPT2-124M Pretrain using DP' \
     --is_train 1 \
     --is_test 1 \
     --is_inference 0 \
     --data_source local \
-    --url "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt" \
-    --data_path ./dataset/pretraininging \
+    --data_url "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt" \
+    --data_path ./dataset/pretraining \
     --data_file the-verdict.txt \
     --data_name the-verdict \
     --train_ratio 0.95 \

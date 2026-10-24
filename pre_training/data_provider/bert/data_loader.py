@@ -67,7 +67,8 @@ class BertDataset(Dataset):
         # 构建段索引和序列索引：用于区分句子对中的句子 A 和句子 B。同时，将特殊标记（如[CLS]和[SEP]）纳入序列，以符合BERT模型的输入格式
         text_idx = [self.word_2_index["[CLS]"]] + text1_idx + [self.word_2_index["[SEP]"]] + text2_idx + [self.word_2_index["[SEP]"]]
         seg_idx  = [0] + [0] * len(text1_idx) + [0] + [1] * len(text2_idx) + [1] + [2] * (self.max_len - len(text_idx))
-        # 掩码
+        # 掩码（标准 BERT 80/10/10：选中 token 的 80% 替换为 [MASK]、
+        # 10% 替换为随机 token、10% 保持不变；三种情况都必须保留原 token 作为预测标签）
         for i, v in enumerate(text_idx):
             if v in [self.word_2_index["[CLS]"], self.word_2_index["[SEP]"], self.word_2_index["[UNK]"]]:
                 continue
@@ -75,11 +76,11 @@ class BertDataset(Dataset):
                 r = random.random()
                 if r < 0.8:
                     text_idx[i] = self.word_2_index["[MASK]"]
-                    mask_val[i] = v
-                elif r > 0.9:
+                elif r < 0.9:
                     other_idx = random.randint(6, len(self.word_2_index) - 1)
                     text_idx[i] = other_idx
-                    mask_val[i] = v
+                # r >= 0.9：token 保持不变，但仍是预测目标
+                mask_val[i] = v
         text_idx = text_idx + [self.word_2_index["[PAD]"]] * (self.max_len - len(text_idx))
 
         return torch.tensor(text_idx), torch.tensor(lable), torch.tensor(mask_val), torch.tensor(seg_idx)

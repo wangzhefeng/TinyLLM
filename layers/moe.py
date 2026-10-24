@@ -61,15 +61,17 @@ class _NoisyTopkRouter(nn.Module):
         """
         # logits
         logits = self.topk_route_linear(mh_output)
-        # nose logits
-        noise_logits = self.noise_linear(mh_output)
-        # add scaled gaussian noise to logits（Noisy Top-k Gating 用标准正态噪声）
-        noise = torch.randn_like(logits) * F.softplus(noise_logits)
-        noisy_logits = logits + noise
+        # Noisy Top-k Gating 的噪声只在训练时加入：eval 模式下路由必须确定
+        if self.training:
+            # nose logits
+            noise_logits = self.noise_linear(mh_output)
+            # add scaled gaussian noise to logits（Noisy Top-k Gating 用标准正态噪声）
+            noise = torch.randn_like(logits) * F.softplus(noise_logits)
+            logits = logits + noise
         # 获取前 k 大的值和索引
-        top_k_logits, indices = torch.topk(noisy_logits, self.top_k, dim=-1)
+        top_k_logits, indices = torch.topk(logits, self.top_k, dim=-1)
         # 创建一个形状和 logits 相同的 '-inf' 矩阵, shape=[2, 4, 4]
-        zeros = torch.full_like(noisy_logits, float('-inf'))
+        zeros = torch.full_like(logits, float('-inf'))
         # 按照索引和值填充上述 zeros 矩阵
         sparse_logits = torch.scatter(zeros, -1, indices, top_k_logits)
         # 对 sparse_logits 进行 softmax 操作，未被填充的位置为 0
@@ -150,8 +152,9 @@ class MoEFeedForward(nn.Module):
     2. **负载均衡 aux loss**：Switch Transformer 式
        ``L_aux = N * Σ_i f_i · P_i``（f_i=专家 i 分到的 token 比例，
        P_i=平均路由概率）；路由完全均衡时最小。
-       ``return_aux_loss=True`` 时返回 (out, aux_loss)；
-       默认 False 保持既有调用兼容（aux loss 挂在 ``self.last_aux_loss``）。
+       只在训练模式计算：训练时 ``return_aux_loss=True`` 返回 (out, aux_loss)，
+       并挂在 ``self.last_aux_loss``；eval 不计算，``last_aux_loss`` 置 None，
+       ``return_aux_loss=True`` 返回 (out, None) 以保持返回形状兼容。
     """
 
     def __init__(self, cfg):
@@ -226,12 +229,16 @@ class MoEFeedForward(nn.Module):
         topk_scores, topk_indices = torch.topk(scores, self.num_experts_per_tok, dim=-1)
         topk_probs = torch.softmax(topk_scores, dim=-1)
 
-        # 负载均衡 aux loss（训练时加到总 loss：total + aux_weight * aux）
-        aux_loss = self.load_balancing_loss(
-            topk_probs.reshape(-1, self.num_experts_per_tok),
-            topk_indices.reshape(-1, self.num_experts_per_tok),
-            self.num_experts,
-        )
+        # 负载均衡 aux loss 只在训练时计算（训练时加到总 loss：total + aux_weight * aux）；
+        # eval 不计算、不返回（return_aux_loss=True 时返回 None 占位，保持返回形状兼容）
+        if self.training:
+            aux_loss = self.load_balancing_loss(
+                topk_probs.reshape(-1, self.num_experts_per_tok),
+                topk_indices.reshape(-1, self.num_experts_per_tok),
+                self.num_experts,
+            )
+        else:
+            aux_loss = None
 
         batch, seq_len, _ = x.shape
         x_flat = x.reshape(batch * seq_len, -1)
@@ -240,13 +247,10 @@ class MoEFeedForward(nn.Module):
         topk_indices_flat = topk_indices.reshape(-1, self.num_experts_per_tok)
         topk_probs_flat = topk_probs.reshape(-1, self.num_experts_per_tok)
 
-        unique_experts = torch.unique(topk_indices_flat)
-
-        for expert_id_tensor in unique_experts:
-            expert_id = int(expert_id_tensor.item())
+        # 按专家 id 顺序遍历：避免 torch.unique + 逐专家 .item() 的 GPU 同步；
+        # 每个 token 分派到的专家集合不变，数值语义与原来一致
+        for expert_id in range(self.num_experts):
             mask = topk_indices_flat == expert_id
-            if not mask.any():
-                continue
 
             token_mask = mask.any(dim=-1)
             selected_idx = token_mask.nonzero(as_tuple=False).squeeze(-1)

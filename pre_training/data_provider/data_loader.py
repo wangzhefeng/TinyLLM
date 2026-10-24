@@ -85,14 +85,13 @@ class LLMDataset(Dataset):
             # self.target_blocks.append(torch.tensor(target_seq))
 
             # Stop if have enough examles
-            if len(self.input_blocks) > num_examples:
+            if len(self.input_blocks) >= num_examples:
                 break
-        # Convert to tensors for PyTorch and move to device
+        # Convert to tensors for PyTorch；保留在 CPU 上。
+        # 数据集常驻 GPU 会与 num_workers > 0（子进程无法共享 CUDA tensor）和
+        # pin_memory（pin 的是 CPU 内存）冲突，batch 的搬运由训练循环负责。
         self.input_blocks = torch.tensor(self.input_blocks, dtype=dtype)
         self.target_blocks = torch.tensor(self.target_blocks, dtype=dtype)
-        if device:
-            self.input_blocks = self.input_blocks.to(device)
-            self.target_blocks = self.target_blocks.to(device)
     
     def __len__(self):
         return len(self.input_blocks)
@@ -114,7 +113,7 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
                       batch_size: int=4,
                       max_len: int=256,
                       stride: int=None,
-                      num_workers: bool=0,
+                      num_workers: int=0,
                       num_examples: int=100000,
                       dtype=torch.long,
                       device=None,
@@ -125,7 +124,7 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
     if data_source == "local":
         raw_text = load_local_data(url, data_path=data_path, data_file=data_file)    
     elif data_source == "huggingface":
-        raw_text = load_hf_data(data_path=data_path, data_name=data_file, cache_dir="./dataset/pretraininging/hf")
+        raw_text = load_hf_data(data_path=data_path, data_name=data_file, cache_dir="./dataset/pretraining/hf")
     logger.info(f"Train data character length: {len(raw_text)}")
     # data split
     train_data, valid_data = data_split(text=raw_text, train_ratio=train_ratio)
@@ -134,6 +133,11 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
     # params
     shuffle = True if flag == "train" else False
     drop_last = True if flag == "train" else False
+    # pin_memory 只对 CUDA 有意义（加速 CPU->GPU 拷贝），且要求数据集在 CPU 上
+    pin_memory = bool(
+        torch.cuda.is_available()
+        and (device is None or (hasattr(device, "type") and device.type == "cuda"))
+    )
     # create dataset
     dataset = LLMDataset(
         text=text, 
@@ -151,7 +155,7 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
             dataset,
             batch_size=batch_size,
             shuffle=False,
-            pin_memory=True,
+            pin_memory=pin_memory,
             drop_last=drop_last,
             # chunk batches across GPUs without overlapping samples
             sampler=DistributedSampler(dataset, num_replicas=world_size, rank=global_rank),
@@ -162,6 +166,7 @@ def create_dataloader(data_source: str,  # option: ["huggingface", "local"]
             dataset,
             batch_size=batch_size,
             shuffle=shuffle,
+            pin_memory=pin_memory,
             drop_last=drop_last,
             num_workers=num_workers,
         )
@@ -182,7 +187,7 @@ def main():
     # data path
     data_source = "local"
     url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
-    data_path = "./dataset/pretraininging"
+    data_path = "./dataset/pretraining"
     data_file = "the-verdict.txt" 
     # dataloader
     train_dataset, train_dataloader = create_dataloader(
@@ -207,7 +212,7 @@ def main():
     # data path
     data_source = "local"
     url = "https://www.gutenberg.org/cache/epub/145/pg145.txt"
-    data_path = "./dataset/pretraininging"
+    data_path = "./dataset/pretraining"
     data_file = "pg145.txt" 
     # dataloader
     train_dataset, train_dataloader = create_dataloader(

@@ -33,14 +33,26 @@ data_url = (
 )
 logger.info(f"data_url: {data_url}")
 
-# data dir
-data_dir = Path("./dataset/finetune/")
-data_dir.mkdir(parents=True, exist_ok=True)
-logger.info(f"data_dir: {data_dir}")
+# data dir（惰性创建：仅在使用方真正取用时 mkdir，import 本模块无副作用）
+_data_dir = Path("./dataset/finetuning/")
 
-# instruction data path
-data_path = data_dir.joinpath(data_url.split("/")[-1])
+
+def get_data_dir():
+    _data_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"data_dir: {_data_dir}")
+    return _data_dir
+
+
+# instruction data path（不触发目录创建）
+data_path = _data_dir.joinpath(data_url.split("/")[-1])
 logger.info(f"data_path: {data_path}")
+
+
+# 向后兼容：消费方以 data_config.data_dir 取用时才创建目录
+def __getattr__(name):
+    if name == "data_dir":
+        return get_data_dir()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 
@@ -50,7 +62,7 @@ def main():
     from utils.load_save_data import load_local_data, load_json_data
 
     # data load
-    data = load_local_data(url=data_url, data_path=data_dir)
+    data = load_local_data(url=data_url, data_path=get_data_dir())
     data = load_json_data(data_path = data_path)
     from pprint import pprint
     pprint(data[0])

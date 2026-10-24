@@ -140,7 +140,7 @@ def text_data_embedding():
 
 def real_data_embedding():
     # data path
-    data_path = "./dataset/pretraininging"
+    data_path = "./dataset/pretraining"
     data_file = "the-verdict.txt"
 
     # tokenizer

@@ -7,7 +7,7 @@
 # * Date        : 2025-08-20
 # * Version     : 1.0.082004
 # * Description : 分布式示例共用的进程组启动辅助。进程组初始化、rank 查询
-# *               复用仓库主链路的 utils/ddp_utils.py；本模块只补缺口：
+# *               由 tools 独立实现，不依赖主链路 utils；包含：
 # *               torchrun 环境变量入口、mp.spawn 入口、rank0 打印、
 # *               统一 checkpoint 目录。脚本从任意 cwd 运行均可（仓库根
 # *               基于 __file__ 计算并加入 sys.path）。
@@ -42,12 +42,20 @@ if str(REPO_ROOT) not in sys.path:
 import torch
 import torch.distributed as dist
 
-from utils.ddp_utils import (
-    is_dist,
-    get_global_rank,
-    get_world_size,
-    get_local_rank,
-)
+def is_dist() -> bool:
+    return dist.is_available() and dist.is_initialized()
+
+
+def get_global_rank() -> int:
+    return dist.get_rank() if is_dist() else int(os.environ.get("RANK", 0))
+
+
+def get_world_size() -> int:
+    return dist.get_world_size() if is_dist() else int(os.environ.get("WORLD_SIZE", 1))
+
+
+def get_local_rank() -> int:
+    return int(os.environ.get("LOCAL_RANK", 0))
 
 
 def get_rank() -> int:

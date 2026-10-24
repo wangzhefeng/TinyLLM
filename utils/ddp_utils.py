@@ -44,7 +44,7 @@ def is_dist():
 #         dist.init_process_group(backend="nccl")
 
 
-def init_dist(rank, world_size):
+def init_dist(rank, world_size, local_rank=None):
     """
     function to initialize a distributed process group(1 process/GPU)
     this allows communication among processes
@@ -52,7 +52,10 @@ def init_dist(rank, world_size):
     Args:
         rank (int): a unique process ID(Unique identifier of each process)
         world_size (int): total number of processes in the group
+        local_rank (int): 本机内的进程编号，用于绑定 GPU；None 时从 LOCAL_RANK 环境变量读取
     """
+    if local_rank is None:
+        local_rank = get_local_rank()
     logger.info(f"init dist...")
     # Only set MASTER_ADDR and MASTER_PORT if not already defined by torchrun
     # rank of machine running rank:0 process, assume all GPUs are on the same machine
@@ -85,8 +88,9 @@ def init_dist(rank, world_size):
         dist.init_process_group(backend="gloo", rank=rank, world_size=world_size)
     logger.info(f"os.environ['USE_LIBUV']: {os.environ.get('USE_LIBUV')}")
     # set device (only CUDA has one device per process)
+    # 必须绑定本机内的设备编号（LOCAL_RANK），多机时 global rank 会超出本机设备范围
     if torch.cuda.is_available():
-        torch.cuda.set_device(rank)
+        torch.cuda.set_device(local_rank)
 
 
 def ddp_setup(rank, world_size):
@@ -161,8 +165,13 @@ def get_local_rank():
             - 设置设备：device = torch.device(f'cuda:{local_rank}')
             - 避免多个进程争抢同一块 GPU
     """
-    if is_dist() and "LOCAL_RANK" in os.environ:
+    if "LOCAL_RANK" in os.environ:
+        # torchrun/torch.distributed.launch 在进程组初始化之前就注入 LOCAL_RANK，
+        # 不能依赖 is_dist()，否则 torchrun 启动的进程在 init 前永远拿到 0
         local_rank = int(os.environ["LOCAL_RANK"])
+    elif is_dist():
+        local_rank = dist.get_rank() % torch.cuda.device_count() \
+            if torch.cuda.is_available() and torch.cuda.device_count() > 0 else 0
     else:
         local_rank = 0
 
@@ -205,7 +214,7 @@ def print_master_log(rank: int=0):
 
 # 测试代码 main 函数
 def main():
-    init_dist()
+    init_dist(get_global_rank(), get_world_size())
     logger.info(dist.get_rank())
 
     # logger.info(f"is_dist: {is_dist()}")

@@ -26,6 +26,7 @@ from torch.utils.data import DataLoader
 
 from models.bert.model import Model
 from pre_training.data_provider.bert.data_loader import BertDataset
+from training.checkpoint import save_training_checkpoint
 from utils.device import device_setting, torch_gc
 from utils.log_util import logger
 from utils.random_seed import set_seed, set_seed_worker
@@ -163,12 +164,12 @@ def evaluate(model, dev_dataloader, device):
             batch_label = batch_label.to(device)
             batch_mask_val = batch_mask_val.to(device)
             batch_seg_idx = batch_seg_idx.to(device)
-            # dev loss
-            loss = model(batch_idx, batch_seg_idx, batch_mask_val, batch_label)
+            # dev loss + accuracy：单次前向同时拿到 loss 与预测结果
+            loss, pre_mask, pre_next = model(
+                batch_idx, batch_seg_idx, batch_mask_val, batch_label, return_preds=True
+            )
             total_loss += loss.item()
             total_batches += 1
-            # dev accuracy
-            pre_mask, pre_next = model(batch_idx, batch_seg_idx)
             mask_correct += (pre_mask[batch_mask_val != 0] == batch_mask_val[batch_mask_val != 0]).sum().item()
             mask_total += (batch_mask_val != 0).sum().item()
             next_correct += (pre_next == batch_label).sum().item()
@@ -180,14 +181,14 @@ def evaluate(model, dev_dataloader, device):
 
 
 def save_checkpoint(model, optimizer, epoch, val_loss, config, ckpt_path):
-    Path(ckpt_path).parent.mkdir(parents=True, exist_ok=True)
-    torch.save({
-        "epoch": epoch,
-        "val_loss": val_loss,
-        "config": config,
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict() if optimizer else None,
-    }, ckpt_path)
+    save_training_checkpoint(
+        ckpt_path,
+        model=model,
+        optimizer=optimizer,
+        epoch=epoch,
+        config=config,
+        extra={"val_loss": val_loss},
+    )
     logger.info(f"Checkpoint saved to {ckpt_path}")
 
 

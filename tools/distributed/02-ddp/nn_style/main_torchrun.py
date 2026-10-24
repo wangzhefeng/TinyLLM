@@ -7,7 +7,7 @@
 # * Date        : 2025-08-20
 # * Version     : 1.0.082012
 # * Description : 02 单元（作者模块化版）：DDP 单机多进程，torchrun 启动。
-# *               进程组初始化复用 utils/ddp_utils.py；从 torchrun 设置的
+# *               进程组初始化使用 tools/_common；从 torchrun 设置的
 # *               环境变量读取 LOCAL_RANK。仅 rank 0 打印训练日志。
 # * Link        : https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-A/03_main-chapter-code/DDP-script-torchrun.py
 # * Requirement : torch >= 2.5；gloo（CPU）或 nccl（CUDA）
@@ -30,7 +30,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed.elastic.multiprocessing.errors import record
 
-from utils.ddp_utils import ddp_setup_custom, destory_dist
+from tools.distributed._common.dist import cleanup, setup_spawn
 from tools.distributed._common.dataset import make_toy_dataloaders
 from tools.distributed._common.device import get_dist_device
 from tools.distributed._common.metrics import log_step_metrics
@@ -51,8 +51,8 @@ def compute_accuracy(model, dataloader, device):
 
 
 def train(rank, world_size, num_epochs, batch_size):
-    # 进程组初始化：复用 utils/ddp_utils.py（自动选 nccl/gloo）
-    ddp_setup_custom(rank, world_size)
+    # 进程组初始化：使用 tools 自带的 setup/cleanup（自动选 nccl/gloo）
+    setup_spawn(rank, world_size)
     device = get_dist_device(rank)
     use_cuda = device.type == "cuda"
 
@@ -84,7 +84,7 @@ def train(rank, world_size, num_epochs, batch_size):
     print(f"[rank {rank}] Training accuracy: {train_acc:.4f}")
     print(f"[rank {rank}] Test accuracy: {test_acc:.4f}")
 
-    destory_dist()  # 注意：函数名拼写沿用 utils/ddp_utils.py 现状（另案处理）
+    cleanup()
 
 
 # 测试代码 main 函数

@@ -23,9 +23,10 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 import torch
+import torch.nn as nn
 
 from models.llama import (
-    llama2, 
+    llama2,
     llama3_8B,
 )
 from utils.log_util import logger
@@ -35,9 +36,10 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class Exp_Basic:
-    
+
     def __init__(self, args, local_rank):
         self.args = args
+        self.local_rank = local_rank
         self.model_dict = {
             "gpt2_124M": gpt2_124M,
             "llama2": llama2,
@@ -48,8 +50,12 @@ class Exp_Basic:
         self.device = self._acquire_device(local_rank)
         # tokenizer
         self.tokenizer = self._get_tokenizer()
-        # model
+        # model（先在 CPU 上构建）
         self.model = self._build_model()
+        # model device and dtype：先就位再并行包装，否则 DP/DDP 包装的是 CPU 模型
+        self.model.to(self.device).to(args.dtype)
+        # DP/DDP wrap（模型已在目标 device/dtype 上）
+        self.model = self._wrap_model(self.model)
         # model compile
         major, minor = map(int, torch.__version__.split(".")[:2])
         if getattr(self.args, "compile", False) and self.args.gpu_type == "cuda":
@@ -63,15 +69,13 @@ class Exp_Basic:
                 # lightning-thunder is optional, import lazily
                 import thunder
                 self.model = thunder.compile(self.model)
-        # model device and dtype
-        self.model.to(self.device).to(args.dtype)
 
     def _acquire_device(self, local_rank):
         # Use GPU or not
         self.args.use_gpu = True \
             if self.args.use_gpu and (
-                torch.cuda.is_available() or 
-                torch.backends.mps.is_available() or 
+                torch.cuda.is_available() or
+                torch.backends.mps.is_available() or
                 torch.xpu.is_available()
             ) else False
         # GPU type: "cuda", "mps", "xpu"
@@ -82,7 +86,8 @@ class Exp_Basic:
         # device
         if self.args.use_gpu and self.args.gpu_type == "cuda":
             if self.args.use_dp:
-                device = torch.device(f"cuda:{self.args.device_ids[0]}")
+                # DP 的 device_ids 是可见设备内的逻辑编号，主设备为逻辑 0 号
+                device = torch.device("cuda", 0)
             elif self.args.use_ddp:
                 # 显式设置当前进程使用的 GPU 设备
                 torch.cuda.set_device(local_rank)
@@ -104,19 +109,44 @@ class Exp_Basic:
             logger.info("\t\tUse CPU")
 
         return device
-    
+
+    def _wrap_model(self, model):
+        """
+        单机多卡并行包装（在模型 to(device)/to(dtype) 之后调用）
+        """
+        if self.args.use_gpu and getattr(self.args, "use_dp", 0):
+            # DataParallel 的 device_ids 是 CUDA_VISIBLE_DEVICES 可见设备内的逻辑编号
+            # （0..N-1），不是物理编号；物理编号 "2,3" 时逻辑编号仍是 [0, 1]
+            device_ids = list(range(len(self.args.device_ids)))
+            logger.info(f"\t\tUse DataParallel, logical device_ids: {device_ids}")
+            model = nn.DataParallel(model, device_ids=device_ids)
+        elif getattr(self.args, "use_ddp", 0):
+            from utils.ddp_utils import is_dist
+            if not is_dist():
+                # 未初始化的进程组（如单进程误开 --use_ddp）下跳过包装，避免 DDP 报错
+                logger.warning("\t\tuse_ddp=1 but process group is not initialized, skip DDP wrap")
+            elif self.args.use_gpu:
+                logger.info(f"\t\tUse DistributedDataParallel, local_rank: {self.local_rank}")
+                model = nn.parallel.DistributedDataParallel(model, device_ids=[self.local_rank])
+            else:
+                # CPU + gloo 后端的 DDP（如 CI/本机调试），不传 device_ids
+                logger.info("\t\tUse DistributedDataParallel on CPU (gloo)")
+                model = nn.parallel.DistributedDataParallel(model)
+
+        return model
+
     def _get_data(self):
         pass
-    
+
     def _get_tokenizer(self):
-        pass 
-    
+        pass
+
     def _build_model(self):
         raise NotImplementedError
-        return None 
-    
+        return None
+
     def train(self):
-        pass 
+        pass
 
     def vali(self):
         pass

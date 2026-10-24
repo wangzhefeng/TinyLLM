@@ -4,7 +4,7 @@ import unittest
 
 class TestJudgePrompt(unittest.TestCase):
     def test_rubric_and_sections_present(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             build_judge_prompt,
         )
         prompt = build_judge_prompt(
@@ -21,7 +21,7 @@ class TestJudgePrompt(unittest.TestCase):
         self.assertTrue(prompt.endswith("Evaluation: "))
 
     def test_without_reference_answer(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             build_judge_prompt,
         )
         prompt = build_judge_prompt(question="Q?", response="R")
@@ -32,7 +32,7 @@ class TestJudgePrompt(unittest.TestCase):
 
 class TestParseScore(unittest.TestCase):
     def test_common_formats(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             parse_score,
         )
         self.assertEqual(parse_score("Rating: 4"), 4)
@@ -42,7 +42,7 @@ class TestParseScore(unittest.TestCase):
         self.assertEqual(parse_score("Evaluation: 1 - bad"), 1)
 
     def test_default_on_no_match(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             parse_score,
         )
         self.assertEqual(parse_score("no digit here"), 3)          # 书原版默认
@@ -55,7 +55,7 @@ class TestParseScore(unittest.TestCase):
         - "6/10"：'1' 后跟数字 '0' 不满足 (?:\\D|$)，无匹配 -> default 3
         - "10 out of 10"：同理无匹配 -> default 3
         """
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             parse_score,
         )
         self.assertEqual(parse_score("6/10"), 3)
@@ -64,7 +64,7 @@ class TestParseScore(unittest.TestCase):
 
 class TestSummarizeScores(unittest.TestCase):
     def test_summary_stats(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             summarize_scores,
         )
         s = summarize_scores([4, 5, 3, 4])
@@ -77,7 +77,7 @@ class TestSummarizeScores(unittest.TestCase):
         self.assertEqual(sum(s["counts"].values()), 4)
 
     def test_empty_scores(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             summarize_scores,
         )
         s = summarize_scores([])
@@ -87,7 +87,7 @@ class TestSummarizeScores(unittest.TestCase):
 
 class TestEvaluateResponse(unittest.TestCase):
     def test_full_flow_with_mock_backend(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             evaluate_response,
         )
         mock = lambda prompt: "Mostly correct.\nRating: 4"  # noqa: E731
@@ -99,7 +99,7 @@ class TestEvaluateResponse(unittest.TestCase):
         self.assertIn("Q?", result["prompt"])
 
     def test_query_fn_required(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges import (
+        from inference.evaluation.judges.llm_judges import (
             evaluate_response,
         )
         with self.assertRaises(ValueError):
@@ -109,7 +109,7 @@ class TestEvaluateResponse(unittest.TestCase):
 class TestOllamaBackend(unittest.TestCase):
     def test_query_ollama_clear_error_when_unreachable(self):
         """本地无 Ollama 时应抛出带排查建议的 RuntimeError（不联网即可测）。"""
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_judges_Ollama_API import (
+        from inference.evaluation.judges.llm_judges_Ollama_API import (
             query_ollama,
         )
         with self.assertRaises(RuntimeError) as ctx:
@@ -120,14 +120,14 @@ class TestOllamaBackend(unittest.TestCase):
         """import 不应触发任何网络调用或模型加载。"""
         import importlib
 
-        import post_training.reasoning.evaluation.judgement_based_eval.llm_judges_Ollama_API as m
+        import inference.evaluation.judges.llm_judges_Ollama_API as m
         importlib.reload(m)      # 若模块级有副作用，此处即会执行网络/加载
 
 
 class TestQwen3Backend(unittest.TestCase):
     def test_module_import_has_no_side_effects(self):
         """import 不得拉起 transformers pipeline（延迟到函数内）。"""
-        import post_training.reasoning.evaluation.judgement_based_eval.llm_judges_Qwen3 as m
+        import inference.evaluation.judges.llm_judges_Qwen3 as m
         self.assertIsNone(m._QWEN3_PIPELINE)
 
 

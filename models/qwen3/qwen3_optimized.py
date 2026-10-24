@@ -63,36 +63,29 @@ class Model(nn.Module):
         self.exact = exact
         self.current_pos = 0  # Track current position in KV cache
     
-    def forward(self, x, cache=None):
-        # tokenized text shape
-        batch_size, num_tokens = x.shape
-        # token embedding layer
-        tok_embeds = self.tok_embed(x)
-        x = tok_embeds
-        # kv cache
-        if cache is not None:
-            pos_start = self.current_pos
-            pos_end = pos_start + num_tokens
-            # RoPE 越界防护：cos/sin 只预计算到 context_length，超出即报清晰错误
-            if pos_end > self.cfg.context_length:
-                raise IndexError(
-                    f"KV cache position {pos_end} exceeds context_length "
-                    f"{self.cfg.context_length}: RoPE cos/sin 预计算长度不足。"
-                    f"请调用 reset_kv_cache() 或减小 max_new_tokens。"
-                )
-            self.current_pos = pos_end 
-            mask = torch.triu(
-                torch.full((num_tokens, num_tokens), -torch.inf, device=x.device, dtype=self.cfg.dtype),
-                diagonal=1 + pos_start,
-            )
+    def forward(self, x, cache=None, attention_mask=None, position_ids=None):
+        _, num_tokens = x.shape
+        x = self.tok_embed(x)
+        if position_ids is not None:
+            pos_start = int(position_ids[0, 0].item())
+        elif cache is not None:
+            pos_start = cache.position
         else:
-            pos_start = 0  # Not strictly necessary but helps torch.compile
-            mask = torch.triu(
-                torch.full((num_tokens, num_tokens), -torch.inf, device=x.device, dtype=self.cfg.dtype),
-                diagonal=1,
-            )
-        # Shape (1, 1, num_tokens, num_tokens) to broadcast across batch and heads
-        mask = mask[None, None, :, :]
+            pos_start = 0
+        pos_end = pos_start + num_tokens
+        if pos_end > self.cfg.context_length:
+            raise IndexError(f"Position {pos_end} exceeds context_length {self.cfg.context_length}")
+        key_len = pos_end if cache is not None else num_tokens
+        row = torch.arange(num_tokens, device=x.device).unsqueeze(1)
+        col = torch.arange(key_len, device=x.device).unsqueeze(0)
+        mask_bool = (row + pos_start < col)[None, None, :, :]
+        if attention_mask is not None:
+            if attention_mask.ndim == 2:
+                attention_mask = attention_mask[:, None, None, :]
+            mask_bool = mask_bool | attention_mask
+        mask = torch.zeros(mask_bool.shape, device=x.device, dtype=self.cfg.dtype).masked_fill(
+            mask_bool, -torch.inf
+        )
         # transformer block
         for i, block in enumerate(self.trf_blocks):
             if cache is not None:
@@ -104,10 +97,12 @@ class Model(nn.Module):
                 layer_idx=i,
                 exact=self.exact,
             )
+        if cache is not None:
+            cache.advance(num_tokens)
         # final RMSNorm
         x = self.final_norm(x)
         # linear output layer(head)
-        logits = self.out_head(x.to(self.cfg.dtype))
+        logits = self.out_head(x.to(self.out_head.weight.dtype))
 
         return logits
     

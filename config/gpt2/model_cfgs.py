@@ -12,11 +12,7 @@
 # ***************************************************
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 
 import torch
 
@@ -63,7 +59,7 @@ GPT2_124M_CONFIG = {
     "n_heads": 12,           # Number of attention heads
     "n_layers": 12,          # Number of transformer layers
     "dropout": 0.1,          # Dropout rate
-    "qkv_bias": False,       # Query-Key-Value bias
+    "qkv_bias": True,       # Query-Key-Value bias
     "dtype": torch.float32,
     "kv_window_size": 1024,  # KV cache window size
     "top_k": 1,
@@ -81,7 +77,7 @@ GPT2_MEDIUM_CONFIG = {
     "n_heads": 16,           # Number of attention heads
     "n_layers": 24,          # Number of transformer layers
     "dropout": 0.1,          # Dropout rate
-    "qkv_bias": False,       # Query-Key-Value bias
+    "qkv_bias": True,       # Query-Key-Value bias
     "dtype": torch.float32,
     "kv_window_size": 1024,  # KV cache window size
 }
@@ -97,7 +93,7 @@ GPT2_LARGE_CONFIG = {
     "n_heads": 20,           # Number of attention heads
     "n_layers": 36,          # Number of transformer layers
     "dropout": 0.1,          # Dropout rate
-    "qkv_bias": False,       # Query-Key-Value bias
+    "qkv_bias": True,       # Query-Key-Value bias
     "dtype": torch.float32,
     "kv_window_size": 1024,  # KV cache window size
 }
@@ -114,13 +110,22 @@ GPT2_XL_CONFIG = {
     "n_heads": 25,           # Number of attention heads
     "n_layers": 48,          # Number of transformer layers
     "dropout": 0.1,          # Dropout rate
-    "qkv_bias": False,       # Query-Key-Value bias
+    "qkv_bias": True,       # Query-Key-Value bias
     "dtype": torch.float32,
     "kv_window_size": 1024,  # KV cache window size
 }
 GPT2_XL_CONFIG= DotDict(GPT2_XL_CONFIG)
 
+from config.base import GenerationConfig, ModelConfig
 
+GPT2_124M_MODEL_CONFIG = ModelConfig.from_dict(GPT2_124M_CONFIG)
+GPT2_124M_GENERATION_CONFIG = GenerationConfig(
+    max_new_tokens=GPT2_124M_CONFIG.max_new_tokens,
+    context_length=GPT2_124M_CONFIG.context_length,
+    top_k=GPT2_124M_CONFIG.top_k,
+    temperature=GPT2_124M_CONFIG.temperature,
+    eos_token_id=50256,
+)
 
 
 # 测试代码 main 函数

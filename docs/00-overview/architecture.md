@@ -2,128 +2,117 @@
 
 # TinyLLM 架构与目录边界
 
-> 更新时间：2026-10-18（第三次整理：三个域内部按职责再分层）  
-> 目标：**预训练 → 后训练 / 逻辑推理 → 模型推断** 三域分离，域内按“数据 / 实验 / 入口 / 扩展”分层。
+> 更新时间：2026-10-24（共享训练运行时与推断归属重构）
+> 目标：**预训练 → 后训练 / 逻辑推理 → 模型推断** 三域分离，共享模型协议与训练基础设施。
 
 ## 1. 顶层结构
 
 ```text
 TinyLLM/
-├── pre_training/          # 预训练
-├── post_training/         # 后训练：SFT / PEFT / preference / reasoning
-├── inference/             # 模型推断：serving / api / evaluation / loaders / apps
-├── tools/                 # 独立工具库：checkpoint / data / distributed / profiling
-├── models/                # 共享模型定义
-├── layers/                # 共享层、tokenizer、生成原语
-├── config/、utils/        # 共享配置与工具
-├── dataset/               # 本地数据（gitignored）
-├── results/               # 模型输出：checkpoints / finetuned_models / test_results（gitignored）
+├── pre_training/          # 预训练任务与数据
+├── post_training/         # SFT / PEFT / preference / reasoning / rl
+├── inference/             # generation / strategies / serving / evaluation / api / apps
+├── training/              # 共享 Trainer、优化、分布式、checkpoint、callbacks
+├── models/                # 模型定义与 models/io 权重 IO
+├── layers/                # 共享层、cache、tokenizer、chat template
+├── config/、utils/        # typed config 与通用工具
+├── tools/                 # 独立工具库
+├── dataset/、results/     # 输入与输出（gitignored）
 ├── tests/                 # unit / integration
-├── docs/                  # 文档中心
-├── scripts/               # 仓库级工具脚本
-├── run_gpt2_124M.py       # GPT-2 预训练入口
-├── run_llama.py           # Llama2 预训练入口（tiny 演示配置）
-├── run_qwen.py            # Qwen3 预训练入口（tiny 演示配置）
-└── run_bert.py            # BERT 预训练入口（MLM + NSP）
+├── docs/、scripts/
+└── run_*.py               # 预训练薄入口
 ```
 
-> **输出约定**：所有训练/推断产出的模型文件（checkpoint、微调权重、采样与测试结果）统一写入 `results/`（gitignored），不散落在仓库根目录。
+所有训练和推断产出统一写入 `results/`。旧 `inference/loaders/` 与 reasoning 旧路径只承担兼容转发。
 
-## 2. 三个主域与工具库
+## 2. 三个主域
 
 ### 2.1 `pre_training/`
 
 | 目录 | 职责 |
 |---|---|
-| `data_provider/` | 语料加载、Gutenberg 数据准备（`pgcorpus_gutenberg/`）、BERT 数据层（`bert/`） |
-| `experiments/` | `Model_Pretrain`、超参搜索、bert 预训练实验 |
-| `examples/` | 书本 walkthrough、GPT-2 小训练、FLOPs 分析、Gutenberg 独立训练示例 |
-| `references/` | nanotron 配置参考 |
+| `data_provider/` | 文本、Gutenberg、BERT 数据；Dataset 保留 CPU tensor |
+| `experiments/` | `Model_Pretrain`、BERT 与实验功能 |
+| `examples/` | 教材 walkthrough、生成/attention 变体、FLOPs |
+| `references/` | 外部参考配置 |
 | `scripts/` | 单卡 / DP / DDP 启动 |
 
-入口约定：**预训练主入口放根目录**（`run_gpt2_124M.py`、`run_bert.py`、`run_llama.py`、`run_qwen.py`，
-均复用 `run_gpt2_124M.py` 的 parser 与 `pre_training.experiments.exp_pretrain_gpt2_124M` 主流程）；
-后训练与推断的入口放域内（如 `post_training/sft/run_sft.py`）。
+GPT-2/Llama/Qwen 入口复用根 parser 和实验流程；BERT 使用独立 encoder 任务流程。分布式初始化、DP/DDP 包装和恢复训练由共享运行时支撑。
 
 ### 2.2 `post_training/`
 
 | 目录 | 职责 |
 |---|---|
-| `sft/` | 分类微调、指令 SFT、SFT 评测；`data_provider`、`exp`、`layers`、`run`、`scripts` |
-| `peft/` | LoRA/QLoRA/adapter/prefix/prompt、蒸馏实验；`model_peft`、`layers`、`data_provider/adapter`、`cfgs` |
-| `preference/` | DPO/GRPO/PPO；`data_provider/dpo`、`exp`、`model_rlhf` |
-| `reasoning/` | `training/`、`inference/`、`evaluation/` |
-| `common/` | 共享 `data_loader`、`instruction_format`、`exp_basic` |
+| `sft/` | 分类微调、指令 SFT、BERT 情感分类 |
+| `peft/` | LoRA/QLoRA/adapter/prefix/prompt 与参考实验 |
+| `preference/` | DPO/PPO 及偏好数据 |
+| `reasoning/training/` | 推理能力训练、蒸馏 |
+| `rl/` | GRPO/PPO/REINFORCE 共享采样、logprob、mask、clipped objective |
+| `common/` | 少量共享数据工具；chat template 已下沉 layers |
 
-入口：
+统一入口：
 
 ```bash
-python post_training/sft/run_sft.py --help
-python post_training/sft/run/run_gpt_instruction_sft.py
-python post_training/sft/run/run_gpt_clf_sft.py
-python post_training/peft/run_peft.py
-python post_training/preference/model_rlhf/dpo/run_gpt_dpo.py
+python post_training/run.py --task sft_clf --help
+python post_training/run.py --task sft_ins --help
+python post_training/run.py --task dpo --help
 ```
 
 ### 2.3 `inference/`
 
-| 目录 | 职责 |
+| 目录/文件 | 职责 |
 |---|---|
-| `registry.py`、`loading.py`、`generation.py` | 通用推断 API：模型注册表、统一加载 `load_model`、统一生成 `generate_text` |
-| `serving/` | `nano_vllm` serving 级实现 |
+| `registry.py`、`loading.py` | 模型注册与统一加载；权重实现调用 `models/io/` |
+| `generation.py`、`generate_core.py` | 统一生成 facade 与教材解码 |
+| `strategies/` | self-consistency、best-of-n、self-refinement |
+| `serving/nano_vllm/` | 独立 serving 优化栈 |
 | `api/` | Ollama / OpenAI 客户端 |
-| `evaluation/` | 指令回答评测（judge.py 统一入口） |
-| `loaders/` | GPT-2 / Qwen3 / Gemma3 / Llama 权重加载库 |
-| `apps/` | Chainlit UI（app.py） |
-| `examples/` | GPT-2 生成示例 |
-| `scripts/` | run_app.sh |
+| `evaluation/` | benchmarks、judges、leaderboards 与统一 judge |
+| `apps/`、`examples/`、`scripts/` | Chainlit UI 与示例 |
 
-入口：
+批量与流式 facade 均只返回新增文本；GPT-2/Qwen3 默认使用外部 KV cache。`generate_core.py` 中 batched/optimized 变体属于实验后端，不是默认公开链路。
 
-```bash
-bash inference/scripts/run_app.sh        # Chainlit UI（GPT2_WEIGHTS=orig|own）
-python inference/loaders/qwen3/qwen3_06B_load.py   # USE_CACHE=True 即 KV cache 版
-```
-
-## 2.4 `tools/`
-
-| 目录 | 职责 |
-|---|---|
-| `distributed/` | 分布式并行教学单元 00–08：单卡/DP/DDP/ZeRO/FSDP2/TP/PP/组合/accelerate/DeepSpeed |
-| `profiling/` | 参数量、吞吐、显存、FLOPs/MFU |
-| `checkpoint/` | 原子保存/恢复、轮转 |
-| `data/` | JSONL、去重、packing |
-| 未来 | 量化、benchmark、tracking、部署等 |
-
-工具库不依赖三个主域的内部实现，详见 [70-tools](../70-tools/index.md)。
-
-## 3. 共享资产
+## 3. 共享运行时与资产
 
 | 目录 | 内容 |
 |---|---|
-| `models/` | gpt2、llama、qwen3、gemma3、bert、deepseek |
-| `layers/` | attention、block、FFN、norm、RoPE、MoE、KV cache、generation、tokenizers |
-| `config/` | canonical 模型超参表（gpt2/llama/qwen3），供权重加载与示例使用；训练入口走 argparse 不经 config/。config 模块禁止 import 副作用（device/种子/tokenizer 在调用方获取）；权重下载在 `inference/loaders/qwen3/model_download.py` |
-| `utils/` | optimizer、LR、loss、logging、device、DDP、checkpoint |
+| `training/trainer.py` | AMP、梯度累积/裁剪、DDP no_sync、train step、evaluate |
+| `training/checkpoint.py` | 统一 model/optimizer/scheduler/epoch/step/config/extra schema |
+| `training/distributed.py` | 主链路分布式兼容接口 |
+| `training/callbacks/` | early stopping、采样等可选回调 |
+| `models/base.py` | CausalLM/EncoderLM 轻量协议 |
+| `models/io/` | GPT-2/Qwen3/Llama/Gemma3 权重加载唯一实现 |
+| `layers/` | attention、block、FFN、norm、RoPE、MoE、cache、tokenizers |
+| `config/` | `ModelConfig`、`TrainConfig`、`GenerationConfig` 与兼容适配 |
+| `tools/` | checkpoint、data、profiling、distributed；不依赖三个主域 |
+| `utils/` | 通用工具与旧 API 兼容层 |
 
-`inference/generate_core.py`（生成）与 `layers/kv_cache.py` 是教材实现，前者已从 layers/ 归位 inference/ 域；`inference/serving/nano_vllm` 负责 serving 优化。
+模型 forward 逐步统一为 `input_ids, cache=None, attention_mask=None, position_ids=None`，旧 `use_cache` 保留兼容。生成位置存于 KV cache，支持同一模型的独立请求交错执行。mask 对外统一 `True=屏蔽`。
 
-## 4. 测试
+## 4. 依赖方向
 
-- `tests/unit/`：单模块、无网络、秒级。
-- `tests/integration/`：跨模块/端到端（当前为占位）。
-- 运行：`python -m unittest discover -s tests -v`
+```text
+config / layers / models / tools
+              ↓
+       training / inference
+              ↓
+pre_training / post_training / apps / run_*
+```
 
-## 5. 迁移说明
+训练与推断均依赖共享模型协议，但彼此不依赖。`models/io` 同时服务训练与推断；`tools` 不引用三个主域，也不依赖主链路 `utils.ddp_utils`。
 
-来自 `TinyLLMFinetuning` 的内容已拆为 `post_training/{sft,peft,preference}`；来自 `TinyLLMInference` 的内容拆为 `inference/{serving,api,evaluation,loaders,apps}`。历史记录见 [migration-2026-10.md](../60-reference/migration-2026-10.md)。
+## 5. 测试
 
-## 6. 已知遗留
+- `tests/unit/`：模块与契约测试，无网络、秒级。
+- `tests/integration/`：tiny 预训练+resume、SFT、DPO 与跨模块测试。
+- 慢速分布式：`TINYLLM_SLOW_TESTS=1`。
+- CI：单元、集成、文档检查；push 时增加 gloo 分布式冒烟。
 
-- 部分旧脚本仍依赖缺失的 `utils.llm`，属于迁移前遗留。
-- 2026-10-18（二）：根级 `data_provider/` 已删除，`bert/` 并入 `pre_training/data_provider/bert/`；
-  各域数据目录统一命名为 `data_provider/`。通用数据算法在 `tools/data/`。
-- 2026-10-18：`pre_training/legacy/` 与 `analysis/` 已解散；Llama/Qwen 入口修复并提升到根目录；
-  FLOPs 分析并入 `pre_training/examples/`。
-- 2026-10-24：`tools/distributed/` 重构为 00–08 学习动线单元（旧 `ddp/`、`dp/`、`fsdp/`、
-  `fairscale/`、`tensor_parallelism/` 等已删除），详见 [cleanup-log](../50-development/cleanup-log.md)。
+命令：
+
+```bash
+python -m unittest discover -s tests -v
+python scripts/check_docs.py
+```
+
+历史迁移记录见 [migration-2026-10.md](../60-reference/migration-2026-10.md) 与 [cleanup-log](../50-development/cleanup-log.md)。

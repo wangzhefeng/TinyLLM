@@ -24,24 +24,25 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 export LOG_NAME=gpt2_124M_DDP
 
 # tokenizer 模型名称
-tk_model_name=gpt2_124M
+tk_model_name=tiktoken_gpt2_bpe
 # LM 模型名称
 lm_model_name=gpt2_124M
 
 # 启动 4 个进程，每个进程绑定一个 GPU
+# 入口为根目录 run_gpt2_124M.py（exp_pretrain_gpt2_124M.py 没有 __main__ 参数解析）
 torchrun \
     --nproc_per_node=4 \
     --master_addr=localhost \
     --master_port=12355 \
-    ./pre_training/experiments/exp_pretrain_gpt2_124M.py \
+    run_gpt2_124M.py \
     --task_name tiny_gpt2_124M_pretrain_DDP \
     --des 'Tiny GPT2-124M Pretrain using DDP' \
     --is_train 1 \
     --is_test 1 \
     --is_inference 0 \
     --data_source local \
-    --url "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt" \
-    --data_path ./dataset/pretraininging \
+    --data_url "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt" \
+    --data_path ./dataset/pretraining \
     --data_file the-verdict.txt \
     --data_name the-verdict \
     --train_ratio 0.95 \

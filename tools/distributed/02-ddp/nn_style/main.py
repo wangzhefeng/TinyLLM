@@ -30,7 +30,7 @@ import torch.nn.functional as F
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from utils.ddp_utils import ddp_setup_custom, destory_dist
+from tools.distributed._common.dist import cleanup, setup_spawn
 from tools.distributed._common.dataset import make_toy_dataloaders
 from tools.distributed._common.device import get_dist_device
 from tools.distributed._common.metrics import log_step_metrics
@@ -51,8 +51,8 @@ def compute_accuracy(model, dataloader, device):
 
 
 def train(rank, world_size, num_epochs, batch_size):
-    # 进程组初始化：复用 utils/ddp_utils.py（自动选 nccl/gloo）
-    ddp_setup_custom(rank, world_size)
+    # 进程组初始化：使用 tools 自带的 setup/cleanup（自动选 nccl/gloo）
+    setup_spawn(rank, world_size)
     device = get_dist_device(rank)
     use_cuda = device.type == "cuda"
 
@@ -84,7 +84,7 @@ def train(rank, world_size, num_epochs, batch_size):
     print(f"[rank {rank}] Training accuracy: {train_acc:.4f}")
     print(f"[rank {rank}] Test accuracy: {test_acc:.4f}")
 
-    destory_dist()  # 注意：函数名拼写沿用 utils/ddp_utils.py 现状（另案处理）
+    cleanup()
 
 
 # 测试代码 main 函数

@@ -1,105 +1,31 @@
-# -*- coding: utf-8 -*-
-
-# ***************************************************
-# * File        : tokenizer.py
-# * Author      : Zhefeng Wang
-# * Email       : zfwang7@gmail.com
-# * Date        : 2025-01-23
-# * Version     : 1.0.012322
-# * Description : tokenizer
-# * Link        : link
-# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# ***************************************************
-
-__all__ = []
-
-# python libraries
-from pathlib import Path
 from typing import List
 
 import torch
 
-from layers.tokenizers.simple_custom import SimpleTokenizer
-from layers.tokenizers.bpe.simple_bpe import BPETokenizerSimple
-from layers.tokenizers.bpe.tiktoken_bpe import TiktokenBPE
-from layers.tokenizers.bpe.openai_gpt2_bpe import OpenaiGPT2BPE
-from layers.tokenizers.sp.llama2_7b_sentencepiece import Llama27bTokenizer
-from layers.tokenizers.bpe.llama3_8b_bpe import Llama38bTokenizer
+from layers.tokenizers.base import TokenizerProtocol
+from layers.tokenizers.registry import available_tokenizers, create_tokenizer
 
-# global variable
-LOGGING_LABEL = Path(__file__).name[:-3]
-
-
-def choose_tokenizer(tokenizer_model: str = "tiktoken_gpt2_bpe"):
-    """
-    choose tokenizer
-    """
-    tokenizer_models_map = {
-        "simple_custom": SimpleTokenizer,
-        "simple_bpe": BPETokenizerSimple,
-        "tiktoken_gpt2_bpe": TiktokenBPE,
-        "gpt2": TiktokenBPE,  # 别名：GPT-2 系（tiktoken gpt2 编码），供 run 脚本直传 --tokenizer_model gpt2
-        "openai_gpt2_bpe": OpenaiGPT2BPE,
-        "llama2": Llama27bTokenizer,
-        "llama3-8B": Llama38bTokenizer,
-    }
-    tokenizer = tokenizer_models_map[tokenizer_model]()
-
-    return tokenizer
+__all__ = [
+    "TokenizerProtocol",
+    "available_tokenizers",
+    "choose_tokenizer",
+    "text_to_token_ids",
+    "token_ids_to_text",
+]
 
 
-def text_to_token_ids(text: str, tokenizer_model: str = "tiktoken_gpt2_bpe"):
-    """
-    tokenizer text to token_ids 
-    """
-    # tokenizer
-    if isinstance(tokenizer_model, str):
-        tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
-    else:
-        tokenizer = tokenizer_model
-    # text encode to token ids
+def choose_tokenizer(tokenizer_model: str = "tiktoken_gpt2_bpe", **kwargs):
+    return create_tokenizer(tokenizer_model, **kwargs)
+
+
+def text_to_token_ids(text: str, tokenizer_model="tiktoken_gpt2_bpe", **kwargs):
+    tokenizer = choose_tokenizer(tokenizer_model, **kwargs) if isinstance(tokenizer_model, str) else tokenizer_model
     encoded = tokenizer.encode(text)
-    # add batch dimension
-    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-    
-    return encoded_tensor
+    if any(token_id is None for token_id in encoded):
+        raise ValueError("Tokenizer returned an unknown special token id")
+    return torch.tensor(encoded, dtype=torch.long).unsqueeze(0)
 
 
-def token_ids_to_text(token_ids: List, tokenizer_model: str = "tiktoken_gpt2_bpe"):
-    """
-    tokenizer decoded token_ids to text 
-    """
-    # tokenizer
-    if isinstance(tokenizer_model, str):
-        tokenizer = choose_tokenizer(tokenizer_model=tokenizer_model)
-    else:
-        tokenizer = tokenizer_model
-    # remove batch dimension
-    token_ids_flat_list = token_ids.squeeze(0).tolist()
-    # token ids decode to text
-    decoded_text = tokenizer.decode(token_ids_flat_list)
-    
-    return decoded_text
-
-
-
-
-# 测试代码 main 函数
-def main():
-    from utils.log_util import logger
-
-    # input text
-    input_text = (
-        "Hello, do you like tea? <|endoftext|> In the sunlit terraces"
-        "of someunknownPlace."
-    )
-
-    # test tokenizer
-    tokenizer_model_name = "tiktoken_gpt2_bpe"
-    token_ids = text_to_token_ids(input_text, tokenizer_model=tokenizer_model_name)
-    decoded_text = token_ids_to_text(token_ids, tokenizer_model=tokenizer_model_name)
-    logger.info(f"input_text: {input_text}")
-    logger.info(f"decoded_text: {decoded_text}")
-    
-if __name__ == "__main__":
-    main()
+def token_ids_to_text(token_ids: List, tokenizer_model="tiktoken_gpt2_bpe", **kwargs):
+    tokenizer = choose_tokenizer(tokenizer_model, **kwargs) if isinstance(tokenizer_model, str) else tokenizer_model
+    return tokenizer.decode(token_ids.squeeze(0).tolist())

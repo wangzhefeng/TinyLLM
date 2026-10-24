@@ -11,20 +11,21 @@
 #                 - backend="ollama"：走 inference.api.ollama_api（本地 Ollama 服务）
 #                 - backend="openai"：走 inference.api.openai_api（OpenAI API）
 # * Link        : link
-# * Requirement : tqdm；openai 后端需 pip install openai 及 config.json 中的 OPENAI_API_KEY
+# * Requirement : tqdm；openai 后端需 pip install openai 及环境变量 OPENAI_API_KEY
 # ***************************************************
 
 # python libraries
 import os
 import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
+# 仓根路径由本文件位置推导（inference/evaluation/judge.py -> 上两级），不依赖启动时的 cwd
+ROOT = str(Path(__file__).resolve().parents[2])
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 from tqdm import tqdm
 
 
-from post_training.common.data_provider.instruction_format import format_input_alpaca
+from layers.tokenizers.chat import format_input_alpaca
 from utils.log_util import logger
 
 # global variable
@@ -71,7 +72,7 @@ def _make_ollama_scorer(
 
 def _make_openai_scorer(client=None):
     """
-    openai judge：client 缺省时自动 create_client()（从 config.json 读 key）
+    openai judge：client 缺省时自动 create_client()（从环境变量 OPENAI_API_KEY 读 key）
     """
     from inference.api.openai_api import create_client, run_chatgpt
     if client is None:

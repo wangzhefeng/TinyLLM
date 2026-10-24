@@ -7,7 +7,7 @@ class TestBradleyTerry(unittest.TestCase):
     """Bradley-Terry：Adam 拟合 -logsigmoid NLL + 400/log(10) 缩放到 Elo 尺度。"""
 
     def _fit(self, votes, **kwargs):
-        from post_training.reasoning.evaluation.judgement_based_eval.bradley_terry_leaderboard import (
+        from inference.evaluation.judges.bradley_terry_leaderboard import (
             fit_bradley_terry,
         )
         return dict(fit_bradley_terry(votes, **kwargs))
@@ -36,7 +36,7 @@ class TestBradleyTerry(unittest.TestCase):
         self.assertAlmostEqual(ratings["A"], ratings["B"], delta=25.0)
 
     def test_returns_sorted_descending_list(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.bradley_terry_leaderboard import (
+        from inference.evaluation.judges.bradley_terry_leaderboard import (
             fit_bradley_terry,
         )
         votes = [("X", "Y"), ("X", "Z"), ("Y", "Z")]
@@ -56,7 +56,7 @@ class TestEloLeaderboard(unittest.TestCase):
     """Elo：llm_leaderboards.elo_ratings 的行为 + elo_leaderboard 教学辅助。"""
 
     def test_elo_ratings_winner_gains_loser_loses(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_leaderboards import (
+        from inference.evaluation.judges.llm_leaderboards import (
             elo_ratings,
         )
         votes = [("M1", "M2")]
@@ -67,7 +67,7 @@ class TestEloLeaderboard(unittest.TestCase):
         self.assertAlmostEqual(ratings["M1"] + ratings["M2"], 2000.0, places=6)
 
     def test_elo_dominant_model_ranks_first(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.llm_leaderboards import (
+        from inference.evaluation.judges.llm_leaderboards import (
             elo_ratings,
         )
         votes = [
@@ -79,7 +79,7 @@ class TestEloLeaderboard(unittest.TestCase):
         self.assertGreater(ratings["Claude"], ratings["Llama"])
 
     def test_expected_score_symmetric_complement(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.elo_leaderboard import (
+        from inference.evaluation.judges.elo_leaderboard import (
             expected_score,
         )
         self.assertEqual(expected_score(1000, 1000), 0.5)
@@ -91,7 +91,7 @@ class TestEloLeaderboard(unittest.TestCase):
         self.assertAlmostEqual(expected_score(1400, 1000), 10 / 11, places=9)
 
     def test_update_elo_equal_ratings(self):
-        from post_training.reasoning.evaluation.judgement_based_eval.elo_leaderboard import (
+        from inference.evaluation.judges.elo_leaderboard import (
             update_elo,
         )
         new_w, new_l = update_elo(1000, 1000, k_factor=32)
@@ -101,7 +101,7 @@ class TestEloLeaderboard(unittest.TestCase):
 
     def test_update_elo_strong_beats_weak_small_change(self):
         """强者胜弱者时更新幅度应小于均势对局（Elo 的核心性质）。"""
-        from post_training.reasoning.evaluation.judgement_based_eval.elo_leaderboard import (
+        from inference.evaluation.judges.elo_leaderboard import (
             update_elo,
         )
         new_w, _ = update_elo(1600, 1000, k_factor=32)
@@ -109,7 +109,7 @@ class TestEloLeaderboard(unittest.TestCase):
 
     def test_reexport_identity(self):
         """elo_leaderboard.elo_ratings 必须与 llm_leaderboards 的实现同源。"""
-        from post_training.reasoning.evaluation.judgement_based_eval import (
+        from inference.evaluation.judges import (
             elo_leaderboard,
             llm_leaderboards,
         )

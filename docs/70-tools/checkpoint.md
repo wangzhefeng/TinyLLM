@@ -2,45 +2,47 @@
 
 > 所属：[TinyLLM Docs](../README.md) › [Tools](index.md)
 
-`tools/checkpoint/` 提供原子保存、恢复和轮转，适用于预训练、SFT、PEFT。
+`tools/checkpoint/` 提供原子保存、恢复和轮转；`training/checkpoint.py` 提供训练统一 schema。
 
 ## API
 
 | 函数/类 | 用途 |
 |---|---|
-| `save_checkpoint(path, model, optimizer, scheduler, step, extra)` | 原子写入单个 `.pt` |
-| `load_checkpoint(path, model, optimizer, scheduler)` | 恢复状态，返回 payload |
-| `latest_checkpoint(dir)` | 最近修改的 `.pt/.pth` |
+| `save_checkpoint(...)` | 原子写入单个 `.pt` |
+| `load_checkpoint(...)` | 恢复模型、optimizer、scheduler，兼容旧字段 |
+| `latest_checkpoint(dir)` | 查找最近 checkpoint |
 | `CheckpointManager(dir, keep_last=3)` | `step_XXXXXXXX.pt` 轮转与恢复 |
+| `training.save_training_checkpoint(...)` | 保存统一训练状态与 config/epoch |
+
+统一字段为 `model`、`optimizer`、`scheduler`、`epoch`、`step`、`config`、`extra`。为兼容现有调用，也写入 `model_state_dict` 等旧别名；历史 `optmizer` 仅读取兼容。best 与 resume 共用格式，只是保存策略不同。
 
 ## 示例
 
 ```python
-import torch
-from tools.checkpoint import CheckpointManager, load_checkpoint
+from training.checkpoint import save_training_checkpoint, load_training_checkpoint
 
-manager = CheckpointManager("results/checkpoints/ckpt", keep_last=3)
-manager.save(
-    step=100,
+save_training_checkpoint(
+    "results/checkpoints/tiny.pt",
     model=model,
     optimizer=optimizer,
-    scheduler=scheduler,
-    extra={"loss": 1.23},
+    epoch=2,
+    step=100,
+    config={"name": "tiny"},
 )
-
-payload = manager.load_latest(model=model, optimizer=optimizer)
-print(payload["step"], payload["extra"])
+payload = load_training_checkpoint(
+    "results/checkpoints/tiny.pt",
+    model=model,
+    optimizer=optimizer,
+)
 ```
 
 ## 说明
 
-- 写入采用临时文件 + `os.replace`，避免中断留下半个 checkpoint。
-- `CheckpointManager` 只保留按文件名排序的最新 `keep_last` 个。
-- `torch.load(..., weights_only=False)` 用于恢复 optimizer/scheduler；只加载可信来源的 checkpoint。
-- 分片/异步 checkpoint 暂未实现；需要时在 `tools/checkpoint/` 增加后端，不要改训练主循环。
+- 写入采用临时文件 + `os.replace`，避免中断留下半个文件。
+- 只加载可信来源 checkpoint；恢复 optimizer/scheduler 需要 `weights_only=False`。
+- 分片/异步 checkpoint 暂未实现。
 
 ## 相关
 
 - [预训练训练循环](../10-pretraining/training.md)
-- [Profiling](profiling.md)
-- [Tools 索引](index.md)
+- [项目架构](../00-overview/architecture.md)

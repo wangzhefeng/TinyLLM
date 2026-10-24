@@ -12,61 +12,15 @@
 # ***************************************************
 
 # python libraries
-import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
 
 import torch
 
+from layers.sampling import sample_next_token
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
-
-
-def sample_next_token(logits: torch.Tensor, temperature: float = 0.0,
-                      top_k: int | None = None, top_p: float | None = None) -> torch.Tensor:
-    """
-    Sample the next token from the last-position logits.
-
-    Args:
-        logits: shape (batch_size, vocab_size)
-        temperature: <= 0 means greedy (argmax); > 0 scales logits before sampling
-        top_k: keep only the k highest-probability tokens before sampling
-        top_p: nucleus sampling, keep the smallest token set whose cumulative
-               probability mass >= top_p (only applied when 0 < top_p < 1)
-
-    Returns:
-        next token ids, shape (batch_size, 1)
-    """
-    # Greedy decoding
-    if temperature is None or temperature <= 0.0:
-        return torch.argmax(logits, dim=-1, keepdim=True)
-    # Temperature scaling
-    logits = logits / temperature
-    # Top-k filtering
-    if top_k is not None:
-        top_k = min(top_k, logits.size(-1))
-        top_logits, _ = torch.topk(logits, top_k, dim=-1)
-        min_val = top_logits[:, -1:]                              # shape: (batch_size, 1)
-        logits = torch.where(logits < min_val, torch.full_like(logits, float("-inf")), logits)
-    # Top-p (nucleus) filtering
-    if top_p is not None and 0.0 < top_p < 1.0:
-        sorted_logits, sorted_idx = torch.sort(logits, descending=True, dim=-1)
-        sorted_probs = torch.softmax(sorted_logits, dim=-1)
-        cum_probs = torch.cumsum(sorted_probs, dim=-1)
-        # Remove tokens once the cumulative mass exceeds top_p, always keep >= 1 token
-        remove = cum_probs > top_p
-        remove[..., 1:] = remove[..., :-1].clone()
-        remove[..., 0] = False
-        sorted_logits = sorted_logits.masked_fill(remove, float("-inf"))
-        logits = torch.full_like(logits, float("-inf")).scatter(-1, sorted_idx, sorted_logits)
-    # Softmax (numerically stable in torch) then sample; masked -inf entries get prob 0
-    probs = torch.softmax(logits, dim=-1)                        # shape: (batch_size, vocab_size)
-    next_idx = torch.multinomial(probs, num_samples=1)           # shape: (batch_size, 1)
-    return next_idx
 
 
 def _resolve_ctx_len(model, context_length):
@@ -176,8 +130,39 @@ def generate_simple_cached(model, token_ids: torch.tensor, max_new_tokens: int, 
 
 
 @torch.inference_mode()
-def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
+def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
              temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
+    model.eval()
+    ctx_len = _resolve_ctx_len(model, context_length)
+    finished = torch.zeros(token_ids.size(0), dtype=torch.bool, device=token_ids.device)
+    cache = None
+    if use_cache:
+        model.reset_kv_cache()
+        if hasattr(model, "pos_embed"):
+            from layers.kv_cache import KVCache
+            cache = KVCache(n_layers=len(model.trf_blocks))
+        cond_idx = token_ids[:, -ctx_len:]
+        logits = model(cond_idx, cache=cache) if cache is not None else model(cond_idx, use_cache)
+    for _ in range(max_new_tokens):
+        if not use_cache:
+            logits = model(token_ids[:, -ctx_len:])
+        next_idx = sample_next_token(
+            logits[:, -1], temperature=temperature, top_k=top_k, top_p=top_p
+        )
+        if eos_token_id is not None:
+            finished = finished | (next_idx.squeeze(1) == eos_token_id)
+            if torch.all(finished):
+                break
+            next_idx = next_idx.masked_fill(finished.unsqueeze(1), eos_token_id)
+        token_ids = torch.cat([token_ids, next_idx], dim=1)
+        if use_cache:
+            logits = model(next_idx, cache=cache) if cache is not None else model(next_idx, use_cache)
+    return token_ids
+
+
+@torch.inference_mode()
+def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
+                   temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
 
@@ -190,108 +175,32 @@ def generate(model, token_ids: torch.tensor, max_new_tokens: int, context_length
     model.eval()
     input_len = token_ids.shape[1]
     ctx_len = _resolve_ctx_len(model, context_length)
-    with torch.no_grad():
+    finished = torch.zeros(token_ids.size(0), dtype=torch.bool, device=token_ids.device)
+    cache = None
+    if use_cache:
+        from layers.kv_cache import KVCache
+        cache = KVCache(n_layers=model.cfg.n_layers)
+        model.reset_kv_cache()
+        logits = model(token_ids[:, -ctx_len:], cache=cache)
+    for _ in range(max_new_tokens):
+        if not use_cache:
+            logits = model(token_ids[:, -ctx_len:])
+        next_idx = sample_next_token(
+            logits[:, -1], temperature=temperature, top_k=top_k, top_p=top_p
+        )
+        if eos_token_id is not None:
+            finished = finished | (next_idx.squeeze(1) == eos_token_id)
+            if torch.all(finished):
+                break
+            next_idx = next_idx.masked_fill(finished.unsqueeze(1), eos_token_id)
+        token_ids = torch.cat([token_ids, next_idx], dim=1)
         if use_cache:
-            # Init cache with full prompt
-            model.reset_kv_cache()
-            # Crop current context if it exceeds the supported context size
-            cond_idx = token_ids[:, -ctx_len:]
-            # Get the predictions
-            logits = model(cond_idx, use_cache)
-            for _ in range(max_new_tokens):
-                # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
-                # logits = logits[:, -1, :]
-                logits = logits[:, -1]
-                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
-                # Stop generating early if end-of-sequence token is encountered and eos_id is specified
-                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
-                    break
-                # Append sampled index to the running sequence
-                token_ids = torch.cat([token_ids, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
-                # Feed model only the new token
-                logits = model(next_idx, use_cache)
-        else:
-            for _ in range(max_new_tokens):
-                # Crop current context if it exceeds the supported context size
-                cond_idx = token_ids[:, -ctx_len:]
-                # Get the predictions
-                # logits = model(cond_idx, use_cache=False)
-                logits = model(cond_idx)
-                # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
-                # logits = logits[:, -1, :]
-                logits = logits[:, -1]
-                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
-                # Stop generating early if end-of-sequence token is encountered and eos_id is specified
-                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
-                    break
-                
-                # TODO yield next_idx
-
-                # Append sampled index to the running sequence
-                token_ids = torch.cat([token_ids, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
-
-    return token_ids
+            logits = model(next_idx, cache=cache)
+    return token_ids[:, input_len:]
 
 
 @torch.inference_mode()
-def generate_qwen3(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                   temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
-    """
-    get logits, and only focus on last time step
-
-    Args:
-        model (_type_): LLM model
-        token_ids (torch.tensor): token_ids is array of indices in the current contex. shape: (batch_size, num_tokens)
-        max_new_tokens (int): maximum length new tokens
-        context_size (int): start context length
-    """
-    model.eval()
-    ctx_len = _resolve_ctx_len(model, context_length)
-    with torch.no_grad():
-        if use_cache:
-            # input length
-            input_len = token_ids.shape[1]
-            # Init cache with full prompt
-            from layers.kv_cache import KVCache
-            cache = KVCache(n_layers=model.cfg.n_layers)
-            model.reset_kv_cache()
-            # Crop current context if it exceeds the supported context size
-            cond_idx = token_ids[:, -ctx_len:]
-            # Get the predictions
-            logits = model(cond_idx, cache=cache)
-            for _ in range(max_new_tokens):
-                # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
-                logits = logits[:, -1]
-                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
-                # Stop generating early if end-of-sequence token is encountered and eos_id is specified
-                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
-                    break
-                # Append sampled index to the running sequence
-                token_ids = torch.cat([token_ids, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
-                # Feed model only the new token
-                logits = model(next_idx, cache=cache)
-            return token_ids[:, input_len:]
-        else:
-            # input length
-            input_len = token_ids.shape[1]
-            for _ in range(max_new_tokens):
-                # Crop current context if it exceeds the supported context size
-                cond_idx = token_ids[:, -ctx_len:]
-                # Get the predictions
-                logits = model(cond_idx)
-                # Focus only on the last time step, shape:(batch_size,num_tokens,vocab_size)->(batch_size,vocab_size)
-                logits = logits[:, -1]
-                next_idx = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
-                # Stop generating early if end-of-sequence token is encountered and eos_id is specified
-                if eos_token_id is not None and torch.all(next_idx == eos_token_id):
-                    break
-                # Append sampled index to the running sequence
-                token_ids = torch.cat([token_ids, next_idx], dim=1)        # shape: (batch_size, num_tokens+1)
-            return token_ids[:, input_len:]
-
-
-@torch.inference_mode()
-def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
+def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
                           temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
@@ -346,7 +255,7 @@ def generate_qwen3_stream(model, token_ids: torch.tensor, max_new_tokens: int, c
 
 
 @torch.inference_mode()
-def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
+def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
                              temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, use_cache=False):
     """
     get logits, and only focus on last time step
@@ -416,8 +325,8 @@ def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int
 
 
 @torch.inference_mode()
-def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                                 temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, 
+def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
+                                 temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None,
                                  attn_mask=None, pad_id=None):
     """
     get logits, and only focus on last time step
@@ -430,15 +339,15 @@ def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens:
     """
     model.eval()
     ctx_len = _resolve_ctx_len(model, context_length)
-    
+
     device = token_ids.device
     batch_size, input_len = token_ids.shape
-    
+
     if attn_mask is None and pad_id is not None:
         attn_mask = (token_ids != pad_id).to(torch.bool)
     if attn_mask is not None:
         attn_mask = attn_mask.to(torch.bool).to(device)
-    
+
     with torch.no_grad():
         # Init cache and model position
         from layers.kv_cache import KVCache
@@ -474,13 +383,13 @@ def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens:
             # Update finished mask after appending this step's token
             if eos_token_id is not None:
                 finished = finished | (next_idx.squeeze(1) == eos_token_id)
-        
+
         return token_ids[:, input_len:]
 
 
 @torch.inference_mode()
-def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                                        temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None, 
+def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
+                                        temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None,
                                         attn_mask=None, pad_id=None):
     """
     get logits, and only focus on last time step
@@ -493,15 +402,15 @@ def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_
     """
     model.eval()
     ctx_len = _resolve_ctx_len(model, context_length)
-    
+
     device = token_ids.device
     batch_size, input_len = token_ids.shape
-    
+
     if attn_mask is None and pad_id is not None:
         attn_mask = (token_ids != pad_id).to(torch.bool)
     if attn_mask is not None:
         attn_mask = attn_mask.to(torch.bool).to(device)
-    
+
     with torch.no_grad():
         # Init cache and model position
         from layers.kv_cache import KVCache
@@ -543,8 +452,8 @@ def shrink_kv_cache_inplace(cache, keep_mask, n_layers):
 
 
 @torch.inference_mode()
-def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int, 
-                                           temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id=None, 
+def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
+                                           temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id=None,
                                            attn_mask=None, pad_id=None):
     """
     Same as generate_text_basic_batched_cache but
@@ -634,7 +543,7 @@ def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_n
 
 @torch.inference_mode()
 def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor, max_new_tokens: int, context_length: int,
-                                                  temperature: float = 0.0, top_k: int | None = None, top_p: float | None = None, eos_token_id: int | None = None, 
+                                                  temperature: float = 0.0, top_k: int | None = None, top_p: float | None = None, eos_token_id: int | None = None,
                                                   attn_mask: torch.Tensor | None = None, pad_id: int | None = None):
     """
     Same as generate_text_basic_batched_stream_cache but
@@ -650,7 +559,7 @@ def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor
         attn_mask = (token_ids != pad_id)
     if attn_mask is not None:
         attn_mask = attn_mask.to(torch.bool).to(device)
-    
+
     with torch.no_grad():
         # Init cache and model position
         from layers.kv_cache import KVCache

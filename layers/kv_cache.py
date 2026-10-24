@@ -11,12 +11,10 @@
 # * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
 # ***************************************************
 
-__all__ = []
+__all__ = ["KVCache", "KVCache_optimized", "trim_kv_cache_window"]
 
 # python libraries
 from pathlib import Path
-import warnings
-warnings.filterwarnings("ignore")
 
 import torch
 
@@ -28,6 +26,7 @@ class KVCache:
 
     def __init__(self, n_layers):
         self.cache = [None] * n_layers
+        self.position = 0
 
     def get(self, layer_idx):
         return self.cache[layer_idx]
@@ -38,9 +37,15 @@ class KVCache:
     def get_all(self):
         return self.cache
 
+    def advance(self, num_tokens: int) -> int:
+        start = self.position
+        self.position += num_tokens
+        return start
+
     def reset(self):
         for i in range(len(self.cache)):
             self.cache[i] = None
+        self.position = 0
 
 
 class KVCache_optimized:
@@ -54,6 +59,12 @@ class KVCache_optimized:
         self.head_dim = head_dim
         self.device = device
         self.dtype = dtype
+        self.position = 0
+
+    def advance(self, num_tokens: int) -> int:
+        start = self.position
+        self.position += num_tokens
+        return start
 
     def allocate(self, layer_idx, b):
         if self.k[layer_idx] is None:
@@ -90,6 +101,7 @@ class KVCache_optimized:
         for i in range(len(self.k)):
             self.k[i] = self.v[i] = None
             self.len[i] = 0
+        self.position = 0
 
 
 def trim_kv_cache_window(cache, n_layers, window_size):

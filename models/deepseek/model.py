@@ -86,19 +86,19 @@ class DeepSeekModel(nn.Module):
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False, dtype=cfg.dtype)
         self.current_pos = 0
 
-    def forward(self, x, cache=None):
+    def forward(self, x, cache=None, attention_mask=None, position_ids=None):
         num_tokens = x.shape[1]
-        if cache is not None:
-            pos_start = self.current_pos
-            pos_end = pos_start + num_tokens
-            if pos_end > self.cfg.context_length:
-                raise IndexError(
-                    f"KV cache position {pos_end} exceeds context_length "
-                    f"{self.cfg.context_length}: 请调用 reset_kv_cache() 或减小生成长度。"
-                )
-            self.current_pos = pos_end
+        if position_ids is not None:
+            pos_start = int(position_ids[0, 0].item())
+        elif cache is not None:
+            pos_start = cache.position
         else:
             pos_start = 0
+        pos_end = pos_start + num_tokens
+        if pos_end > self.cfg.context_length:
+            raise IndexError(
+                f"Position {pos_end} exceeds context_length {self.cfg.context_length}"
+            )
 
         x = self.tok_embed(x)
         for i, block in enumerate(self.trf_blocks):
@@ -106,9 +106,11 @@ class DeepSeekModel(nn.Module):
             x, new_block_cache = block(x, start_pos=pos_start, cache=block_cache)
             if cache is not None:
                 cache.update(i, new_block_cache)
+        if cache is not None:
+            cache.advance(num_tokens)
 
         x = self.final_norm(x)
-        return self.out_head(x.to(self.cfg.dtype))
+        return self.out_head(x.to(self.out_head.weight.dtype))
 
     def reset_kv_cache(self):
         self.current_pos = 0

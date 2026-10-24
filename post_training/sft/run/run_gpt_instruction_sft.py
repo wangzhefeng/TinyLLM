@@ -22,6 +22,7 @@ import argparse
 import torch
 
 from post_training.sft.exp.exp_finetune_gpt_instruction_flow import ModelFinetuningInstructionFlow
+from inference.generate_core import generate
 from utils.random_seed import set_seed
 from utils.log_util import logger
 
@@ -52,7 +53,7 @@ def args_parse():
                         help="inference flag")
     # data params
     parser.add_argument("--data_path", type=str, required=False,
-                        default="./dataset/finetune/instruction-data.json", 
+                        default="./dataset/finetuning/instruction-data.json",
                         help="data download url")
     parser.add_argument("--context_length", type=int, required=False, default=1024,
                         help="context length")
@@ -60,20 +61,20 @@ def args_parse():
     parser.add_argument("--train_ratio", type=float, required=False, default=0.85,
                         help="train data ratio")
     parser.add_argument("--test_ratio", type=float, required=False, default=0.10,
-                        help="test data ratio") 
+                        help="test data ratio")
     parser.add_argument("--vocab_size", type=int, required=False, default=50257,
                         help="vocab size")
     parser.add_argument("--emb_dim", type=int, required=False, default=768,
                         help="embedding dimension")
-    parser.add_argument("--n_layers", type=int, required=False, default=12,  
+    parser.add_argument("--n_layers", type=int, required=False, default=12,
                         help="number of layers")
     parser.add_argument("--n_heads", type=int, required=False, default=12,
-                        help="number of heads") 
-    parser.add_argument("--dropout", type=float, required=False, default=0.0, 
+                        help="number of heads")
+    parser.add_argument("--dropout", type=float, required=False, default=0.0,
                         help="dropout")
-    parser.add_argument("--qkv_bias", type=int, required=False, default=1, 
+    parser.add_argument("--qkv_bias", type=int, required=False, default=1,
                         help="use bias in qkv")
-    # model pretrain params 
+    # model pretrain params
     parser.add_argument("--pretrained_model", type=str, required=False, default="gpt2-small (124M)",
                         help="pretrained model")
     parser.add_argument("--pretrained_model_path", type=str, required=False, default="./downloaded_models/gpt2_model",
@@ -86,32 +87,32 @@ def args_parse():
                         help="tokenizer model")
     parser.add_argument("--seed", type=int, required=False, default=123,
                         help="random seed")
-    parser.add_argument("--iters", type=int, required=False, default=10, 
+    parser.add_argument("--iters", type=int, required=False, default=10,
                         help="number of iterations")
-    parser.add_argument("--train_epochs", type=int, required=False, default=10, 
+    parser.add_argument("--train_epochs", type=int, required=False, default=10,
                         help="number of training epochs")
     parser.add_argument("--max_new_tokens", type=int, required=False, default=256,
                         help="max new tokens")
-    parser.add_argument("--batch_size", type=int, required=False, default=8, 
-                        help="batch size") 
-    parser.add_argument("--learning_rate", type=float, required=False, default=5e-5, 
+    parser.add_argument("--batch_size", type=int, required=False, default=8,
+                        help="batch size")
+    parser.add_argument("--learning_rate", type=float, required=False, default=5e-5,
                         help="learning rate")
-    parser.add_argument("--weight_decay", type=float, required=False, default=0.1, 
+    parser.add_argument("--weight_decay", type=float, required=False, default=0.1,
                         help="weight decay")
-    parser.add_argument("--initial_lr", type=float, default=3e-5, 
-                        help="initial learning rate")  
+    parser.add_argument("--initial_lr", type=float, default=3e-5,
+                        help="initial learning rate")
     parser.add_argument("--min_lr", type=float, default=1e-6,
                         help="minimum learning rate")
-    parser.add_argument('--lradj', type = str, default = 'type1', 
+    parser.add_argument('--lradj', type = str, default = 'type1',
                         help = 'adjust learning rate')
-    parser.add_argument("--patience", type=int, default=7, 
+    parser.add_argument("--patience", type=int, default=7,
                         help="early stopping patience")
-    parser.add_argument("--checkpoints", type=str, 
-                        default="./results/finetuned_models", 
+    parser.add_argument("--checkpoints", type=str,
+                        default="./results/finetuned_models",
                         help="checkpoints path")
     parser.add_argument("--test_results", type=str, default="./results/test_results",
                         help="test results path")
-    parser.add_argument("--eval_data_path", type=str, default="./dataset/finetune/instruction-data-with-response.json",
+    parser.add_argument("--eval_data_path", type=str, default="./dataset/finetuning/instruction-data-with-response.json",
                         help="eval data path")
     parser.add_argument("--use_amp", type=int, default=1, help="Use amp")
     # model pretrain device params
@@ -139,7 +140,7 @@ def args_parse():
         args.gpu = args.devices
     elif args.use_gpu and not args.use_multi_gpu:
         args.gpu = args.device_ids[0]
-    
+
     logger.info(f"Args in experiment: \n{args}")
 
     return args
@@ -153,7 +154,7 @@ def run(args):
         Exp = ModelFinetuningInstructionFlow
     else:
         Exp = ModelFinetuningInstructionFlow
-    
+
     # setting record of experiments
     setting = f"{args.task_name}_{args.model_name}_{Path(args.data_path).name[:-5]}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}"
     # ------------------------------
@@ -166,10 +167,11 @@ def run(args):
 
         # set experiments
         exp = Exp(args)
+        exp.generator = generate
 
         # model training
         if args.is_train:
-            logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>") 
+            logger.info(f">>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>")
             exp.train(training_iter = itr, setting = setting, eval_freq=5, eval_iter=5)
 
         # model testing
@@ -186,7 +188,7 @@ def run(args):
                 "output": "The spelling of the given phrase \"freind\" is incorrect, the correct spelling is \"friend\"."
             }
             exp.inference(entry = entry, training_iter=itr, setting = setting)
-        
+
         # empty cache
         torch.cuda.empty_cache()
 

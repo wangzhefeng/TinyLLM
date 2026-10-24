@@ -13,6 +13,7 @@
 
 __all__ = [
     "model_memory_size",
+    "model_param_counts",
 ]
 
 # python libraries
@@ -46,6 +47,61 @@ def _get_token_embedding(model):
     return None
 
 
+def _is_weight_tied(model, token_embedding):
+    """检测是否存在真实的 weight tying：除 token embedding 自身外，
+    还有其他模块的参数与 ``token_embedding.weight`` 是同一存储。"""
+    emb_weight = token_embedding.weight
+    emb_ptr = emb_weight.data_ptr()
+    for module in model.modules():
+        if module is token_embedding:
+            continue
+        for param in module.parameters(recurse=False):
+            if param is emb_weight or param.data_ptr() == emb_ptr:
+                return True
+
+    return False
+
+
+def model_param_counts(model):
+    """统计模型参数量（供 model_memory_size 与测试复用）。
+
+    Returns:
+        dict:
+            total_params: 注册的参数总量（weight tying 时共享张量按槽位重复计数）
+            total_grads: 需要梯度的参数量（共享张量只存一份梯度，去重计数）
+            total_buffers: buffer 总量
+            total_params_normalized: 去重后的唯一参数量；
+                仅在检测到真实 weight tying 时扣除一份 token embedding
+            weight_tied: 是否检测到输出头与 token embedding 共享权重
+    """
+    # 注册槽位计数：remove_duplicate=False 使 tying 的共享张量被重复计入
+    total_params = sum(
+        param.numel()
+        for _, param in model.named_parameters(remove_duplicate=False)
+    )
+    # 梯度按存储计数：parameters() 对共享张量只产出一次
+    total_grads = sum(
+        param.numel() for param in model.parameters() if param.requires_grad
+    )
+    total_buffers = sum(buffer.numel() for buffer in model.buffers())
+
+    # weight tying：仅当输出头确实与 token embedding 共享权重时才扣除 embedding；
+    # 未 tying 的模型（如 GPT2：tok_embed 与 out_head 各自独立）不做扣除
+    token_embedding = _get_token_embedding(model)
+    weight_tied = token_embedding is not None and _is_weight_tied(model, token_embedding)
+    total_params_normalized = total_params - (
+        token_embedding.weight.numel() if weight_tied else 0
+    )
+
+    return {
+        "total_params": total_params,
+        "total_grads": total_grads,
+        "total_buffers": total_buffers,
+        "total_params_normalized": total_params_normalized,
+        "weight_tied": weight_tied,
+    }
+
+
 def model_memory_size(model, input_dtype=torch.float32, verbose: bool = True):
     """
     calculate the memory requirements for this model
@@ -59,24 +115,16 @@ def model_memory_size(model, input_dtype=torch.float32, verbose: bool = True):
         float: estimated total memory in GB
     """
     # parameters / gradients / buffers
-    total_params = 0
-    total_grads = 0
-    for param in model.parameters():
-        numel = param.numel()
-        total_params += numel
-        if param.requires_grad:
-            total_grads += numel
-    total_buffers = sum(buffer.numel() for buffer in model.buffers())
-
-    # weight tying: output head may share weights with token embedding
-    token_embedding = _get_token_embedding(model)
-    total_params_normalized = total_params - (
-        token_embedding.weight.numel() if token_embedding is not None else 0
-    )
+    counts = model_param_counts(model)
+    total_params = counts["total_params"]
+    total_grads = counts["total_grads"]
+    total_buffers = counts["total_buffers"]
+    total_params_normalized = counts["total_params_normalized"]
 
     # Size in bytes = (Number of elements) * (Size of each element in bytes)
+    # 显存按物理存储估算：weight tying 的共享张量只占一份，使用去重后的参数量
     element_size = torch.tensor(0, dtype=input_dtype).element_size()
-    total_memory_gb = (total_params + total_grads + total_buffers) * element_size / (1024 ** 3)
+    total_memory_gb = (total_params_normalized + total_grads + total_buffers) * element_size / (1024 ** 3)
 
     # CUDA memory statistics are only available on CUDA devices
     allocated_memory = max_allocated_memory = cached_memory = None
@@ -91,8 +139,9 @@ def model_memory_size(model, input_dtype=torch.float32, verbose: bool = True):
         logger.info(f"{40 * '='}")
         logger.info(f"Model number of parameters: {total_params:,}")
         logger.info(f"Model number of parameters: {total_params / 1e6:.2f}M.")
-        logger.info(f"Total number of parameters: {(total_params + total_grads + total_buffers):,}")
-        logger.info(f"Total number of parameters: {(total_params + total_grads + total_buffers) / 1e6:.2f}M.")
+        logger.info(f"Total number of parameters: {(total_params_normalized + total_grads + total_buffers):,}")
+        logger.info(f"Total number of parameters: {(total_params_normalized + total_grads + total_buffers) / 1e6:.2f}M.")
+        logger.info(f"Weight tying (out head shares token embedding): {counts['weight_tied']}")
         logger.info(f"Total number of unique parameters: {total_params_normalized:,}")
         logger.info(f"Model memory used size: {total_memory_gb:.2f}GB.")
         if allocated_memory is not None:

@@ -30,22 +30,24 @@ import torch
 
 # data
 from post_training.sft.data_provider.instruction_follow import data_loader
-from post_training.common.data_provider import instruction_format
+from layers.tokenizers import chat as instruction_format
 # tokenizer
 from layers.tokenizers.tokenization import choose_tokenizer
 from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
 # model
 from models.gpt2.gpt2_124M import Model
-from inference.generate_core import generate
 # other model
-from inference.loaders.gpt2.load_gpt2_pretrained_weights import (
+from models.io.gpt2.load_gpt2_pretrained_weights import (
     model_with_gpt2_weights, 
     gpt2_model_configs
 )
-from inference.loaders.gpt2.load_pretrained_weights import load_pretrained_model
+from models.io.gpt2.load_pretrained_weights import load_pretrained_model
 # model training
 from utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.optimizer import select_optimizer
+from training.trainer import Trainer
+from training.checkpoint import load_training_checkpoint, save_training_checkpoint
+from training.experiment import experiment_paths, results_paths
 from utils.plot_losses import plot_losses_llm
 # tools
 from utils.device import device_setting
@@ -67,6 +69,7 @@ class ModelFinetuningInstructionFlow:
         self.tokenizer = choose_tokenizer(tokenizer_model = self.args.tokenizer_model)
         # pad token
         self.pad_token_id = self.tokenizer.encode("<|endoftext|>", allowed_special = {"<|endoftext|>"})[0]
+        self.generator = None
 
     def _get_data(self):
         """
@@ -130,35 +133,18 @@ class ModelFinetuningInstructionFlow:
         """
         模型保存路径
         """
-        # 模型保存路径
-        model_dir = Path(self.args.finetuned_model_path).joinpath(setting).joinpath(str(training_iter))
-        os.makedirs(model_dir, exist_ok=True)
-        # 最优模型保存路径
-        self.model_path = Path(model_dir).joinpath(f"{re.sub(r'[ ()]', '', self.args.pretrained_model) }-sft.pth")
-        # best_model_path = f"{self.model_dir}/checkpoint.pth"
-        # return best_model_path
-    
+        model_dir = experiment_paths(self.args.finetuned_model_path, setting, training_iter)
+        self.model_path = model_dir / f"{re.sub(r'[ ()]', '', self.args.pretrained_model)}-sft.pth"
+
     def _get_results_path(self, setting, training_iter):
-        """
-        结果保存路径
-        """
-        results_path = Path(self.args.test_results).joinpath(setting).joinpath(str(training_iter))
-        os.makedirs(results_path, exist_ok=True)
-        
-        return results_path
-    
+        return results_paths(self.args.test_results, setting, training_iter)
+
     def _save_model(self, model):
-        """
-        Save model
-        """
-        torch.save(model.state_dict(), self.model_path)
+        save_training_checkpoint(self.model_path, model=model, optimizer=getattr(self, "optimizer", None))
         logger.info(f"Model saved to {self.model_path}")
 
     def _load_model(self, model):
-        """
-        Load model
-        """
-        model.load_state_dict(torch.load(self.model_path, map_location=self.device, weights_only=True))
+        load_training_checkpoint(self.model_path, model=model, map_location=self.device)
         logger.info(f"Model loaded from {self.model_path}")
         
         return model
@@ -174,15 +160,15 @@ class ModelFinetuningInstructionFlow:
             train_loss = calc_loss_loader(
                 self.args.task_name, 
                 train_loader, 
-                self.model, 
-                self.device, 
+                self.model,
+                device=self.device,
                 num_batches=eval_iter
             )
             val_loss = calc_loss_loader(
                 self.args.task_name, 
                 val_loader, 
-                self.model, 
-                self.device, 
+                self.model,
+                device=self.device,
                 num_batches=eval_iter
             )
         # train mode
@@ -216,6 +202,13 @@ class ModelFinetuningInstructionFlow:
             self.args.learning_rate,
             self.args.weight_decay
         )
+        trainer = Trainer(self.model, self.optimizer, self.device, grad_clip=0.0)
+
+        def train_loss_fn(batch):
+            input_ids, targets = batch
+            return calc_loss_batch(
+                self.args.task_name, input_ids, targets, self.model, device=self.device
+            )
 
         # checkpoint path
         self._get_model_path(setting, training_iter)
@@ -224,7 +217,7 @@ class ModelFinetuningInstructionFlow:
 
         # training start time
         training_start_time = time.time()
-        
+
         # model training
         # Initialize lists to track losses and tokens seen
         train_losses, val_losses = [], []
@@ -236,20 +229,13 @@ class ModelFinetuningInstructionFlow:
             # Set model to training mode
             self.model.train()
             # batch training
-            for input_batch, target_batch in train_loader:
-                # Reset loss gradients from previous batch iteration
-                self.optimizer.zero_grad()
-                loss = calc_loss_batch(
-                    self.args.task_name, 
-                    input_batch, 
-                    target_batch, 
-                    self.model, 
-                    self.device
+            for batch_idx, (input_batch, target_batch) in enumerate(train_loader):
+                trainer.train_step(
+                    (input_batch, target_batch),
+                    train_loss_fn,
+                    batch_idx=batch_idx,
+                    num_batches=len(train_loader),
                 )
-                # Calculate loss gradients
-                loss.backward()
-                # Update model weights using loss gradients
-                self.optimizer.step()
                 # track examples instead of tokens
                 tokens_seen += input_batch.numel()
                 global_step += 1
@@ -261,26 +247,27 @@ class ModelFinetuningInstructionFlow:
                     track_tokens_seen.append(tokens_seen)
                     logger.info(f"Epoch {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
-            # 每个 epoch 结束打印一次样例生成（先切 eval，关 dropout，再恢复 train）
-            self.model.eval()
-            start_context = valid_data[0]
-            formated_start_context = instruction_format.format_input_alpaca(start_context)
-            token_ids = generate(
-                model = self.model,
-                token_ids = text_to_token_ids(formated_start_context).to(self.device),
-                max_new_tokens = self.args.max_new_tokens,
-                context_length = self._context_length(),
-                eos_token_id = self.pad_token_id
-            )
-            generated_text = token_ids_to_text(token_ids)
-            response_text = (
-                generated_text[len(formated_start_context):]
-                .replace("### Response:", "")
-                .strip()
-            )
-            logger.info(f"Epoch {epoch+1}: start_context: \n{formated_start_context}") 
-            logger.info(f"Epoch {epoch+1}: response_text: \n{response_text}") 
-            self.model.train()
+            # 可选采样由入口注入；未配置时不影响训练
+            if self.generator is not None:
+                self.model.eval()
+                start_context = valid_data[0]
+                formated_start_context = instruction_format.format_input_alpaca(start_context)
+                token_ids = self.generator(
+                    model = self.model,
+                    token_ids = text_to_token_ids(formated_start_context).to(self.device),
+                    max_new_tokens = self.args.max_new_tokens,
+                    context_length = self._context_length(),
+                    eos_token_id = self.pad_token_id
+                )
+                generated_text = token_ids_to_text(token_ids)
+                response_text = (
+                    generated_text[len(formated_start_context):]
+                    .replace("### Response:", "")
+                    .strip()
+                )
+                logger.info(f"Epoch {epoch+1}: start_context: \n{formated_start_context}")
+                logger.info(f"Epoch {epoch+1}: response_text: \n{response_text}")
+                self.model.train()
         
         # training end time
         training_end_time = time.time()
@@ -330,7 +317,7 @@ class ModelFinetuningInstructionFlow:
         torch.manual_seed(self.args.seed)
         for entry in test_data[:test_entry_num]:
             input_text = instruction_format.format_input_alpaca(entry)
-            token_ids = generate(
+            token_ids = self.generator(
                 model = model,
                 token_ids = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
@@ -365,7 +352,7 @@ class ModelFinetuningInstructionFlow:
         # data process
         for i, entry in tqdm(enumerate(eval_data), total = len(eval_data)):
             input_text = instruction_format.format_input_alpaca(entry)
-            token_ids = generate(
+            token_ids = self.generator(
                 model = model,
                 token_ids = text_to_token_ids(input_text).to(self.device),
                 max_new_tokens = self.args.max_new_tokens,
@@ -398,7 +385,7 @@ class ModelFinetuningInstructionFlow:
 
         # inference
         input_text = instruction_format.format_input_alpaca(entry)
-        token_ids = generate(
+        token_ids = self.generator(
             model = model,
             token_ids = text_to_token_ids(input_text).to(self.device),
             max_new_tokens = self.args.max_new_tokens,
@@ -462,7 +449,7 @@ class ModelFinetuningInstructionFlow:
             task = "instruction_follow"
         )
         # inference
-        token_ids = generate(
+        token_ids = self.generator(
             model = model,
             token_ids = text_to_token_ids(prompt),
             max_new_tokens = self.args.max_new_tokens,  # 35

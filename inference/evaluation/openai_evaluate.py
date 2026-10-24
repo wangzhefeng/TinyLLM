@@ -10,14 +10,15 @@
 #               保留原 generate_model_scores(json_data, json_key, client) 签名，
 #               内部委托 judge.generate_model_scores(backend="openai")。
 # * Link        : https://github.com/rasbt/LLMs-from-scratch/blob/main/ch07/03_model-evaluation/llm-instruction-eval-openai.ipynb
-# * Requirement : pip install openai；config.json 中配置 OPENAI_API_KEY
+# * Requirement : pip install openai；环境变量 OPENAI_API_KEY 中配置 API key
 # ***************************************************
 
 # python libraries
 import os
 import sys
 from pathlib import Path
-ROOT = str(Path.cwd())
+# 仓根路径由本文件位置推导（inference/evaluation/openai_evaluate.py -> 上两级），不依赖启动时的 cwd
+ROOT = str(Path(__file__).resolve().parents[2])
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
@@ -48,8 +49,9 @@ def main():
     from utils.load_save_data import load_json_data
     from inference.api.openai_api import create_client
 
-    # instruction data path
-    data_path="./dataset/finetune/instruction-example.json"
+    # instruction data path（数据集目录为 dataset/finetuning/；
+    # instruction-data.json 由 post_training/sft 的 instruction_follow 数据下载脚本生成）
+    data_path="./dataset/finetuning/instruction-data.json"
 
     # load instruction data
     json_data = load_json_data(data_path)

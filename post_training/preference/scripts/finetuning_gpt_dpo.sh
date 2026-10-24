@@ -8,7 +8,7 @@ python -u ./post_training/preference/model_rlhf/dpo/run_gpt_dpo.py \
     --is_test 1 \
     --is_valid 1 \
     --is_inference 1 \
-    --data_path ./dataset/finetune/instruction-preference-data.json \
+    --data_path ./dataset/finetuning/instruction-preference-data.json \
     --train_ratio 0.85 \
     --test_ratio 0.10 \
     --context_length 1024 \

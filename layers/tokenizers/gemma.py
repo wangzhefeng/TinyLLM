@@ -1,58 +1,36 @@
-# -*- coding: utf-8 -*-
-
-# ***************************************************
-# * File        : gemma.py
-# * Author      : Zhefeng Wang
-# * Email       : zfwang7@gmail.com
-# * Date        : 2025-09-15
-# * Version     : 1.0.091520
-# * Description : description
-# * Link        : link
-# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
-# ***************************************************
-
-__all__ = []
-
-# python libraries
-import os
 from pathlib import Path
-import warnings
-warnings.filterwarnings("ignore")
 
-from tokenizers import Tokenizer
 from huggingface_hub import hf_hub_download
+from tokenizers import Tokenizer
 
-# global variable
-LOGGING_LABEL = Path(__file__).name[:-3]
-os.environ['LOG_NAME'] = LOGGING_LABEL
-from utils.log_util import logger
+__all__ = ["Gemma3Tokenizer", "apply_chat_template", "ensure_gemma_tokenizer"]
+
+
+def ensure_gemma_tokenizer(repo_id: str, local_dir: str) -> Path:
+    path = Path(local_dir).expanduser().resolve() / "tokenizer.json"
+    if not path.exists():
+        downloaded = hf_hub_download(
+            repo_id=repo_id,
+            filename="tokenizer.json",
+            local_dir=str(path.parent),
+        )
+        path = Path(downloaded)
+    if not path.is_file():
+        raise FileNotFoundError(f"Unable to provision Gemma tokenizer at {path}")
+    return path
 
 
 def tokenizer_download(repo_id: str, local_dir: str):
-    tokenizer_file_path = Path(local_dir).joinpath("tokenizer.json")
-    
-    if not tokenizer_file_path.exists():
-        try:
-            tokenizer_file_path = hf_hub_download(
-                repo_id=repo_id,
-                filename="tokenizer.json",
-                local_dir=local_dir,
-            )
-        except Exception as e:
-            logger.info(f"Warning: Failed to download tokenizer.json: {e}")
-            tokenizer_file_path = "tokenizer.json"
-    
-    return tokenizer_file_path
+    return ensure_gemma_tokenizer(repo_id, local_dir)
 
 
 class Gemma3Tokenizer:
-    
     def __init__(self, tokenizer_file_path: str):
-        tok_file = Path(tokenizer_file_path)
+        tok_file = Path(tokenizer_file_path).expanduser().resolve()
+        if not tok_file.is_file():
+            raise FileNotFoundError(f"Tokenizer file '{tok_file}' not found")
         self._tok = Tokenizer.from_file(str(tok_file))
-        # EOS / PAD 需要是 token id（int），不是字符串。
-        # base 模型的 eos 是 <eos>（id 1）；instruct 模型的回合结束符是 <end_of_turn>（id 106）。
-        # pad 复用 <pad>（id 0）；取不到时回退 None。
+        self.n_vocab = self._tok.get_vocab_size()
         self.eos_token_id = self._tok.token_to_id("<eos>")
         self.eot_token_id = self._tok.token_to_id("<end_of_turn>")
         self.pad_token_id = self._tok.token_to_id("<pad>")
@@ -65,40 +43,6 @@ class Gemma3Tokenizer:
 
 
 def apply_chat_template(user_text):
-    return f"<start_of_turn>user\n{user_text}<end_of_turn>\n<start_of_turn>model\n"
+    from layers.tokenizers.chat import format_gemma3_chat
 
-
-
-
-# 测试代码 main 函数
-def main():
-    USE_INSTRUCT_MODEL = False
-    CHOOSE_MODEL = "270m"
-    
-    if USE_INSTRUCT_MODEL:
-        repo_id = f"google/gemma-3-{CHOOSE_MODEL}-it"
-    else:
-        repo_id = f"google/gemma-3-{CHOOSE_MODEL}"
-    
-    # tokenizer model dir
-    tokenizer_model_dir = Path("./layers/tokenizers/models/").joinpath(Path(repo_id).parts[-1])
-
-    # tokenizer model download
-    tokenizer_model_file = tokenizer_download(repo_id=repo_id, local_dir=tokenizer_model_dir)
-
-    # tokenizer model test
-    tokenizer = Gemma3Tokenizer(tokenizer_model_file)
-
-    # prompt
-    prompt = "Give me a short introduction to large language models."
-    prompt = apply_chat_template(prompt)
-    logger.info(f"prompt: {prompt}")
-
-    input_token_ids = tokenizer.encode(prompt)
-    logger.info(f"input_token_ids: {input_token_ids}")
-
-    text = tokenizer.decode(input_token_ids)
-    logger.info(f"text: {text}")
-
-if __name__ == "__main__":
-    main()
+    return format_gemma3_chat(user_text)

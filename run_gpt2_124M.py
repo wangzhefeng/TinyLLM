@@ -23,6 +23,7 @@ import argparse
 import torch
 
 from pre_training.experiments.exp_pretrain_gpt2_124M import Model_Pretrain
+from inference.generate_core import generate
 from utils.args_tools import print_args_llm
 from utils.device import torch_gc
 from utils.random_seed import set_seed_torch
@@ -75,7 +76,7 @@ def build_parser(description: str = "Model Pretraining") -> argparse.ArgumentPar
     parser.add_argument("--n_heads", type=int,  default=12, help="number of heads")
     parser.add_argument("--n_layers", type=int,  default=12, help="number of layers")
     parser.add_argument("--dropout", type=float,  default=0.1, help="dropout rate")
-    parser.add_argument("--qkv_bias", action="store_false", default=True, help="use bias in qkv")
+    parser.add_argument("--qkv_bias", action="store_true", default=True, help="use bias in qkv (default on)")
     parser.add_argument("--dtype", type=str,  default="bfloat16", help="dtype")
     # model pretrain params
     parser.add_argument("--use_amp", type=int,  default=1, help="Use amp")
@@ -151,6 +152,7 @@ def run(args, global_rank, world_size, local_rank):
             logger.info(f"{180 * '='}")
             # set experiments
             exp = Exp(args, global_rank, world_size, local_rank)
+            exp.sample_generator = generate
             # model training
             model = exp.train(
                 training_iter=itr,
@@ -158,19 +160,33 @@ def run(args, global_rank, world_size, local_rank):
                 eval_freq=5,
                 eval_iter=1,
             )
-            # model testing
-            # if args.is_test:
-            #     logger.info(f">>>>>>>testing: iter-{itr} {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-            #     logger.info(f"{180 * '='}")
-            #     exp.test(setting)
 
-    # TODO 模型推断
-    if args.is_inference:
+    # 模型测试：加载最优 checkpoint 评估验证集 loss
+    if args.is_test:
+        itr = 0
+        setting = f"{args.task_name}_{args.model_name}_dt{args.data_name}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}_itr{itr}"
+        logger.info(f">>>>>>>testing: {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+        logger.info(f"{180 * '='}")
+        if not args.is_train:
+            # 未走训练分支时需要单独构建实验实例
+            exp = Exp(args, global_rank, world_size, local_rank)
+            exp.sample_generator = generate
+        valid_loss = exp.test(setting)
+        if valid_loss is not None:
+            logger.info(f"Test valid loss: {valid_loss}")
+
+    # 模型推断（checkpoint 只有 rank 0 写入，仅 rank 0 执行）
+    if args.is_inference and global_rank == 0:
         itr = 0
         setting = f"{args.task_name}_{args.model_name}_dt{args.data_name}_cl{args.context_length}_te{args.train_epochs}_bs{args.batch_size}_itr{itr}"
         logger.info(f">>>>>>>inference: {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-        prediction = exp.inference(setting, load=True)
-        logger.info(prediction.shape)
+        logger.info(f"{180 * '='}")
+        if not args.is_train and not args.is_test:
+            # 未走训练/测试分支时需要单独构建实验实例（否则 exp 未定义）
+            exp = Exp(args, global_rank, world_size, local_rank)
+            exp.sample_generator = generate
+        completion = exp.inference(epoch=0, setting=setting, load=True)
+        logger.info(f"Inference completion: {completion}")
 
     # empty cache
     logger.info(f"{180 * '='}")
@@ -183,20 +199,27 @@ def run(args, global_rank, world_size, local_rank):
 
 # 测试代码 main 函数
 def main(args, global_rank: int, world_size: int, local_rank: int):
-    # Initialize process groups
-    if is_dist():
-        init_dist(global_rank, world_size)
-    # 设置随机数
-    set_seed_torch(seed = 2025)
+    # Initialize process groups：按 --use_ddp 与 WORLD_SIZE 决定是否启用分布式
+    # （此前判断 is_dist() 在初始化前永远为 False，DDP 从未真正初始化）
+    use_ddp = bool(getattr(args, "use_ddp", 0)) and world_size > 1
+    if use_ddp:
+        init_dist(global_rank, world_size, local_rank)
+    # 设置随机数（seed 来自命令行参数 --seed；DDP 下各 rank 加偏移保证采样/dropout 不相关）
+    seed = getattr(args, "seed", 2025)
+    set_seed_torch(seed=seed + global_rank if use_ddp else seed)
     # Print info only on 1 GPU
     print_master_log(global_rank)
-    # TODO All processes wait util rank 0 is done, using the GPU index.
-    if is_dist():
-        torch.distributed.barrier(device_ids=[local_rank])
+    # All processes wait util rank 0 is done, using the GPU index.
+    if use_ddp:
+        if torch.cuda.is_available():
+            torch.distributed.barrier(device_ids=[local_rank])
+        else:
+            # gloo(CPU) 后端不支持 device_ids 参数
+            torch.distributed.barrier()
     # 模型训练
     run(args, global_rank, world_size, local_rank)
     # Clean up distributed processes
-    if is_dist():
+    if use_ddp:
         destory_dist()
 
 if __name__ == "__main__":

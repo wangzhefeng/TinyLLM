@@ -13,8 +13,6 @@
 
 # python libraries
 from pathlib import Path
-import warnings
-warnings.filterwarnings("ignore")
 
 import torch
 import torch.nn as nn
@@ -58,18 +56,20 @@ class Model(nn.Module):
         self.register_buffer("sin", sin, persistent=False)
         # self.current_pos = 0  # Track current position in KV cache
     
-    def forward(self, x, cache=None, attn_mask=None):
+    def forward(self, x, cache=None, attn_mask=None, attention_mask=None, position_ids=None):
         # token embedding layer
         tok_embeds = self.tok_embed(x)
         x = tok_embeds
         # tokenized text shape
         batch_size, num_tokens = x.shape[0], x.shape[1]
-        # Derive pos_start from cache content (layer 0 K length) if present
-        if cache is not None and cache.get(0) is not None:
-            prev_k0, _ = cache.get(0)    # (batch_size, G_kv, L_prev, D)
-            pos_start = prev_k0.size(2)  # L_prev
+        if attn_mask is None:
+            attn_mask = attention_mask
+        if position_ids is not None:
+            pos_start = int(position_ids[0, 0].item())
+        elif cache is not None:
+            pos_start = cache.position
         else:
-            pos_start = 0  # Not strictly necessary but helps torch.compile
+            pos_start = 0
         pos_end = pos_start + num_tokens
         # RoPE 越界防护：cos/sin 只预计算到 context_length，超出即报清晰错误
         if pos_end > self.cfg.context_length:
@@ -83,13 +83,10 @@ class Model(nn.Module):
             diagonal=1,
         )
         causal4d = base[pos_start:pos_end, :pos_end][None, None, :, :]
-        has_pad = attn_mask is not None and (~attn_mask[:, :pos_end]).any().item()
-        if has_pad:
-            # Mask out padded keys so they don't appear in the softmax denominator
+        mask = causal4d
+        if attn_mask is not None:
             kpm = (attn_mask[:, :pos_end] == 0).view(batch_size, 1, 1, pos_end)
-            mask = causal4d | kpm
-        else:
-            mask = causal4d
+            mask = mask | kpm
         pos_ids_current = torch.arange(pos_start, pos_end, device=x.device).unsqueeze(0).expand(batch_size, -1)
         # zero-out padded query rows so their Q/K/V become zeros and don't affect cache
         if attn_mask is not None:
@@ -108,10 +105,12 @@ class Model(nn.Module):
             )
             if cache is not None:
                 cache.update(i, new_block_cache)
+        if cache is not None:
+            cache.advance(num_tokens)
         # final RMSNorm
         x = self.final_norm(x)
         # linear output layer(head)
-        logits = self.out_head(x.to(self.cfg.dtype))
+        logits = self.out_head(x.to(self.out_head.weight.dtype))
 
         return logits
     

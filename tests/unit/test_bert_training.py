@@ -1,3 +1,4 @@
+import random
 import unittest
 from argparse import Namespace
 from pathlib import Path
@@ -6,6 +7,7 @@ import tempfile
 import torch
 
 from models.bert.model import Model
+from pre_training.data_provider.bert.data_loader import BertDataset
 from run_bert import (
     build_config,
     build_dataloaders,
@@ -81,6 +83,77 @@ class TestBertTrainingPipeline(unittest.TestCase):
             out1 = self.model(x, seg)[1]
             out2 = new_model(x, seg)[1]
             self.assertTrue(torch.equal(out1, out2))
+
+
+class TestBertMlmMasking(unittest.TestCase):
+    """MLM 80/10/10：选中 token 的 10% 保持不变时也必须保留预测标签。"""
+
+    def test_unchanged_branch_keeps_label(self):
+        _, _, _, word_2_index = _toy_data()
+        ds = BertDataset(["今天天气很好"], ["我们去公园散步"], [1], 128, word_2_index)
+        mask_id = word_2_index["[MASK]"]
+        saw_unchanged, saw_mask, saw_random = False, False, False
+        random.seed(2025)
+        for _ in range(300):
+            text_idx, _, mask_val, _ = ds[0]
+            for tok, label in zip(text_idx.tolist(), mask_val.tolist()):
+                if label == 0:
+                    continue  # 非预测位置
+                if tok == mask_id:
+                    saw_mask = True
+                elif tok == label:
+                    # token 未变但仍是被预测目标（修复前该分支不写标签，永远走不到这里）
+                    saw_unchanged = True
+                else:
+                    saw_random = True
+        self.assertTrue(saw_mask, "80% [MASK] 分支未出现")
+        self.assertTrue(saw_unchanged, "10% 保持不变分支未保留标签")
+        self.assertTrue(saw_random, "10% 随机替换分支未出现")
+
+
+class TestEvaluateSingleForward(unittest.TestCase):
+    """evaluate 每个 batch 只做一次前向（修复前 loss 与 accuracy 各一次）。"""
+
+    def test_single_forward_per_batch(self):
+        torch.manual_seed(123)
+        args = _toy_args()
+        config = build_config(args, vocab_size=31)
+
+        class _CountingModel(Model):
+            n_forward = 0
+
+            def forward(self, *a, **k):
+                type(self).n_forward += 1
+                return super().forward(*a, **k)
+
+        model = _CountingModel(config)
+        data = _toy_data()
+        _, dev_loader = build_dataloaders(data[0], data[1], data[2], data[3], args)
+        val_loss, acc_mask, acc_next = evaluate(model, dev_loader, torch.device("cpu"))
+        self.assertEqual(_CountingModel.n_forward, len(dev_loader))
+        self.assertTrue(torch.isfinite(torch.tensor(val_loss)))
+        self.assertGreaterEqual(acc_mask, 0.0)
+        self.assertGreaterEqual(acc_next, 0.0)
+
+    def test_return_preds_matches_two_forward(self):
+        """return_preds=True 的预测结果与无标签前向一致。"""
+        torch.manual_seed(123)
+        args = _toy_args()
+        config = build_config(args, vocab_size=31)
+        model = Model(config)
+        model.eval()
+        data = _toy_data()
+        _, dev_loader = build_dataloaders(data[0], data[1], data[2], data[3], args)
+        batch_idx, batch_label, batch_mask_val, batch_seg_idx = next(iter(dev_loader))
+        with torch.no_grad():
+            loss, pre_mask, pre_next = model(
+                batch_idx, batch_seg_idx, batch_mask_val, batch_label, return_preds=True
+            )
+            pre_mask2, pre_next2 = model(batch_idx, batch_seg_idx)
+        self.assertTrue(torch.equal(pre_mask, pre_mask2))
+        self.assertTrue(torch.equal(pre_next, pre_next2))
+        self.assertTrue(torch.isfinite(loss))
+
 
 
 if __name__ == "__main__":

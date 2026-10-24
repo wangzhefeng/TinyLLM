@@ -12,15 +12,8 @@
 # ***************************************************
 
 # python libraries
-import sys
-from pathlib import Path
-ROOT = str(Path.cwd())
-if ROOT not in sys.path:
-    sys.path.append(ROOT)
-import contextlib
 import time
-import warnings
-warnings.filterwarnings("ignore")
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -43,9 +36,9 @@ from utils.calc_loss import calc_loss_batch, calc_loss_loader
 from utils.learning_rate import adjust_learning_rate, warmup_cosine_lr, set_optimizer_lr
 from utils.early_stopping import EarlyStopping
 from tools.checkpoint import CheckpointManager, load_checkpoint
+from training.trainer import Trainer
 from layers.tokenizers.extension import pad_vocab_size
 from utils.plot_losses import plot_losses_llm, plot_losses
-from inference.generate_core import generate
 # utils
 from utils.model_memory import model_memory_size
 from utils.timestamp_utils import from_unix_time
@@ -65,7 +58,8 @@ class Model_Pretrain(Exp_Basic):
         self.global_rank = global_rank
         self.world_size = world_size
         self.local_rank = local_rank
-    
+        self.sample_generator = None
+
     def _get_tokenizer(self):
         """
         get tokenizer
@@ -140,14 +134,10 @@ class Model_Pretrain(Exp_Basic):
                     f"(multiple of {pad_multiple})"
                 )
                 self.args.vocab_size = padded_vocab_size
-        # 模型实例化
+        # 模型实例化（在 CPU 上构建，DP/DDP 包装由 Exp_Basic._wrap_model 在
+        # 模型 to(device)/to(dtype) 之后统一处理）
         logger.info(f"Initializing model {self.args.model_name}...")
         model = self.model_dict[self.args.model_name].Model(self.args)
-        # 单机多卡训练
-        if self.args.use_gpu and self.args.use_dp:
-            model = nn.DataParallel(model, device_ids=self.args.device_ids)
-        elif self.args.use_gpu and self.args.use_ddp:
-            model = nn.parallel.DistributedDataParallel(model, device_ids=[self.local_rank])
         # 打印模型参数量
         model_memory_size(model, input_dtype=self.args.dtype, verbose=True)
         
@@ -221,23 +211,24 @@ class Model_Pretrain(Exp_Basic):
             gpu=self.global_rank,
         )
         logger.info(f"Train early stopping instance has builded, patience: {self.args.patience}")
-        # ------------------------------
-        # auto mix precision
-        # ------------------------------
-        if self.args.use_amp:
-            scaler = torch.amp.GradScaler(device = self.device)
-            logger.info(f"Train auto mix precision instance has builded...") 
-        # ------------------------------
         # learning rate schedule（附录 D：step 级 warmup + cosine）
-        # ------------------------------
         lr_schedule = getattr(self.args, "lr_schedule", "warmup_cosine")
         total_training_steps = train_steps * self.args.train_epochs
         warmup_steps = int(getattr(self.args, "warmup_ratio", 0.2) * total_training_steps)
         peak_lr = self.args.learning_rate
         current_lr = peak_lr
-        # 梯度累积与梯度裁剪
         grad_accum_steps = max(1, getattr(self.args, "grad_accum_steps", 1))
         grad_clip = getattr(self.args, "grad_clip", 1.0) or 0.0
+        trainer = Trainer(
+            self.model,
+            optimizer,
+            self.device,
+            grad_accum_steps=grad_accum_steps,
+            grad_clip=grad_clip,
+            use_amp=self.args.use_amp,
+            use_ddp=self.args.use_ddp,
+        )
+        scaler = trainer.scaler
         if grad_accum_steps > 1:
             logger.info(f"Gradient accumulation enabled: {grad_accum_steps} micro-batches per optimizer step "
                         f"(effective batch size = {self.args.batch_size * grad_accum_steps * self.world_size})")
@@ -269,6 +260,9 @@ class Model_Pretrain(Exp_Basic):
             resume_batch = extra.get("batch", 0)
             if self.args.use_amp and extra.get("scaler"):
                 scaler.load_state_dict(extra["scaler"])
+            if resume_batch >= train_steps:
+                start_epoch += 1
+                resume_batch = 0
             logger.info(f"Resumed from {resume_path}: epoch {start_epoch}, batch {resume_batch}, "
                         f"global step {extra.get('global_step', -1)}")
         # ------------------------------
@@ -304,6 +298,18 @@ class Model_Pretrain(Exp_Basic):
         # training start time
         train_start_time = time.time()
         logger.info(f"Train start time: {from_unix_time(train_start_time).strftime('%Y-%m-%d %H:%M:%S')}")
+
+        def train_loss_fn(batch):
+            input_ids, targets = batch
+            return calc_loss_batch(
+                task_name=self.args.task_name,
+                input_batch=input_ids,
+                target_batch=targets,
+                model=self.model,
+                criterion=criterion,
+                device=self.device,
+            )
+
         # main training loop
         for epoch in range(start_epoch, self.args.train_epochs):
             # epoch 模型训练开始时间
@@ -343,62 +349,12 @@ class Model_Pretrain(Exp_Basic):
                     )
                     set_optimizer_lr(optimizer, current_lr)
 
-                # gradient accumulation: only step on the last micro-batch
-                is_step_batch = ((batch + 1) % grad_accum_steps == 0) or (batch + 1 == train_steps)
-                # DDP: skip gradient all-reduce on non-step micro-batches
-                if self.args.use_ddp and not is_step_batch and hasattr(self.model, "no_sync"):
-                    sync_context = self.model.no_sync()
-                else:
-                    sync_context = contextlib.nullcontext()
-
-                with sync_context:
-                    # forward
-                    # ------------------------
-                    # calculate train loss
-                    if self.args.use_amp:
-                        with torch.amp.autocast(device_type=self.args.gpu_type):
-                            loss = calc_loss_batch(
-                                task_name=self.args.task_name,
-                                input_batch=input_batch,
-                                target_batch=target_batch,
-                                model=self.model,
-                                criterion=criterion,
-                                device=self.device,
-                            )
-                    else:
-                        loss = calc_loss_batch(
-                            task_name=self.args.task_name,
-                            input_batch=input_batch,
-                            target_batch=target_batch,
-                            model=self.model,
-                            criterion=criterion,
-                            device=self.device,
-                        )
-                    # normalize loss over accumulation steps
-                    loss = loss / grad_accum_steps
-
-                    # backward
-                    # ------------------------
-                    if self.args.use_amp:
-                        scaler.scale(loss).backward()
-                    else:
-                        loss.backward()
-
-                # optimizer step (with gradient clipping, appendix D)
-                # ------------------------
-                if is_step_batch:
-                    if self.args.use_amp:
-                        if grad_clip > 0:
-                            scaler.unscale_(optimizer)
-                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=grad_clip)
-                        scaler.step(optimizer)
-                        scaler.update()
-                    else:
-                        if grad_clip > 0:
-                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=grad_clip)
-                        optimizer.step()
-                    # reset loss gradients for the next accumulation window
-                    optimizer.zero_grad()
+                _, is_step_batch = trainer.train_step(
+                    (input_batch, target_batch),
+                    train_loss_fn,
+                    batch_idx=batch,
+                    num_batches=train_steps,
+                )
 
                 # periodic resume checkpoint (rank 0 only)
                 # ------------------------
@@ -487,7 +443,7 @@ class Model_Pretrain(Exp_Basic):
             # ------------------------------
             # 早停机制、模型保存
             # ------------------------------
-            early_stopping(epoch=epoch + 1, val_loss=valid_loss, model=self.model,
+            early_stopping(epoch=epoch, val_loss=valid_loss, model=self.model,
                            optimizer=optimizer, model_path=model_checkpoint_path)
             if early_stopping.early_stop:
                 logger.info(f"\t\tEpoch {epoch + 1}: Early stopping...")
@@ -498,7 +454,7 @@ class Model_Pretrain(Exp_Basic):
             # ------------------------------
             # model inference
             # ------------------------------
-            if self.global_rank == 0 and epoch % 5 == 0:
+            if self.sample_generator is not None and self.global_rank == 0 and epoch % 5 == 0:
                 # print a sample text after each epoch
                 self.inference(epoch=epoch + 1, setting=setting, load=False)
                 # Memory stats
@@ -523,11 +479,13 @@ class Model_Pretrain(Exp_Basic):
         logger.info("Plot and save train/valid losses...")
         plot_losses_llm(self.args.train_epochs, track_tokens_seen, train_losses, valid_losses, "loss_llm", results_path)
         
-        # model load
-        logger.info("Loading best model...")
-        self._unwrap_model(self.model).load_state_dict(
-            torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"]
-        )
+        # model load（最优 checkpoint 只有 rank 0 写入，也只有 rank 0 需要加载；
+        # DDP 下各 rank 权重本就同步，非 rank 0 直接保留末轮权重即可）
+        if self.global_rank == 0:
+            logger.info("Loading best model...")
+            self._unwrap_model(self.model).load_state_dict(
+                torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"]
+            )
         # final resume checkpoint
         if ckpt_manager is not None and save_every_steps > 0 and self.global_rank == 0:
             ckpt_path = ckpt_manager.save(
@@ -584,6 +542,8 @@ class Model_Pretrain(Exp_Basic):
         """
         model inference
         """
+        if self.sample_generator is None:
+            raise RuntimeError("No sampling callback configured; set exp.sample_generator = generate")
         logger.info(f"\t\tModel start inference...")
         # load model
         if load:
@@ -606,7 +566,7 @@ class Model_Pretrain(Exp_Basic):
         start_context_encoded = text_to_token_ids(start_context, self.tokenizer).to(self.device)
         # generate text
         with torch.no_grad():
-            completion_id = generate(
+            completion_id = self.sample_generator(
                 model = self.model, 
                 token_ids = start_context_encoded,
                 max_new_tokens = self.args.max_new_tokens,
@@ -624,6 +584,44 @@ class Model_Pretrain(Exp_Basic):
             logger.info(f"\t\tEpoch {epoch}: Model inference [start context]: {start_context}, [completion]: {completion}")
         # train mode
         self.model.train()
+
+        return completion
+
+    def test(self, setting: str, eval_iter: int=None):
+        """
+        加载最优 checkpoint 并在验证集上评估 loss。
+
+        DDP 下 checkpoint 只有 rank 0 写入，仅 rank 0 执行评估，其余 rank 返回 None。
+        """
+        if self.global_rank != 0:
+            logger.info(f"\t\tRank {self.global_rank}: skip test (rank 0 only)")
+            return None
+        logger.info(f"\t\tModel start testing...")
+        # load best checkpoint
+        model_checkpoint_path = self._get_model_path(setting)
+        if not Path(model_checkpoint_path).exists():
+            raise FileNotFoundError(f"checkpoint not found: {model_checkpoint_path}")
+        self._unwrap_model(self.model).load_state_dict(
+            torch.load(model_checkpoint_path, map_location=self.device, weights_only=True)["model"]
+        )
+        logger.info(f"\t\tBest model has loaded from: {model_checkpoint_path}")
+        # data
+        _, valid_loader = self._get_data()
+        # evaluate
+        criterion = select_criterion()
+        self.model.eval()
+        with torch.no_grad():
+            valid_loss = calc_loss_loader(
+                task_name=self.args.task_name,
+                data_loader=valid_loader,
+                model=self.model,
+                criterion=criterion,
+                device=self.device,
+                num_batches=eval_iter,
+            )
+        logger.info(f"\t\tTest valid loss: {valid_loss:.3f}")
+
+        return valid_loss
 
 
 
