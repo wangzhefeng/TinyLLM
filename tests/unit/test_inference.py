@@ -108,11 +108,16 @@ class TestGenerate(unittest.TestCase):
         self.assertTrue(torch.equal(out_plain, out_cache))
 
     def test_eos_early_stop(self):
-        # force EOS as the most likely token by boosting its output logit
+        # 用全正隐藏状态确定性地强制 EOS，避免不同后端下随机隐藏状态改变 argmax
         eos_id = 3
         with torch.no_grad():
-            self.model.out_head.weight[:, :] = 0.0
-            self.model.out_head.weight[eos_id, :] = 1.0
+            for parameter in self.model.parameters():
+                parameter.zero_()
+            self.model.tok_embed.weight.fill_(1.0)
+            self.model.pos_embed.weight.fill_(1.0)
+            self.model.final_norm.scale.fill_(1.0)
+            self.model.final_norm.shift.fill_(1.0)
+            self.model.out_head.weight[eos_id, :].fill_(1.0)
         out = generate(self.model, self.prompt.clone(), max_new_tokens=10,
                        context_length=self.cfg.context_length, eos_token_id=eos_id)
         # stops right after the first generated token
