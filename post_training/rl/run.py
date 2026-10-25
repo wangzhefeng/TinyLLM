@@ -112,7 +112,7 @@ def args_parse():
 
 def _build_tokenizer(model_key, extras):
     """按模型族构造 tokenizer（qwen3/gemma3/phi 需要 tokenizer_file_path）。"""
-    from inference.registry import get_model_spec
+    from models.registry import get_model_spec
     from layers.tokenizers.tokenization import choose_tokenizer
 
     family = get_model_spec(model_key).family
@@ -133,12 +133,12 @@ def run(args):
 
     import torch
 
-    from inference.evaluation.benchmarks.math_verifiers import (
+    from evaluation.verifiers.math import (
         load_math500_data,
         render_prompt,
     )
     from inference.loading import load_model
-    from inference.registry import get_model_spec
+    from models.registry import get_model_spec
     from post_training.rl.batched import grpo_update_step_batched
     from post_training.rl.core import grpo_update_epoch
     from post_training.rl.rewards import correct_answer_reward
@@ -200,7 +200,7 @@ def run(args):
         eos_token_id=eos_token_id,
     )
     if args.algo == "reinforce":
-        from post_training.reasoning.training.reinforce import reinforce_step
+        from post_training.rl.reinforce import reinforce_step
     for epoch in range(1, args.epochs + 1):
         for prompt_ids, decode_fn, reward_fn in examples:
             step += 1

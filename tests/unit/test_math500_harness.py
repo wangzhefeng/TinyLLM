@@ -6,8 +6,8 @@ from pathlib import Path
 
 import torch
 
-from inference.evaluation.benchmarks.math_verifiers import render_prompt
-from inference.evaluation.harness.math500 import (
+from evaluation.verifiers.math import render_prompt
+from inference.harness.math500 import (
     evaluate_math500,
     evaluate_math500_batched,
     heuristic_score,

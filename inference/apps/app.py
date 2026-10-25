@@ -6,7 +6,7 @@
 # * Email       : zfwang7@gmail.com
 # * Date        : 2026-10-20
 # * Version     : 1.0.102000
-# * Description : Chainlit 聊天 UI（合并原 app_orig.py / app_own.py）。
+# * Description : Chainlit 聊天 UI。
 #               用环境变量 APP_MODEL=gpt2|qwen3（默认 gpt2）选择模型：
 #                 - gpt2：GPT-2 124M，权重来源用 GPT2_WEIGHTS=orig|own（默认 own）
 #                   - orig：官方 GPT-2 124M 权重（下载到 downloaded_models/gpt2）
@@ -14,7 +14,7 @@
 #                 - qwen3：经 inference.loading.load_model 加载（默认 key qwen3-0.6b，
 #                   QWEN3_MODEL_KEY 可覆盖），format_qwen3_chat 组 prompt，
 #                   generate_text_stream 流式输出，<think>...</think> 与回答分离渲染
-#               （qwen3 模式 UI 提供 thinking 开关；shim 入口 app_orig/app_own 不变）
+#               （qwen3 模式 UI 提供 thinking 开关；启动脚本 scripts/run_app.sh）
 # * Link        : link
 # * Requirement : pip install chainlit（可选依赖，不在主 requirements 中）；
 #               gpt2 orig 模式另需 tensorflow（仅读官方 TF checkpoint 时需要）；
@@ -188,7 +188,7 @@ def _load_gpt2_for_app():
 def _load_qwen3_for_app():
     """Qwen3：经 inference.loading.load_model 加载（registry key 可用环境变量覆盖）。"""
     from inference.loading import load_model
-    from inference.registry import get_model_spec
+    from models.registry import get_model_spec
 
     model_key = os.environ.get("QWEN3_MODEL_KEY", "qwen3-0.6b")
     get_model_spec(model_key)

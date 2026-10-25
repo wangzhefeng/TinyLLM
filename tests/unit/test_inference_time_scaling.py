@@ -131,7 +131,7 @@ class TestBoxedExtraction(unittest.TestCase):
 
     def test_boxed_truncated_tail_falls_back_to_previous_complete(self):
         """max_tokens 截断在未闭合 \\boxed 上时，回退取上一个完整 boxed。"""
-        from inference.evaluation.benchmarks.math_verifiers import (
+        from evaluation.verifiers.math import (
             extract_final_candidate,
             get_last_boxed,
         )
@@ -140,7 +140,7 @@ class TestBoxedExtraction(unittest.TestCase):
         self.assertEqual(extract_final_candidate(text), r"(3, \frac{\pi}{3})")
 
     def test_boxed_all_truncated_returns_none(self):
-        from inference.evaluation.benchmarks.math_verifiers import (
+        from evaluation.verifiers.math import (
             get_last_boxed,
         )
         self.assertIsNone(get_last_boxed(r"$\boxed{1"))
@@ -184,7 +184,7 @@ class TestMathVerifierNormalize(unittest.TestCase):
     """normalize_text 补齐原书两段逻辑：Unicode 上标与多项选择标签剥离。"""
 
     def test_superscript_conversion(self):
-        from inference.evaluation.benchmarks.math_verifiers import (
+        from evaluation.verifiers.math import (
             normalize_text,
         )
         self.assertEqual(normalize_text("2²"), "2**2")
@@ -192,14 +192,14 @@ class TestMathVerifierNormalize(unittest.TestCase):
         self.assertEqual(normalize_text("10⁻¹"), "10**-1")
 
     def test_multiple_choice_label_strip(self):
-        from inference.evaluation.benchmarks.math_verifiers import (
+        from evaluation.verifiers.math import (
             normalize_text,
         )
         self.assertEqual(normalize_text("B. 7"), "7")
         self.assertEqual(normalize_text("c: 2"), "2")
 
     def test_grade_answer_with_new_normalization(self):
-        from inference.evaluation.benchmarks.math_verifiers import (
+        from evaluation.verifiers.math import (
             grade_answer,
         )
         self.assertTrue(grade_answer("B. 7", "7"))
@@ -249,7 +249,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
 
     def test_predict_choice_logprob_favors_rigged_token(self):
         """chr('B')=66, 66%32=2：把 favored token 钉在 id=2 应稳定预测 B。"""
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             predict_choice_logprob,
         )
         model = _RiggedLM(vocab_size=32, favored_token_id=2)
@@ -266,7 +266,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
 
     def test_first_new_token_id_alignment(self):
         """continuation 产生的新 token 需经公共前缀对齐（BPE 合并差异处理）。"""
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             common_prefix_len,
             first_new_token_id,
         )
@@ -279,7 +279,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
 
     def test_evaluate_mmlu_int_and_str_answer(self):
         """评测循环：answer 兼容 int（映射 ABCD）与 str；mock 模型可预测。"""
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             evaluate_mmlu,
             predict_choice_logprob,
         )
@@ -297,7 +297,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
         self.assertEqual(results["accuracy"], 1.0)
 
     def test_evaluate_mmlu_max_examples(self):
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             evaluate_mmlu,
         )
         model = _RiggedLM(vocab_size=32)
@@ -311,7 +311,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
         self.assertEqual(results["num_examples"], 3)
 
     def test_random_guess_baseline(self):
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             random_guess_baseline,
         )
         b = random_guess_baseline(num_questions=500, num_choices=4, seed=123)
@@ -324,7 +324,7 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
         self.assertEqual(b["empirical"], b2["empirical"])
 
     def test_gold_letter(self):
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             gold_letter,
         )
         self.assertEqual(gold_letter(0), "A")
@@ -342,7 +342,7 @@ class TestAdvancedParser(unittest.TestCase):
     """
 
     def test_numeric_equivalence(self):
-        from inference.evaluation.benchmarks.advanced_parser import (
+        from evaluation.verifiers.parser import (
             parse_and_verify_answer,
         )
         self.assertTrue(parse_and_verify_answer("2/3", "4/6"))
@@ -354,7 +354,7 @@ class TestAdvancedParser(unittest.TestCase):
         self.assertFalse(parse_and_verify_answer("2", "3"))
 
     def test_text_answer_format(self):
-        from inference.evaluation.benchmarks.advanced_parser import (
+        from evaluation.verifiers.parser import (
             normalize_text_hybrid,
             parse_and_verify_answer,
             sympy_parser_hybrid,
@@ -369,7 +369,7 @@ class TestAdvancedParser(unittest.TestCase):
         """\\frac 等 latex 命令：无 antlr 时解析失败回退 basic 评分；
         有 antlr 时直接解析为 sympy 对象（ Rational(14, 3)）。"""
         import sympy
-        from inference.evaluation.benchmarks.advanced_parser import (
+        from evaluation.verifiers.parser import (
             parse_and_verify_answer,
             sympy_parser_hybrid,
         )
@@ -391,7 +391,7 @@ class TestAdvancedParser(unittest.TestCase):
 
     def test_tuple_and_interval_like_formats(self):
         """元组/区间风格输入：括号容器经 sympify 结构比较；开放性差异交给 basic。"""
-        from inference.evaluation.benchmarks.advanced_parser import (
+        from evaluation.verifiers.parser import (
             normalize_text_hybrid,
             parse_and_verify_answer,
         )
@@ -408,7 +408,7 @@ class TestAdvancedParser(unittest.TestCase):
     def test_multi_answer_comma_formats(self):
         """多答案逗号列表可比较；\\{..\\} 集合在有 antlr 时解析为 set 并与
         逗号列表按多重集等价；缺失时两侧解析失败确定判 False（降级行为）。"""
-        from inference.evaluation.benchmarks.advanced_parser import (
+        from evaluation.verifiers.parser import (
             parse_and_verify_answer,
         )
         try:
@@ -427,7 +427,7 @@ class TestAdvancedParser(unittest.TestCase):
         self.assertFalse(parse_and_verify_answer(r"\{1, 2\}", "1, 3"))
 
     def test_none_and_empty_inputs(self):
-        from inference.evaluation.benchmarks.advanced_parser import (
+        from evaluation.verifiers.parser import (
             normalize_text_hybrid,
             parse_and_verify_answer,
         )
@@ -439,7 +439,7 @@ class TestAdvancedParser(unittest.TestCase):
     def test_hybrid_parser_types(self):
         """sympy_parser_hybrid 返回类型契约：Rational/float/str/sympify 表达式。"""
         import sympy
-        from inference.evaluation.benchmarks.advanced_parser import (
+        from evaluation.verifiers.parser import (
             sympy_parser_hybrid,
         )
         self.assertEqual(sympy_parser_hybrid("2/3"), sympy.Rational(2, 3))
@@ -457,7 +457,7 @@ class TestTeacherForcing(unittest.TestCase):
         return _RiggedLM(vocab_size=32, favored_token_id=2)   # chr('B')=66 -> 66%32=2
 
     def test_predicts_favored_letter_and_scores_shape(self):
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             predict_choice_teacher_forcing,
         )
         model = self._rigged()
@@ -472,7 +472,7 @@ class TestTeacherForcing(unittest.TestCase):
 
     def test_choices_path_scores_full_continuation(self):
         """choices 路径：continuation "X. <choice>" 逐 token teacher forcing。"""
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             avg_logprob_teacher_forced,
             predict_choice_teacher_forcing,
         )
@@ -497,7 +497,7 @@ class TestTeacherForcing(unittest.TestCase):
 
     def test_consistent_with_letter_logprob_method(self):
         """choices=None（单字母 continuation）时打分面与 Method 2 一致。"""
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             predict_choice_logprob,
             predict_choice_teacher_forcing,
         )
@@ -523,7 +523,7 @@ class TestTeacherForcing(unittest.TestCase):
 
     def test_evaluate_mmlu_with_teacher_forcing_predict_fn(self):
         """兼容 evaluate_mmlu 的 predict_fn(model, tokenizer, prompt_fmt) 约定。"""
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             evaluate_mmlu,
             predict_choice_teacher_forcing,
         )
@@ -544,7 +544,7 @@ class TestTeacherForcing(unittest.TestCase):
 
     def test_empty_continuation_raises(self):
         """continuation 编码被 prompt 公共前缀完全吞掉时应显式报错（书原版契约）。"""
-        from inference.evaluation.benchmarks.multiple_choice import (
+        from inference.harness.mmlu import (
             avg_logprob_teacher_forced,
         )
 

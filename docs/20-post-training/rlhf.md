@@ -6,10 +6,10 @@
 
 | 方法 | 实现 | 状态 |
 |---|---|---|
-| REINFORCE / with-baseline | `post_training/reasoning/training/reinforce.py` | ✅ from scratch |
+| REINFORCE / with-baseline | `post_training/rl/reinforce.py` | ✅ from scratch |
 | GRPO（RLVR 主线） | `post_training/rl/`（core + objectives + batched + grpo_variants） | ✅ from scratch（completion mask + clip-higher + k1/k3 KL + Dr.GRPO 归一 + 批量采样；真实训练入口 `--task grpo`，见 [reasoning](reasoning.md)） |
-| DPO | `post_training/preference/`（自研）+ `model_rlhf/grpo/*`（TRL 参考） | ✅ 自研可运行 |
-| PPO | `post_training/preference/model_rlhf/ppo/main.py` | ✅ from scratch（序列级 bandit：critic 价值基线 + clip + 可选 k3 KL；与 GRPO 对照——GRPO 用组归一化优势替代 critic） |
+| DPO | `post_training/preference/`（自研）+ `references/trl_grpo/`（TRL 参考） | ✅ 自研可运行 |
+| PPO | `post_training/rl/ppo.py` | ✅ from scratch（序列级 bandit：critic 价值基线 + clip + 可选 k3 KL；与 GRPO 对照——GRPO 用组归一化优势替代 critic） |
 | Reward Model（RLHF 一阶段） | `post_training/preference/rm/`（2026-10-24） | ✅ from scratch（价值头 + BT 成对损失） |
 
 ## DPO 要点（2026-10-21 修复后）
@@ -36,7 +36,7 @@
 - 数据复用 DPO 偏好对（`data_provider/dpo`）；训练编排见
   `exp/exp_train_rm.py`；GPT-2 `forward` 新增 `output_hidden_states`
   选项暴露 final hidden（默认行为不变）；
-- 训练后的 RM 可作为 PPO（`model_rlhf/ppo/main.py`）的 learned reward，
+- 训练后的 RM 可作为 PPO（`post_training/rl/ppo.py`）的 learned reward，
   补全 SFT → RM → PPO 的完整 RLHF 三阶段。
 
 ## GRPO 参考

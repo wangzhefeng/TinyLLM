@@ -4,6 +4,14 @@
 
 > 状态依据第 1.2 节定义；“证据”列给出项目中的对应位置。
 
+> **历史快照说明（2026-10-25 追加）**：本矩阵是仓库早期（2026-10-18 前后）的覆盖度快照，
+> 多数“❌/🟡”条目此后已补齐（MLA、Gemma4、Aya、DPO、LoRA、judge/leaderboard 等），
+> 文中 `data_provider/pgcorpus_gutenberg/` → `pre_training/references/pgcorpus/`、
+> `exp/hparam_search.py`（已删除）、`app_orig.py`/`app_own.py` shim（已删除，仅 `apps/app.py`）、
+> `layers/tokenizers/simple_custom.py`（现 `layers/tokenizers/simple/simple_tokenizer.py`）
+> 均为历史路径，现状见 [architecture](../../00-overview/architecture.md) 与
+> [cleanup-log](../../50-development/cleanup-log.md)。
+
 ### 5.1 主线与 ch02–ch04
 
 | # | 仓库内容 | TinyLLM 对应 | 状态 | 说明 |

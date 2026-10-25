@@ -36,13 +36,14 @@ dataset/
 
 | 代码 | 期望路径 |
 |---|---|
-| `pre_training/data_provider/bert/data_processor.py` | `dataset/finetuning/THUCNews/task2.csv`、`index_2_word.txt` |
-| `post_training/sft/bert_sentiment/` | `dataset/finetuning/sentiment/sentiment.{train,valid,test}.data` |
+| `pre_training/data_provider/bert/data_processor.py`、`pre_training/experiments/bert/dapt_data.py` | `dataset/finetuning/THUCNews/task2.csv`、`index_2_word.txt`（TSV 解析共用 `tools/data/io.py:read_text_label_tsv`） |
+| `post_training/sft/bert_sentiment/data.py` | `dataset/finetuning/sentiment/sentiment.{train,valid,test}.data`（同经 `read_text_label_tsv`） |
 | `post_training/sft/data_provider/text_clf/data_config.py` | `dataset/finetuning/sms_spam_collection[.zip]` |
-| `post_training/peft/model_peft/deepseek_lora/` | `dataset/finetuning/medical/AI-ModelScope/...` |
+| `post_training/references/hf_peft/deepseek_lora/` | `dataset/finetuning/medical/AI-ModelScope/...` |
 | `post_training/reasoning/{data_gen,run}.py` | `dataset/finetuning/math_distill/train.jsonl`（ch08 蒸馏教师数据） |
-| `post_training/preference/model_rlhf/grpo/qwen_gsm8k_grpo/` | `dataset/finetuning/math/gsm8k/...` |
-| `inference/evaluation/benchmarks/math_verifiers.py` | `dataset/evaluation/math500/math500_test.json` |
+| `post_training/references/trl_grpo/gsm8k/data_provider.py` | `dataset/finetuning/math/gsm8k/...` |
+| `evaluation/verifiers/math.py` | `dataset/evaluation/math500/math500_test.json` |
+| `pre_training/references/pgcorpus/prepare_dataset.py` | Gutenberg 原始语料 → 预处理输出（见 [gutenberg](../10-pretraining/gutenberg.md)） |
 
 ## 说明
 

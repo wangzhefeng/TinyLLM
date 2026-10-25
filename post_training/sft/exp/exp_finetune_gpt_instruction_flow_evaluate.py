@@ -21,7 +21,7 @@ if ROOT not in sys.path:
     sys.path.append(ROOT)
 
 from utils.load_save_data import load_json_data
-from inference.evaluation.ollama_evaluate import generate_model_scores
+from post_training.sft.evaluation.judge import generate_model_scores
 from utils.log_util import logger
 
 # global variable
@@ -60,8 +60,9 @@ class ModelFinetuningInstructionFlowEvaluate:
         data, train_data, valid_data, test_data = self._build()
         # evaluate
         scores = generate_model_scores(
-            json_data = data, 
-            json_key = "model_response", 
+            json_data = data,
+            json_key = "model_response",
+            backend = "ollama",
             inference_server = self.args.inference_server,
             model = self.args.inference_model,
             url = self.args.inference_server_url,

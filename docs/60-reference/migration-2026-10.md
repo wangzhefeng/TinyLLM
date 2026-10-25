@@ -5,6 +5,13 @@
 > 本次迁移把 `TinyLLMFinetuning`、`TinyLLMInference` 两个仓库并入 TinyLLM，并把仓库重构为  
 > **pre_training / post_training / inference** 三个域。
 
+> **历史快照说明（2026-10-25 追加）**：本文表格与修复记录反映的是迁移当时（2026-10-24 前）的状态，
+> 属历史路径，现已再次迁移：`inference/loaders/*` → `models/io/*`、`inference/registry.py` →
+> `models/registry.py`、`inference/{api,evaluation}/` → 顶层 `evaluation/` 公共库、
+> `reasoning/{inference,evaluation}` 别名已删除、`pre_training/examples/gpt2_book` →
+> `pre_training/references/gpt2_book/`。当前结构见 [architecture](../00-overview/architecture.md)
+> 与 [cleanup-log](../50-development/cleanup-log.md)。
+
 ## 1. 来源
 
 | 仓库 | 路径 | commit | 文件数 | 大小 |

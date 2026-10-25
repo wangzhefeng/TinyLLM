@@ -1,6 +1,6 @@
 # TinyLLM
 
-TinyLLM 是一个以 **LLM 预训练 → 后训练 / 逻辑推理 → 模型推断** 为主线的学习与实验仓库。三个任务域共享模型、基础层、配置和训练运行时。
+TinyLLM 是一个以 **LLM 预训练 → 后训练 / 逻辑推理 → 模型推断** 为主线的学习与实验仓库。三个任务域共享模型、基础层、配置、训练运行时与评测基础设施。
 
 ## 快速索引
 
@@ -9,6 +9,7 @@ TinyLLM 是一个以 **LLM 预训练 → 后训练 / 逻辑推理 → 模型推�
 | 预训练 | [`pre_training/`](pre_training/) | [docs/10-pretraining/](docs/10-pretraining/index.md) |
 | 后训练 / reasoning | [`post_training/`](post_training/) | [docs/20-post-training/](docs/20-post-training/index.md) |
 | 模型推断 | [`inference/`](inference/) | [docs/30-inference/](docs/30-inference/index.md) |
+| 评测公共库 | [`evaluation/`](evaluation/) | [docs/35-evaluation/](docs/35-evaluation/index.md) |
 | 共享训练运行时 | [`training/`](training/) | [docs/00-overview/architecture.md](docs/00-overview/architecture.md) |
 | 工具库 | [`tools/`](tools/) | [docs/70-tools/](docs/70-tools/index.md) |
 | 共享模型与权重 IO | [`models/`](models/) | [docs/40-models/](docs/40-models/index.md) |
@@ -44,15 +45,16 @@ Linux + CUDA 12.1 的 PyTorch 安装命令见 `pyproject.toml` 注释。Jupyter 
 
 ```text
 TinyLLM/
-├── pre_training/        # 预训练：data_provider、experiments、examples、references、scripts
-├── post_training/       # 后训练：sft、peft、preference、reasoning、rl
-├── inference/           # 推断：generation、strategies、serving、evaluation、api、apps
-├── training/            # 共享训练循环、优化、分布式、checkpoint、callbacks
-├── models/              # 模型定义与 models/io 权重 IO
-├── layers/              # attention、block、norm、RoPE、MoE、KV cache、tokenizers
+├── pre_training/        # 预训练：data_provider、experiments、examples(components/training/analysis)、references
+├── post_training/       # 后训练：sft、peft、preference、reasoning、rl、references(外部栈对照)
+├── inference/           # 推断：loading/generation 门面、harness、strategies、serving、apps、scripts
+├── evaluation/          # 评测公共库：clients、verifiers、judges（三域共用）
+├── training/            # 共享训练循环、checkpoint、callbacks
+├── models/              # 模型定义、registry、models/io 权重 IO（唯一实现）
+├── layers/              # attention、block、norm、RoPE、MoE、KV cache、tokenizers、quantization/nf4
 ├── config/              # Model/Train/Generation 配置
 ├── tools/               # distributed、profiling、checkpoint、data
-├── utils/               # 通用训练与日志工具（兼容层）
+├── utils/               # 通用训练与日志工具（含 online.py、early_stopping）
 ├── dataset/             # 本地数据（gitignored）
 ├── results/             # 模型与测试输出（gitignored）
 ├── tests/               # unit / integration
@@ -65,10 +67,10 @@ TinyLLM/
 
 - 模型、tokenizer 和 checkpoint 有统一契约；GPT-2/Qwen3 使用外部 KV cache 保存生成位置。
 - 预训练、SFT、DPO 共用 `training.Trainer`；best 与 resume checkpoint 使用兼容的统一格式。
-- 权重加载唯一实现位于 `models/io/`；`inference/loaders/` 仅保留兼容 shim。
-- 推断策略在 `inference/strategies/`，benchmark/judge/leaderboard 在 `inference/evaluation/`。
-- GRPO/PPO/REINFORCE 共享 `post_training/rl/`；reasoning 训练留在 `post_training/reasoning/training/`。
-- 旧模块路径保留兼容入口，新代码应使用新路径。
+- 权重加载唯一实现位于 `models/io/`；模型静态元数据统一在 `models/registry.py`（推断加载与预训练实验共用）。
+- 评测基础设施上提为公共库 `evaluation/`（客户端/验证器/judge/排行榜）；`inference/harness/` 只保留生成侧评测循环。
+- GRPO/PPO/REINFORCE 共享 `post_training/rl/`；`post_training/references/` 是外部栈（TRL/Unsloth/HF peft）对照实验区，不接入 `run.py` 分发器。
+- 各主域不再保留兼容 shim；新代码一律使用当前路径，历史清理见 [docs/50-development/cleanup-log.md](docs/50-development/cleanup-log.md)。
 
 ## 文档怎么读
 

@@ -3,7 +3,7 @@ import unittest
 
 import torch
 
-from post_training.peft.layers.nf4 import (
+from layers.quantization.nf4 import (
     NF4_CODEBOOK,
     nf4_quantize,
     nf4_dequantize,

@@ -52,7 +52,7 @@ class TransformerBlockGPT2_124M(nn.Module):
     GPT-2 pre-LN block。
 
     注意力使用 ``MultiHeadAttention``（支持 KV cache 与 ``reset_cache``，
-    权重名 W_query/W_key/W_value/out_proj 与 ``inference/loaders/gpt2/`` 的加载约定一致）；
+    权重名 W_query/W_key/W_value/out_proj 与 ``models/io/gpt2/`` 的加载约定一致）；
     LayerNorm 使用自定义 ``LayerNorm``（scale/shift，同上）。
     """
     

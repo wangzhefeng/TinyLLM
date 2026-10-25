@@ -47,7 +47,7 @@ def _login_huggingface_hub():
     login(token = HF_HUB_ACCESS_TOKEN)
 
 
-def _download_tokenzier(model_path):
+def _download_tokenizer(model_path):
     """
     download llama2 tokenizer
     """
@@ -64,7 +64,7 @@ class Llama27bTokenizer:
 
     def __init__(self, tokenizer_file_path=None):
         if tokenizer_file_path is None:
-            tokenizer_file_path = Path(__file__).resolve().parents[4] / "downloaded_models/llama_model/Llama-2-7b/tokenizer.model"
+            tokenizer_file_path = Path(__file__).resolve().parents[3] / "downloaded_models/llama_model/Llama-2-7b/tokenizer.model"
         model_path = Path(tokenizer_file_path).expanduser().resolve()
         if not model_path.is_file():
             raise FileNotFoundError(f"Model file {model_path} not found")
@@ -98,7 +98,7 @@ def main():
     # _login_huggingface_hub()
 
     # download tokenizer model
-    # _download_tokenzier(model_path)
+    # _download_tokenizer(model_path)
 
     # tokenizer
     tokenizer = Llama27bTokenizer()

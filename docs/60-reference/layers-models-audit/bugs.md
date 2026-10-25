@@ -10,6 +10,10 @@
 > 由 `tests/unit/test_layers_regression.py`（17 项）覆盖；全量 85 项测试通过。
 > 剩余：P2 #22（tokenizers 归属，暂保留）、#23（generate 变体收敛，部分完成）、
 > #24/#25/#28/#29（完整接口统一与权重加载抽象，随 Phase 2 需要）。
+> 历史快照说明（2026-10-25）：下文提及的 `inference/loaders/` 等为历史路径，
+> 权重 IO 现已统一到 `models/io/`。tokenizers 侧 #11 中提及的 `gemma.py`
+> 已迁至 `gemma3/gemma3_tokenizer.py`、`hf_gpt2_bpe.py` 已删除，均为历史路径
+> （见 [cleanup-log](../../50-development/cleanup-log.md)）。
 
 ## P0：必修 bug
 

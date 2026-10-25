@@ -108,7 +108,7 @@ class TestGemma3WeightLoading(unittest.TestCase):
         self.assertTrue(torch.isfinite(logits.float()).all())
 
     def test_registry_entry_available(self):
-        from inference.registry import get_model_spec
+        from models.registry import get_model_spec
 
         spec = get_model_spec("gemma3-270m")
         self.assertTrue(spec.available)

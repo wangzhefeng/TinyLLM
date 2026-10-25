@@ -11,7 +11,7 @@
 # *                 .venv/bin/python inference/serving/nano_vllm/example_pretrained.py \
 # *                     --model-path ~/huggingface/Qwen3-0.6B/ "你好，请自我介绍"
 # *               模型目录需为 HF 格式(含 config.json、*.safetensors、tokenizer 文件)，
-# *               可用 inference/loaders/qwen3/model_download.py 下载。
+# *               可用 models/io/qwen3/model_download.py 下载。
 # *               tokenizer 依赖 transformers；缺省时仅演示 token ids 输入输出。
 # * Link        : https://github.com/GeeeekExplorer/nano-vllm
 # * Requirement : torch >= 2.0, safetensors, transformers(可选, 用于文本 tokenizer)

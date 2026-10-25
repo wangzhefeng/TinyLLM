@@ -50,7 +50,7 @@ models/deepseek/
 | `models/deepseek/model.py` | `DeepSeekModel` 组装 | ✅ 已迁入 | MLA + SwiGLU，支持 KV cache |
 | `models/deepseek/mla.py` | MLA 完整实现 | ✅ 已迁入 | 从共享 attention 中移出，避免 DeepSeek 专属逻辑污染通用层 |
 | `layers/moe.py` | SparseMoE / MoE FeedForward | ❌ 保留共享 | DeepSeekMoE 可在此基础上扩展，但通用 MoE 仍服务 Qwen3 等模型 |
-| `post_training/peft/model_peft/deepseek_lora/` | DeepSeek-R1-Distill-Qwen-7B 的 LoRA SFT / 评测 | ❌ 留在后训练 | 它实际是 Qwen2 架构的蒸馏模型，不是 DeepSeek V3 架构 |
+| `post_training/references/hf_peft/deepseek_lora/` | DeepSeek-R1-Distill-Qwen-7B 的 LoRA SFT / 评测 | ❌ 留在后训练 | 它实际是 Qwen2 架构的蒸馏模型，不是 DeepSeek V3 架构 |
 
 ## 实现顺序（已完成 1–4）
 

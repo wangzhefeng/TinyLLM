@@ -9,7 +9,7 @@
 # * Description : Reward Model 训练实验（RLHF 一阶段）：
 # *               复用 DPO 的偏好对数据（data_provider/dpo），
 # *               backbone + v_head 用 Bradley-Terry 成对损失训练；
-# *               训练后的 RM 可作为 PPO（model_rlhf/ppo/main.py）的
+# *               训练后的 RM 可作为 PPO（rl/ppo.py）的
 # *               learned reward 来源。
 # * Requirement : torch
 # ***************************************************

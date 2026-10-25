@@ -41,4 +41,4 @@
 ## 相关
 
 - [预训练](../10-pretraining/index.md)
-- [推断 loaders](../30-inference/loaders.md)
+- [权重 IO](../30-inference/loaders.md)

@@ -22,7 +22,7 @@ if ROOT not in sys.path:
 import argparse
 
 from pre_training.data_provider.bert.data_processor import DataProcessor
-from post_training.sft.bert_sentiment.data import load_sentiment_file
+from tools.data.io import read_text_label_tsv
 from utils.log_util import logger
 
 # global variable
@@ -42,7 +42,7 @@ def args_parse():
 def main():
     args = args_parse()
     # 只取 train split 的文本（标签丢弃，DAPT 是无标注预训练）
-    texts, _ = load_sentiment_file(str(Path(args.data_dir) / args.train_file))
+    texts, _ = read_text_label_tsv(str(Path(args.data_dir) / args.train_file))
     logger.info(f"DAPT source texts: {len(texts)}")
     # 复用 THUCNews 的切句 + 正负样本构造逻辑
     processor = DataProcessor(data_dir=args.data_dir, output_task_file=args.output_task_file)

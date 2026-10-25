@@ -76,7 +76,7 @@ class TestDefaultDataPaths(unittest.TestCase):
 
     def test_dpo_runner_argparse_defaults(self):
         with mock.patch.object(sys, "argv", ["run_gpt_dpo.py"]):
-            from post_training.preference.model_rlhf.dpo import run_gpt_dpo
+            from post_training.preference.run import run_gpt_dpo
 
             args = run_gpt_dpo.args_parse()
         # DPO 默认数据路径在 dataset/finetuning/
@@ -109,8 +109,8 @@ class TestScriptLinks(unittest.TestCase):
         import py_compile
 
         py_compile.compile(
-            str(ROOT / "post_training/preference/model_rlhf/grpo"
-                "/qwen_scheduler_grpo/train_grpo.py"),
+            str(ROOT / "post_training/references/trl_grpo"
+                "/scheduler/train_grpo.py"),
             doraise=True,
         )
 
@@ -124,7 +124,7 @@ class TestScriptLinks(unittest.TestCase):
         )
 
     def test_find_near_duplicates_script_target_exists(self):
-        script = (ROOT / "post_training/common/scripts"
+        script = (ROOT / "post_training/sft/scripts"
                   "/find_near_duplicates.sh").read_text()
         target = ("post_training/sft/data_provider/instruction_follow"
                   "/find_near_duplicates.py")

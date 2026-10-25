@@ -68,4 +68,4 @@ RL 通过动态调整模型参数（weights updating）实现能力提升。
 - **CoT（思维链提示）**：`render_prompt(prompt, cot=True)` 在 MATH-500 模板上追加 "Think step by step ..." 指令（对应书 ch04 的 prompt_suffix 机制），见 [评测](evaluation.md)。
 - **Self-consistency / 加权 self-consistency**：`inference/strategies/voting_and_verification.py` 的 `self_consistency`（多数投票）与 `weighted_self_consistency`（按 `scorer_fn` 分数加权投票，全 0 分退化为多数票，对应书 ch05 的 heuristic/logprob 打分）。
 - **Best-of-N / Self-refinement**：同一模块的 `best_of_n`（外部 reward 选优）与 `inference/strategies/advance_text_generation.py` 的 `generate_with_self_refinement`（反馈→修订循环）。
-- 端到端把上述策略跑在 MATH-500 上：`python -m inference.evaluation.harness.math500 --strategy ...`，详见 [评测 harness](evaluation.md)。
+- 端到端把上述策略跑在 MATH-500 上：`python -m inference.harness.math500 --strategy ...`，详见 [评测 harness](evaluation.md)。

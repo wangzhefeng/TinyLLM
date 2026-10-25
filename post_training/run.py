@@ -10,11 +10,17 @@ if ROOT not in sys.path:
 TASKS = {
     "sft_clf": "post_training.sft.run.run_gpt_clf_sft",
     "sft_ins": "post_training.sft.run.run_gpt_instruction_sft",
-    "dpo": "post_training.preference.model_rlhf.dpo.run_gpt_dpo",
+    "dpo": "post_training.preference.run.run_gpt_dpo",
     "grpo": "post_training.rl.run",
     "reinforce": "post_training.rl.run",
     "distill_reasoning": "post_training.reasoning.run",
 }
+
+# 未纳入分发器的入口，手动运行：
+#   - PPO（序列级 bandit 教学实现）: .venv/bin/python post_training/rl/ppo.py
+#   - RM 训练: .venv/bin/python post_training/preference/exp/exp_train_rm.py
+#   - peft 演示（lora_demo / prompt_tuning / scratch_exps）: post_training/peft/demos/
+#   - post_training/references/ 为外部栈（TRL / unsloth / HF PEFT）对照实验，不接入分发器。
 
 
 def main():

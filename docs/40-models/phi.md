@@ -10,7 +10,7 @@ phi-1.5（microsoft/phi-1_5，1.3B）教学实现，对齐 rasbt/LLMs-from-scrat
 - 模型：`models/phi/phi15.py`（`PhiAttention` / `PhiMLP` / `PhiBlock` / `Model`）
 - 配置：`config/phi/model_cfgs.py`（`PHI15_CONFIG` 官方尺寸 + `PHI15_TINY_CONFIG`）
 - 权重下载/映射：`models/io/phi/load_phi15_weights.py`
-- 注册：`inference/registry.py` 的 `phi-15`（eos=50256）
+- 注册：`models/registry.py` 的 `phi-15`（eos=50256）
 
 ## 结构要点（对照 HF config.json）
 
@@ -31,5 +31,5 @@ phi-1.5（microsoft/phi-1_5，1.3B）教学实现，对齐 rasbt/LLMs-from-scrat
 
 ## 相关
 
-- [推断 loaders](../30-inference/loaders.md)
+- [权重 IO](../30-inference/loaders.md)
 - [LLMs-from-scratch ch06-07](../60-reference/llms-from-scratch/ch06-07.md)

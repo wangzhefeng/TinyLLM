@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : run.py
+# * File        : exp_pretrain_gpt2_124M.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-01-23
@@ -28,7 +28,7 @@ from layers.tokenizers.tokenization import (
     token_ids_to_text
 )
 # model
-from pre_training.experiments.exp_basic import Exp_Basic
+from pre_training.experiments.exp_basic import Exp_Basic, _resolve_model_module
 # training
 from utils.optimizer import select_optimizer
 from utils.criterion import select_criterion
@@ -137,7 +137,7 @@ class Model_Pretrain(Exp_Basic):
         # 模型实例化（在 CPU 上构建，DP/DDP 包装由 Exp_Basic._wrap_model 在
         # 模型 to(device)/to(dtype) 之后统一处理）
         logger.info(f"Initializing model {self.args.model_name}...")
-        model = self.model_dict[self.args.model_name].Model(self.args)
+        model = _resolve_model_module(self.args.model_name).Model(self.args)
         # 打印模型参数量
         model_memory_size(model, input_dtype=self.args.dtype, verbose=True)
         

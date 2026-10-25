@@ -7,6 +7,12 @@
 [reasoning-from-scratch](https://github.com/rasbt/reasoning-from-scratch) 缺失的主题。
 ✅ = 已具备；❌ = 缺失；🟡 = 有零件但未闭环。
 
+> **历史快照说明（2026-10-25 追加）**：本清单是 2026-10-20 审查快照，文中
+> `post_training/reasoning/{inference,evaluation}/`、`preference/model_rlhf/grpo/`、
+> `training/reinforcement_learning.py` 等为历史路径，现已迁移到
+> `inference/strategies/`、`evaluation/` 公共库、`post_training/rl/`、
+> `post_training/references/trl_grpo/`（见 [cleanup-log](../../50-development/cleanup-log.md)）。
+
 ## 1. 预训练视角
 
 ### 1.1 注意力与位置编码（layers/）

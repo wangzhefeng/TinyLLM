@@ -29,7 +29,7 @@ from pathlib import Path
 import torch
 
 from inference.generate_core import sample_next_token
-from inference.evaluation.benchmarks.math_verifiers import get_last_boxed
+from evaluation.verifiers.math import get_last_boxed
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

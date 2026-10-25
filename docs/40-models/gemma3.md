@@ -19,7 +19,7 @@
 
 ## 推断闭环（2026-10-24）
 
-- `inference/registry.py` 的 `gemma3-270m` 条目 `available=True`
+- `models/registry.py` 的 `gemma3-270m` 条目 `available=True`
   （eos 为 base 版 `<eos>`=1；-it 版应改用 `<end_of_turn>`）
 - `inference/loading.py::_load_gemma3`：下载权重 + `ensure_gemma_tokenizer` +
   模型组装，extras 返回 `tokenizer_file_path`
@@ -27,6 +27,6 @@
 
 ## 相关
 
-- [推断 loaders](../30-inference/loaders.md)
+- [权重 IO](../30-inference/loaders.md)
 - [LLMs-from-scratch ch05](../60-reference/llms-from-scratch/ch05.md)
 - [tokenizers](tokenizers.md)

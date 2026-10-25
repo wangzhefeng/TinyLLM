@@ -1039,8 +1039,6 @@ class GroupedQueryAttention_Gemma3(nn.Module):
         return context_vec
 
 
-
-
 class SlidingWindowAttention(nn.Module):
     """滑动窗口注意力（SWA，Mistral/Gemma3-local 层式）的独立可复用实现。
 

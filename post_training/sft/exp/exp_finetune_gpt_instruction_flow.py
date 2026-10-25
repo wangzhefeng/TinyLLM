@@ -310,9 +310,9 @@ class ModelFinetuningInstructionFlow:
         # model save
         self._save_model(self.model)
         
-        # parpare eval data
+        # prepare eval data
         if self.args.is_eval:
-            self.eval_data_papare(test_data)
+            self.eval_data_prepare(test_data)
 
     def test(self, test_entry_num: int = 3, training_iter = None, setting = None):
         """
@@ -350,7 +350,7 @@ class ModelFinetuningInstructionFlow:
             logger.info(f"\nCorrect response:\n>> {entry['output']}")
             logger.info(f"\nModel response:\n>> {response_text.strip()}")
 
-    def eval_data_papare(self, eval_data):
+    def eval_data_prepare(self, eval_data):
         """
         build instruction data with response
         """

@@ -40,6 +40,10 @@ class UnigramTokenizer:
     编码用 Viterbi 最优切分（log 概率），复杂度 O(L * max_piece_len)。
     """
 
+    # TokenizerProtocol 属性：Unigram 仅 unk 特殊 token，无 eos/pad
+    eos_token_id = None
+    pad_token_id = None
+
     def __init__(self, vocab_size: int = 8000, unk_token: str = "<unk>"):
         self.vocab_size = vocab_size
         self.unk_token = unk_token

@@ -5,19 +5,19 @@
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-13
-# * Version     : 0.1.021322
-# * Description : description
+# * Version     : 1.0.102511
+# * Description : 预训练实验基类：模型实现模块经 models.registry.MODEL_REGISTRY
+# *               解析（预训练 model_name -> registry 键 -> family/config_key
+# *               -> models/ 下实现模块），不再维护本地硬编码模型表。
 # * Link        : Thunder: https://github.com/Lightning-AI/lightning-thunder
-# * Requirement : 相关模块版本需求(例如: numpy >= 2.1.0)
+# * Requirement : torch
 # ***************************************************
 
 # python libraries
+import importlib
 import os
 import sys
 from pathlib import Path
-
-from models.gpt2 import gpt2_124M
-from models.qwen3 import qwen3
 ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
@@ -25,14 +25,56 @@ if ROOT not in sys.path:
 import torch
 import torch.nn as nn
 
-from models.llama import (
-    llama2,
-    llama3_8B,
-)
+from models.registry import MODEL_REGISTRY
 from utils.log_util import logger
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
+
+# 预训练入口的 model_name（run_gpt2_124M.py 等 --model_name 取值）
+# 与推断注册表键名不同，这里做一层显式映射；
+# 未映射的名字会再按注册表键直接查询（如 "gemma3-270m"）
+_PRETRAIN_NAME_TO_REGISTRY_KEY = {
+    "gpt2_124M": "gpt2-124m",
+    "llama2": "llama2-7b",
+    "llama3_8B": "llama3-8b",
+    "qwen3": "qwen3-0.6b",
+}
+
+# registry 条目（ModelSpec）只声明 family/config_key 元数据，不含模型类
+# 模块路径，按 (family, config_key) 分派到 models/ 下的实现模块；
+# config_key 为 None 表示该族不区分 config（通配）
+_SPEC_TO_MODEL_MODULE = {
+    ("gpt2", None): "models.gpt2.gpt2_124M",
+    ("llama", "llama2"): "models.llama.llama2",
+    ("llama", "llama3"): "models.llama.llama3_8B",
+    ("qwen3", None): "models.qwen3.qwen3",
+}
+
+
+def _resolve_model_module(model_name):
+    """预训练 model_name -> models.registry.MODEL_REGISTRY -> 模型实现模块。
+
+    注册表中查不到的键直接报错（附可用键列表）；当前全部预训练入口名
+    都能经映射在注册表命中，故无本地 fallback。
+    """
+    registry_key = _PRETRAIN_NAME_TO_REGISTRY_KEY.get(model_name, model_name)
+    spec = MODEL_REGISTRY.get(registry_key)
+    if spec is None:
+        raise KeyError(
+            f"model_name '{model_name}' 不在 models.registry.MODEL_REGISTRY 中；"
+            f"可用键：{', '.join(sorted(MODEL_REGISTRY))}"
+        )
+    module_path = (
+        _SPEC_TO_MODEL_MODULE.get((spec.family, spec.config_key))
+        or _SPEC_TO_MODEL_MODULE.get((spec.family, None))
+    )
+    if module_path is None:
+        raise NotImplementedError(
+            f"registry 条目 '{registry_key}'（family={spec.family}, "
+            f"config_key={spec.config_key}）暂无预训练模型实现模块映射"
+        )
+    return importlib.import_module(module_path)
 
 
 class Exp_Basic:
@@ -40,12 +82,6 @@ class Exp_Basic:
     def __init__(self, args, local_rank):
         self.args = args
         self.local_rank = local_rank
-        self.model_dict = {
-            "gpt2_124M": gpt2_124M,
-            "llama2": llama2,
-            "llama3_8B": llama3_8B,
-            "qwen3": qwen3,
-        }
         # device
         self.device = self._acquire_device(local_rank)
         # tokenizer

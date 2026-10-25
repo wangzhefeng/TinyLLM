@@ -2,6 +2,11 @@
 
 > 所属：[TinyLLM Docs](../README.md) › [Reference](index.md)
 
+> **历史快照说明（2026-10-25 追加）**：本文记录 2026-10-18 重构；此后结构又有两轮演进
+> （2026-10-24 共享运行时、2026-10-25 评测公共库上提）。文中出现的 `inference/api`、
+> `inference/evaluation`、`model_rlhf` 等路径属历史路径，现已迁移到 `evaluation/` 公共库、
+> `post_training/references/` 等，当前结构见 [architecture](../00-overview/architecture.md)。
+
 ## 1. 重构前的问题
 
 | 域 | 问题 |

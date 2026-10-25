@@ -153,7 +153,7 @@ def ensure_openai_gpt2_vocab(model_file_path):
 
 def get_encoder(model_name="gpt2_model", model_dir=None, download=False):
     if model_dir is None:
-        model_dir = Path(__file__).resolve().parents[2] / "models"
+        model_dir = Path(__file__).resolve().parents[3] / "downloaded_models" / "gpt2_model"
     model_file_path = Path(model_dir).joinpath(model_name)
     if download:
         ensure_openai_gpt2_vocab(model_file_path)

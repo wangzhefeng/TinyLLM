@@ -267,6 +267,8 @@ class GatedDeltaNet(nn.Module):
         raise ValueError(f"Unknown mode: {mode!r}, expected 'recurrent' or 'chunk'")
 
 
+
+
 # 测试代码 main 函数
 def main():
     torch.manual_seed(0)

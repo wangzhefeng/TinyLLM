@@ -1,8 +1,9 @@
 > 所属：[TinyLLM Docs](../README.md) › [模型推断](index.md)
 
-# 权重加载
+# 权重 IO（models/io）
 
-权重 IO 的唯一实现位于 `models/io/`，同时服务预训练、后训练和推断。`inference/loaders/` 仅保留旧 import 的兼容 shim。
+权重加载的唯一实现位于 `models/io/`，同时服务预训练、后训练和推断。推断统一入口是
+`inference.load_model()`（注册表 `models/registry.py`），不要绕过它重复实现加载流程。
 
 | 目录 | 模型 | 内容 |
 |---|---|---|
@@ -13,13 +14,19 @@
 | `models/io/phi/` | Phi-1.5 | HF safetensors 下载与 Wqkv 拆分映射（2026-10-24） |
 | `models/io/export/` | Qwen3 -> HF | 本地权重导出 HF Transformers 目录（2026-10-24，reasoning ch08） |
 
+## 使用约定
+
+```python
+from models.io.gpt2.load_gpt2_pretrained_weights import model_with_gpt2_weights
+```
+
+GPT-2 的 `hf`、`safetensors`、`openai_tf` source 名由底层加载器直接兼容。TensorFlow 仅在官方 TF checkpoint 路径懒加载；其他路径不受影响。真实权重下载需要网络与相应凭证，离线测试使用 tiny 随机权重。
+
 ## HF 导出（models/io/export）
 
 `export_to_hf(model, out_dir, cfg, tokenizer_dir=None)` 把本地 Qwen3 state_dict 键名
-反向映射到 HF Qwen3 命名（`load_weights_into_qwen` 的逆映射，见
-`local_to_hf_state_dict`），safetensors 落 `model.safetensors`，并生成 HF 格式
-`config.json`（Qwen3ForCausalLM 字段，从 cfg 推导）与 `generation_config.json`
-（eos/pad 优先取 `tokenizer_dir/tokenizer.json`）。仅支持 dense（MoE 显式拒绝）。
+反向映射到 HF Qwen3 命名，safetensors 落 `model.safetensors`，并生成 HF 格式
+`config.json` 与 `generation_config.json`。仅支持 dense（MoE 显式拒绝）。
 
 ```python
 from models.io.export import hf_export
@@ -27,23 +34,11 @@ from models.io.export import hf_export
 hf_export.export_to_hf(model, "results/hf_export", config, tokenizer_dir="downloaded_models/qwen3_model/Qwen3-0.6B-base-for-reasoning")
 ```
 
-wrapper 方案 `hf_export.TinyLLMForCausalLM`（`TinyLLMConfig`）继承
-`transformers.PreTrainedModel` 包住本地 Model 的 forward（input_ids -> logits），
-transformers 懒加载（未安装时模块导入不受影响）。参考上游
+wrapper 方案 `hf_export.TinyLLMForCausalLM` 继承 `transformers.PreTrainedModel` 包住本地
+Model 的 forward，transformers 懒加载（未安装时模块导入不受影响）。参考上游
 rasbt/reasoning-from-scratch `ch08/06_use_via_huggingface`。
-
-## 使用约定
-
-```python
-from models.io.gpt2.load_gpt2_pretrained_weights import model_with_gpt2_weights
-```
-
-推断统一入口仍推荐 `inference.load_model()`，不要绕过 registry 重复实现加载流程。GPT-2 的 `hf`、`safetensors`、`openai_tf` source 名由底层加载器直接兼容，不再经过额外映射层。
-
-TensorFlow 仅在官方 TF checkpoint 路径懒加载；其他路径不受影响。真实权重下载需要网络与相应凭证，离线测试使用 tiny 随机权重。
 
 ## 相关
 
 - [推断入口](index.md)
 - [模型](../40-models/index.md)
-- [模块迁移测试](../../tests/unit/test_module_moves.py)

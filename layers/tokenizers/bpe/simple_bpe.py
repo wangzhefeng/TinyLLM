@@ -24,7 +24,10 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 
 class BPETokenizerSimple:
-    
+    # TokenizerProtocol 属性：训练/加载前无 eos/pad，n_vocab 以词表实际大小为准
+    eos_token_id = None
+    pad_token_id = None
+
     def __init__(self):
         # Maps token_id to token_str (e.g., {11246: "some"})
         self.vocab = {}
@@ -35,6 +38,10 @@ class BPETokenizerSimple:
         # For the official OpenAI GPT-2 merges, use a rank dict:
         # of form {(string_A, string_B): rank}, where lower rank=higher priority
         self.bpe_ranks = {}
+
+    @property
+    def n_vocab(self):
+        return len(self.vocab)
 
     def train(self, text, vocab_size, allowed_special={"<|endoftext|>"}):
         """
@@ -403,7 +410,7 @@ class SimpleBPE:
         self.tokenizer = BPETokenizerSimple()
         
         # model path
-        model_file_path = Path(f"./layers/tokenizers/models/{name}")
+        model_file_path = Path(__file__).resolve().parents[1] / "models" / name
         model_file_path.mkdir(parents=True, exist_ok=True)
         vocab_file_path = model_file_path.joinpath("encoder.json")
         bpe_merge_path = model_file_path.joinpath("vocab.bpe")

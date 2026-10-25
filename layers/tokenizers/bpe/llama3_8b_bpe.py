@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ***************************************************
-# * File        : tokenizer_bpe.py
+# * File        : llama3_8b_bpe.py
 # * Author      : Zhefeng Wang
 # * Email       : zfwang7@gmail.com
 # * Date        : 2025-02-23
@@ -12,7 +12,7 @@
 # ***************************************************
 
 __all__ = [
-    "Tokenizer",
+    "Llama38bTokenizer",
 ]
 
 # python libraries
@@ -51,9 +51,9 @@ def _login_huggingface_hub():
     login(token = HF_HUB_ACCESS_TOKEN)
 
 
-def _download_tokenzier(model_path):
+def _download_tokenizer(model_path):
     """
-    download llama2 tokenizer
+    download llama3 tokenizer
     """
     tokenizer_file = hf_hub_download(
         repo_id="meta-llama/Meta-Llama-3-8B",
@@ -66,16 +66,24 @@ def _download_tokenzier(model_path):
 
 class Llama38bTokenizer:
     
-    def __init__(self, special_token_version = "v1"):
+    def __init__(self, special_token_version = "v1", tokenizer_file_path = None):
         """
         Args:
-            model_path (_type_): 分词器模型的路径
+            special_token_version: 特殊 token 字典版本（"v1"/"v2"）
+            tokenizer_file_path: 分词器模型路径；None 时使用仓库内默认路径
+                <repo_root>/downloaded_models/llama_model/Meta-Llama-3-8B/original/tokenizer.model
         """
         # ------------------------------
         # 分词器模型的路径
         # ------------------------------
-        model_path = "downloaded_models/llama_model/Meta-Llama-3-8B/original/tokenizer.model"
-        assert os.path.isfile(model_path), f"Model file {model_path} not found"
+        if tokenizer_file_path is None:
+            tokenizer_file_path = Path(__file__).resolve().parents[3] / "downloaded_models" / "llama_model" / "Meta-Llama-3-8B" / "original" / "tokenizer.model"
+        model_path = Path(tokenizer_file_path).expanduser().resolve()
+        assert os.path.isfile(model_path), (
+            f"Llama3 tokenizer file not found: {model_path}\n"
+            "该文件来自 HuggingFace gated 仓库 meta-llama/Meta-Llama-3-8B，需登录后手动下载 original/tokenizer.model 到上述路径；"
+            "若已下载到其他位置，可用 Llama38bTokenizer(tokenizer_file_path=...) 显式指定。"
+        )
         # ------------------------------
         # 加载 BPE 模型(实际是一个字典)
         # ------------------------------
@@ -178,7 +186,7 @@ def main():
     # _login_huggingface_hub()
 
     # download tokenizer model
-    # _download_tokenzier(model_path)
+    # _download_tokenizer(model_path)
     
     # 加载 tokenizer
     tokenizer = Llama38bTokenizer(special_token_version="v2")

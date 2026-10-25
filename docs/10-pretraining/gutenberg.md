@@ -38,7 +38,7 @@ $ python process_data.py
 * 准备数据集
 
 ```bash
-$ python pre_training/data_provider/pgcorpus_gutenberg/prepare_dataset.py \
+$ python pre_training/references/pgcorpus/prepare_dataset.py \
 $   --data_dir gutenberg/data/raw \
 $   --max_size_mb 500 \
 $   --output_dir gutenberg_preprocessed
@@ -47,7 +47,7 @@ $   --output_dir gutenberg_preprocessed
 # 预训练
 
 ```bash
-$ python pre_training/examples/pgcorpus_pretraining_simple.py \
+$ python pre_training/references/pgcorpus/pgcorpus_pretraining_simple.py \
 $   --data_dir "gutenberg_preprocessed" \
 $   --n_epochs 1 \
 $   --batch_size 4 \

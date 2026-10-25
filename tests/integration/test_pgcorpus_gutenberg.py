@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "pre_training" / "examples" / "pgcorpus_pretraining_simple.py"
+SCRIPT = REPO_ROOT / "pre_training" / "references" / "pgcorpus" / "pgcorpus_pretraining_simple.py"
 
 
 class TestGutenbergExample(unittest.TestCase):

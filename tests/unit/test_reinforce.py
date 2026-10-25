@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import torch
 
-from post_training.reasoning.training.reinforce import (
+from post_training.rl.reinforce import (
     compute_reinforce_loss,
     reinforce_step,
 )

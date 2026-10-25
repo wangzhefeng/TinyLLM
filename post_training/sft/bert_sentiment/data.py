@@ -24,6 +24,7 @@ import torch
 from torch.utils.data import Dataset
 
 from utils.log_util import logger
+from tools.data.io import read_text_label_tsv
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -31,17 +32,10 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 
 def load_sentiment_file(file_path: str):
     """
-    加载情感分类数据文件（每行：text<TAB>label），返回 (texts, labels)
+    加载情感分类数据文件（每行：text<TAB>label），返回 (texts, labels)。
+    解析逻辑统一在 tools.data.io.read_text_label_tsv。
     """
-    texts, labels = [], []
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if not line:
-                continue
-            text, label = line.rsplit("\t", 1)
-            texts.append(text)
-            labels.append(int(label))
+    texts, labels = read_text_label_tsv(file_path)
     logger.info(f"Loaded {len(texts)} samples from {file_path}")
     return texts, labels
 

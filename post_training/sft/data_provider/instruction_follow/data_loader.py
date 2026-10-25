@@ -23,7 +23,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from utils.load_save_data import load_json_data
-from post_training.common.data_provider import instruction_format
+from layers.tokenizers.chat import format_input_alpaca
 from utils.log_util import logger
 
 # global variable
@@ -40,7 +40,7 @@ class InstructionDataset(Dataset):
         for entry in self.data:
             # format input into instruction-response template
             # （与书中 ch07 模板一致：### Response:\n，冒号后无空格）
-            instruction_plus_input = instruction_format.format_input_alpaca(entry)
+            instruction_plus_input = format_input_alpaca(entry)
             response_text = f"\n\n### Response:\n{entry['output']}"
             full_text = instruction_plus_input + response_text
             # convert instruction-response entry into token IDs
@@ -73,7 +73,7 @@ class InstructionDatasetWithMasking(Dataset):
         # pre-tokenize texts
         self.encoded_texts = []
         for entry in self.data:
-            instruction_plus_input = instruction_format.format_input_alpaca(entry)
+            instruction_plus_input = format_input_alpaca(entry)
             response_text = f"\n\n### Response:\n{entry['output']}"
             full_text = instruction_plus_input + response_text
             # convert instruction-response entry into token IDs

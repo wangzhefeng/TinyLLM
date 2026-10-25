@@ -10,6 +10,10 @@
 | 子目录 | 内容 | 状态 |
 |---|---|---|
 | `references/nanotron/` | nanotron 配置与启动脚本 | 参考；**待定**：vendor 配置放代码树属灰色地带，可迁 `docs/assets/` |
+| `references/gpt2_book/` | LLMs-from-scratch ch05 standalone 训练（`gpt_train.py`、`previous_chapters.py`） | 参考（上游教材实现） |
+| `references/pgcorpus/` | Gutenberg 独立预训练与数据准备（`pgcorpus_pretraining_simple.py`、`prepare_dataset.py`） | 参考（依赖上游 PyPI 包 `llms_from_scratch`），见 [gutenberg](gutenberg.md) |
+
+`references/` 是单向离线参考区：主链路不 import 它，保持上游原貌、不接入统一入口。
 
 ## nanotron
 

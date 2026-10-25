@@ -23,7 +23,7 @@ if ROOT not in sys.path:
 from tqdm import tqdm
 
 from utils.load_save_data import load_json_data, save_json_data
-from inference.api.openai_api import create_client, run_chatgpt
+from evaluation.clients.openai import create_client, run_chatgpt
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]

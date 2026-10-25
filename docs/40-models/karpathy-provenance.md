@@ -92,7 +92,7 @@ pre_training/extras/karpathy_proj/
 | `pre_training/extras/tinyllama/`（已删除） | TinyLlama 项目；`get_lr`/`configure_optimizers` 属于 nanoGPT 同源风格 |
 | `post_training/imported/minimind/`（已删除） | MiniMind 项目 |
 | `post_training/finetuning/model_pretrain/` | LLMs-from-scratch 的 GPT-2 权重加载 |
-| `pre_training/examples/gpt2_book/` | LLMs-from-scratch ch05 |
+| `pre_training/references/gpt2_book/` | LLMs-from-scratch ch05 |
 | `models/gpt2/gpt2_124M.py`、`layers/` | LLMs-from-scratch 主线实现，不是 nanoGPT 的 `c_attn`/FlashAttention 结构 |
 
 ## 5. 结论

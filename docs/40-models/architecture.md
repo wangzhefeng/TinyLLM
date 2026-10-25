@@ -91,7 +91,7 @@ Position Embeddings:
 ### DeepSeek
 
 - 独立模型目录：[deepseek.md](deepseek.md)（MLA 完整实现 + DeepSeekModel 组装，2026-10-20）
-- DeepSeek-R1-Distill-Qwen 的 LoRA 微调仍在 `post_training/peft/model_peft/deepseek_lora/`。
+- DeepSeek-R1-Distill-Qwen 的 LoRA 微调仍在 `post_training/references/hf_peft/deepseek_lora/`。
 
 ## layers/ 新增组件（2026-10-20）
 

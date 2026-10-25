@@ -2,7 +2,8 @@
 
 # 推理（Reasoning）
 
-reasoning **训练**留在后训练；推断时扩展与通用评测已迁入推断域。旧路径保留兼容 shim，新代码应使用下表的新位置。
+reasoning **训练**留在后训练；推断时扩展策略在推断域，评测基础设施在公共库
+[evaluation](../35-evaluation/index.md)。RL 训练原子集中在 `post_training/rl/`。
 
 ## 后训练实现
 
@@ -14,13 +15,14 @@ reasoning **训练**留在后训练；推断时扩展与通用评测已迁入推
 | `post_training/rl/rewards.py` | RLVR reward：答案正确性（verifier 懒加载）与 `<think>`/`\boxed{}` 格式奖励 |
 | `post_training/rl/tracking.py` | MetricsTracker 指标收集/CSV/摘要、clip fraction、matplotlib 绘图 |
 | `post_training/rl/grpo_variants.py` | ch07 改进变体：DeepSeek V3.2 style、OLMo3 style（DAPO/Dr.GRPO）、GDPO |
+| `post_training/rl/reinforce.py` | REINFORCE 与 baseline（原 `reasoning/training/reinforce.py`，解开 rl↔reasoning 环） |
+| `post_training/rl/ppo.py` | 序列级 bandit PPO + critic（原 `preference/model_rlhf/ppo/main.py`） |
 | `post_training/rl/run.py` | 真实训练入口：`python post_training/run.py --task grpo`（或 `--task reinforce`） |
-| `post_training/reasoning/training/reinforce.py` | REINFORCE 与 baseline |
 | `post_training/reasoning/training/distillation.py` | logit 蒸馏 |
 | `post_training/reasoning/training/distill_reasoning.py` | 教师采样、verifier 过滤、学生 SFT |
-| `post_training/preference/model_rlhf/ppo/` | 序列级 bandit PPO + critic |
+| `post_training/references/trl_grpo/` | TRL GRPO 对照实验（gsm8k/smollm/scheduler，不接入分发器） |
 
-`reinforcement_learning.py` 旧路径仅 re-export `post_training.rl.core`。PPO 不再反向依赖 reasoning 的 GRPO 模块。
+旧 `reinforcement_learning.py` 垫片与 `reasoning/{inference,evaluation}` 别名目录已删除，直接使用上表路径。
 
 ## 推断域实现
 
@@ -28,9 +30,8 @@ reasoning **训练**留在后训练；推断时扩展与通用评测已迁入推
 |---|---|
 | `inference/strategies/voting_and_verification.py` | self-consistency、Best-of-N、嵌套 boxed 解析 |
 | `inference/strategies/advance_text_generation.py` | self-refinement 与 stable-answer 早停 |
-| `inference/strategies/llm_basic/` | Qwen3 示例 |
-| `inference/evaluation/benchmarks/` | MATH-500、MMLU |
-| `inference/evaluation/judges/` | LLM judge、Elo、Bradley-Terry |
+| `inference/harness/math500.py` | MATH-500 端到端评测循环 |
+| `evaluation/verifiers/`、`evaluation/judges/` | MATH 验证、LLM judge、Elo、Bradley-Terry（见 [评测公共库](../35-evaluation/index.md)） |
 
 ## 说明
 

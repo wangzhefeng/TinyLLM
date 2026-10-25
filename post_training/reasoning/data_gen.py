@@ -44,7 +44,7 @@ DEFAULT_MODEL_NAMES = {
 
 def build_tokenizer(model_key, extras):
     """按模型族构造 tokenizer（qwen3/gemma3/phi 需要 tokenizer_file_path）。"""
-    from inference.registry import get_model_spec
+    from models.registry import get_model_spec
     from layers.tokenizers.tokenization import choose_tokenizer
 
     family = get_model_spec(model_key).family
@@ -77,7 +77,7 @@ def load_records(json_path):
 
 def _load_problems(train_size, seed):
     """MATH-500 训练子集（与 post_training/rl/run.py 同口径的 seed 抽样）。"""
-    from inference.evaluation.benchmarks.math_verifiers import load_math500_data
+    from evaluation.verifiers.math import load_math500_data
 
     math_data = load_math500_data(verbose=False)
     rng = random.Random(seed)
@@ -91,7 +91,7 @@ def _strip_think_tags(text):
 
 def _verified_completion(completion, expected):
     """抽取最终候选答案并做数学等价验证。"""
-    from inference.evaluation.benchmarks.math_verifiers import (
+    from evaluation.verifiers.math import (
         extract_final_candidate,
         grade_answer,
     )
@@ -107,7 +107,7 @@ def _generate_local(problem, prompt, teacher_model, tokenizer,
     """local 后端：教师模型采样 + verifier 过滤（generate_reasoning_traces）。"""
     import torch
 
-    from inference.evaluation.benchmarks.math_verifiers import (
+    from evaluation.verifiers.math import (
         extract_final_candidate,
         grade_answer,
     )
@@ -149,8 +149,8 @@ def generate_teacher_dataset(problems=None, backend="local", model_name=None,
         problems: 题目列表（dict 含 problem/answer）；None 时懒加载
             MATH-500 训练子集（--train-size seed 抽样，与 rl/run.py 口径一致）
         backend: "local"（教师模型+tokenizer 采样+verifier 过滤）/
-            "ollama"（inference.api.ollama_api.query_model）/
-            "openrouter"（inference.api.openrouter_api 新客户端）
+            "ollama"（evaluation.clients.ollama.query_model）/
+            "openrouter"（evaluation.clients.openrouter 新客户端）
         model_name: ollama/openrouter 后端的教师模型名；
             local 后端为 MODEL_REGISTRY 键（配合 teacher_model/tokenizer）
         num_samples: local 后端每题采样轨迹数（API 后端每题 1 条）
@@ -171,11 +171,11 @@ def generate_teacher_dataset(problems=None, backend="local", model_name=None,
             raise ValueError(f"backend must be one of {sorted(DEFAULT_MODEL_NAMES | {'local'})}")
         model_name = model_name or DEFAULT_MODEL_NAMES[backend]
         if backend == "openrouter":
-            from inference.api.openrouter_api import create_client
+            from evaluation.clients.openrouter import create_client
 
             client = create_client()
 
-    from inference.evaluation.benchmarks.math_verifiers import render_prompt
+    from evaluation.verifiers.math import render_prompt
 
     records = []
     verified_count = 0
@@ -187,11 +187,11 @@ def generate_teacher_dataset(problems=None, backend="local", model_name=None,
                 num_samples, max_new_tokens,
             )
         elif backend == "ollama":
-            from inference.api.ollama_api import query_model
+            from evaluation.clients.ollama import query_model
 
             completions = [query_model(prompt, model=model_name, num_ctx=num_ctx)]
         else:
-            from inference.api.openrouter_api import run_openrouter
+            from evaluation.clients.openrouter import run_openrouter
 
             completions = [run_openrouter(
                 prompt, client, model=model_name, max_tokens=max_new_tokens,

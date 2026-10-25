@@ -9,9 +9,9 @@
 # * Description : RLVR reward 函数（reasoning-from-scratch ch06/ch07）。
 # *               correct_answer_reward：答案正确性主奖励（verifier 打分）；
 # *               format_reward：<think>...</think> 与 \boxed{} 格式奖励。
-# *               重依赖（sympy/math_verifiers）在调用时懒加载。
+# *               重依赖（sympy/evaluation.verifiers.math）在调用时懒加载。
 # * Link        : https://github.com/rasbt/reasoning-from-scratch/blob/main/ch07/03_rlvr_grpo_scripts_advanced/7_6_plus_format_reward.py
-# * Requirement : sympy（经 math_verifiers）
+# * Requirement : sympy（经 evaluation.verifiers.math）
 # ***************************************************
 
 __all__ = [
@@ -33,7 +33,7 @@ _BOXED_RE = re.compile(r"\\boxed\{")
 def correct_answer_reward(extract_fn=None, grade_fn=None):
     """构造答案正确性 reward（RLVR 主奖励）。
 
-    内部懒加载 ``inference.evaluation.benchmarks.math_verifiers`` 的
+    内部懒加载 ``evaluation.verifiers.math`` 的
     ``extract_final_candidate`` / ``grade_answer``（reasoning ch03 verifier）。
 
     Args:
@@ -47,7 +47,7 @@ def correct_answer_reward(extract_fn=None, grade_fn=None):
     """
 
     def reward_fn(generated_text, expected_answer) -> float:
-        from inference.evaluation.benchmarks.math_verifiers import (
+        from evaluation.verifiers.math import (
             extract_final_candidate,
             grade_answer,
         )

@@ -6,7 +6,7 @@ import torch
 
 class TestModelRegistry(unittest.TestCase):
     def test_list_models_and_spec(self):
-        from inference import MODEL_REGISTRY, get_model_spec, list_models
+        from models.registry import MODEL_REGISTRY, get_model_spec, list_models
         keys = list_models()
         self.assertIn("gpt2-124m", keys)
         self.assertIn("qwen3-0.6b", keys)
@@ -17,7 +17,7 @@ class TestModelRegistry(unittest.TestCase):
         self.assertTrue(MODEL_REGISTRY["gemma3-270m"].available)
 
     def test_unknown_key_error(self):
-        from inference import get_model_spec
+        from models.registry import get_model_spec
         with self.assertRaises(KeyError) as cm:
             get_model_spec("gpt5")
         self.assertIn("gpt2-124m", str(cm.exception))
@@ -30,7 +30,10 @@ class TestModelRegistry(unittest.TestCase):
             "import sys; sys.path.insert(0, '.');"
             "import inference;"
             "assert 'torch' not in sys.modules, 'torch should be lazy';"
-            "assert inference.list_models();"
+            "assert inference.load_model;"       # 门面属性可解析（不触发调用）
+            "assert inference.generate_text;"
+            "from models.registry import list_models;"
+            "assert list_models();"
             "print('LAZY_OK')"
         )
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
@@ -41,7 +44,7 @@ class TestModelRegistry(unittest.TestCase):
 class TestLoadModelErrors(unittest.TestCase):
     def test_all_registry_entries_available(self):
         # 推断链路闭环约束：注册表不允许残留 WIP 条目
-        from inference import MODEL_REGISTRY
+        from models.registry import MODEL_REGISTRY
         unavailable = [k for k, s in MODEL_REGISTRY.items() if not s.available]
         self.assertEqual(unavailable, [])
 

@@ -81,7 +81,8 @@ DPO 训练的目标是让模型更倾向于生成 'chosen' 风格的响应，而
 
 ## 实现说明（2026-10-21 修复后）
 
-- 入口：`post_training/preference/model_rlhf/dpo/run_gpt_dpo.py`（全部参数有默认值）。
+- 入口：`post_training/preference/run/run_gpt_dpo.py`（全部参数有默认值；
+  统一入口 `python post_training/run.py --task dpo`）。
 - policy 与 reference 均从 SFT checkpoint 初始化（`exp_finetune_gpt_dpo.py` 中先 HF 初始化
   再 `load_state_dict`，顺序不可颠倒——颠倒会把 SFT 权重静默覆盖回预训练 GPT-2）。
 - logprob 口径默认**序列求和**（论文公式 7 与 TRL/eric-mitchell 实现一致）；

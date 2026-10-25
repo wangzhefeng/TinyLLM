@@ -9,7 +9,8 @@
 |---|---|---|
 | 预训练 | [10-pretraining/index.md](10-pretraining/index.md) | 数据、训练、示例、Gutenberg、extras |
 | 后训练 / reasoning | [20-post-training/index.md](20-post-training/index.md) | SFT、PEFT、DPO、RLHF、蒸馏、reasoning |
-| 模型推断 | [30-inference/index.md](30-inference/index.md) | loaders、nano_vllm、评测、UI、reasoning scaling |
+| 模型推断 | [30-inference/index.md](30-inference/index.md) | 门面、harness、策略、serving、UI |
+| 评测公共库 | [35-evaluation/index.md](35-evaluation/index.md) | 外部 LLM 客户端、验证器、judge、排行榜 |
 
 ## 横切主题
 

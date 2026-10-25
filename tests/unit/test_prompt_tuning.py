@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import torch
 import torch.nn.functional as F
 
-from post_training.peft.model_peft.prompt_tuning.main import (
+from post_training.peft.demos.prompt_tuning import (
     SoftPromptGPT,
     freeze_base_model,
     init_from_text,

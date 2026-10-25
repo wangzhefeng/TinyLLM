@@ -10,7 +10,7 @@
 - 配置：`config/gpt2/model_cfgs.py`（124M/355M/774M/1558M）
 - 层：`layers/transformer_block.py`、`layers/attention.py`、`layers/feed_forward.py`
 - 生成：`inference/generate_core.py`
-- 权重加载：[inference/loaders/gpt2/](../../inference/loaders/gpt2/)
+- 权重加载：[`models/io/gpt2/`](../../models/io/gpt2/)
 
 ## 结构
 

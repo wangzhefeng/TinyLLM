@@ -23,7 +23,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from utils.load_save_data import load_json_data
-from post_training.common.data_provider import instruction_format
+from layers.tokenizers.chat import format_input_alpaca
 from utils.log_util import logger
 
 # global variable
@@ -39,7 +39,7 @@ class PreferenceDataset(Dataset):
         self.encoded_texts = []
         for entry in data:
             # format input into instruction-response template, prompt tokenization
-            prompt = instruction_format.format_input_alpaca(entry) 
+            prompt = format_input_alpaca(entry)
             prompt_token_ids = tokenizer.encode(prompt)
             # logger.info(f"prompt: \n{prompt}")
             # logger.info(f"prompt_token_ids length: {len(prompt_token_ids)}")

@@ -21,7 +21,7 @@ if ROOT not in sys.path:
 import numpy as np
 import torch
 
-from training.checkpoint import save_training_checkpoint
+from tools.checkpoint.io import save_checkpoint
 from utils.log_util import logger
 
 # global variable
@@ -64,12 +64,12 @@ class EarlyStopping:
         if self.verbose:
             logger.info(f"\t\tEpoch {epoch+1}: Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...")
         raw_model = model.module if (self.use_ddp and hasattr(model, "module")) else model
-        save_training_checkpoint(
+        save_checkpoint(
             model_path,
             model=raw_model,
             optimizer=optimizer,
             scheduler=scheduler,
-            epoch=epoch,
+            extra={"epoch": epoch},
         )
         # update minimum vali loss
         self.val_loss_min = val_loss

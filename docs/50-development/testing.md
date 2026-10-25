@@ -24,7 +24,7 @@ CI 位于 `.github/workflows/tests.yml`：pull request 运行 unit、integration
 
 | 目录 | 内容 |
 |---|---|
-| `unit/` | layers、models、tokenizer、RL、PEFT、tools、推断、配置与兼容 shim |
+| `unit/` | layers、models、tokenizer、RL、PEFT、tools、推断、评测公共库与配置 |
 | `integration/` | tiny 预训练→checkpoint→resume、指令 SFT、DPO、Gutenberg 可选上游测试 |
 
 重点契约测试包括：
@@ -92,6 +92,14 @@ CI 位于 `.github/workflows/tests.yml`：pull request 运行 unit、integration
 - `test_inference_time_scaling`（扩展）：max_tokens 截断在未闭合 `\boxed`
   时回退取上一个完整 boxed；advanced parser 断言按 antlr4 有无自适应
   （FiniteSet 集合多重集比较、sympify 优先于 LaTeX 解析）。
+
+2026-10-25 评测公共库上提（模块移动同步）：
+
+- 全部测试 import 迁移到新路径：`evaluation.{clients,verifiers,judges}`、
+  `inference.harness`、`models.registry`、`post_training.rl.{ppo,reinforce}`、
+  `post_training.sft.evaluation.judge` 等；
+- 删除守卫测试 `test_module_moves.py`：旧路径兼容 shim 已全部消亡，
+  “新旧模块同源”断言不再成立（契约由 `test_model_contracts` 等继续覆盖）。
 
 ## 集成测试约定
 

@@ -245,14 +245,9 @@ class TestDoRA(unittest.TestCase):
 
 
 class TestBackwardCompatShim(unittest.TestCase):
-    def test_shim_reexports(self):
-        """post_training 的兼容 shim 与 layers.lora 是同一对象。"""
-        from post_training.peft.layers.lora_dora import LinearWithLoRA as ShimLoRA
-        self.assertIs(ShimLoRA, LinearWithLoRA)
-
-    def test_merge_adapte_weights_reexports(self):
-        """merge_adapte_weights（历史拼写文件名）转发到 layers.lora。"""
-        from post_training.peft.layers.merge_adapte_weights import (
+    def test_merge_adapter_weights_reexports(self):
+        """merge_adapter_weights（修正拼写后的转发入口）转发到 layers.lora。"""
+        from post_training.peft.layers.merge_adapter_weights import (
             merge_lora_weights as shim_merge,
         )
         self.assertIs(shim_merge, merge_lora_weights)

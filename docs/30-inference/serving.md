@@ -132,7 +132,7 @@ decode 是显存带宽密集型（memory-bound）：每步读取全部权重和 
   `<think>...</think>` 再回答；
 - **流式输出**：走 `inference/generation.generate_text_stream`（KV cache），
   `<think>` 段与正式回答分离渲染（thinking 消息独立 author）；
-- gpt2 模式与兼容 shim `app_orig.py` / `app_own.py` 行为不变；
+- gpt2 模式行为不变（`GPT2_WEIGHTS=orig|own` 选择权重来源，无独立 shim 文件）；
 - chainlit 为可选依赖（`pip install chainlit`）。
 
 ## 推断吞吐对比脚本

@@ -34,6 +34,21 @@ def read_json(path: str | Path) -> Any:
         return json.load(f)
 
 
+def read_text_label_tsv(path: str | Path) -> tuple[list[str], list[int]]:
+    """Read a two-column TSV file (``text<TAB>int-label`` per line); return (texts, labels)."""
+    texts: list[str] = []
+    labels: list[int] = []
+    with Path(path).expanduser().open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            text, label = line.rsplit("\t", 1)
+            texts.append(text)
+            labels.append(int(label))
+    return texts, labels
+
+
 def _atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(

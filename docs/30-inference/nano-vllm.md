@@ -41,7 +41,7 @@ from inference.serving.nano_vllm import LLM, Config, SamplingParams
 .venv/bin/python inference/serving/nano_vllm/bench.py --num-seqs 32
 .venv/bin/python inference/serving/nano_vllm/bench.py --model-path ~/huggingface/Qwen3-0.6B/
 
-# 真实权重推断（HF 格式目录，可用 inference/loaders/qwen3/model_download.py 下载）
+# 真实权重推断（HF 格式目录，可用 models/io/qwen3/model_download.py 下载）
 .venv/bin/python inference/serving/nano_vllm/example_pretrained.py \
     --model-path ~/huggingface/Qwen3-0.6B/ "你好"
 ```

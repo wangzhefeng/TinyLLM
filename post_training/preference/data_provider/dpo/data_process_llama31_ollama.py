@@ -26,7 +26,7 @@ from tqdm import tqdm
 from post_training.preference.data_provider.dpo import data_config
 from utils.load_save_data import load_json_data, save_json_data
 from layers.tokenizers.chat import format_input_alpaca
-from inference.api.ollama_api import check_if_running, query_model
+from evaluation.clients.ollama import check_if_running, query_model
 from utils.log_util import logger
 
 # global variable

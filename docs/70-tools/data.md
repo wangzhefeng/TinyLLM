@@ -13,6 +13,7 @@
 | `normalize_text` | 空白折叠、可选小写 |
 | `text_fingerprint` | SHA-256 去重指纹 |
 | `dedupe_records`、`dedupe_jsonl` | 精确去重，保持顺序 |
+| `read_text_label_tsv` | `text\tlabel` TSV 读取（bert_sentiment 与 DAPT 共用） |
 | `pack_token_ids` | 定长 token 分块 / padding |
 
 ## 示例

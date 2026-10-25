@@ -69,7 +69,7 @@ class FeedForwardGELU(nn.Module):
     GPT-2 风格 FFN：Linear -> GELU(tanh) -> Linear。
 
     内部用 ``nn.Sequential`` 组织，子模块名与
-    ``inference/loaders/gpt2/`` 的权重加载约定（``ff.layers[0]`` / ``ff.layers[2]``）一致。
+    ``models/io/gpt2/`` 的权重加载约定（``ff.layers[0]`` / ``ff.layers[2]``）一致。
     """
     
     def __init__(self, cfg):

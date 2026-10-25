@@ -8,7 +8,7 @@
   `llama31_8B.py` / `llama32_1B.py`（复用 Llama3 Model，仅 config 不同：rope_freq 频率缩放）
 - 配置：`config/llama/model_cfgs.py`（`LLAMA2_CONFIG_7B` / `LLAMA3_CONFIG_8B` /
   `LLAMA31_CONFIG_8B` / `LLAMA32_CONFIG_1B`）
-- 权重加载：`inference/loaders/llama/`（`tok_embeddings.weight` → `model.tok_embed`）
+- 权重加载：`models/io/llama/`（`tok_embeddings.weight` → `model.tok_embed`）
 - 结构约定：embedding 统一命名 `tok_embed`；block 用 `nn.ModuleList`（为 KV cache 传参预留）；
   eos：Llama2=2、Llama3/3.1/3.2=128001
 - 注：Llama 3.2 官方权重启用 tie_word_embeddings，教学实现未 tying（参数量略高）

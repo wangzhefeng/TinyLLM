@@ -1,107 +1,73 @@
 # 清理记录
 
 > 所属：[TinyLLM Docs](../README.md) › [Development](index.md)
-> 更新时间：2026-10-25。本文只记录**当前仍然成立**的清理结果。
+> 更新时间：2026-10-25。本文只记录**当前仍然成立**的清理结果；历史过程细节见
+> [migration-2026-10](../60-reference/migration-2026-10.md) 与各域页面。
 
 ## 1. 代码与目录
 
-- 三个主域重组为 `pre_training/`、`post_training/`、`inference/`。
-- `post_training/` 拆为 `sft/`、`peft/`、`preference/`、`reasoning/`、`common/`。
-- `inference/` 拆为 `serving/`、`api/`、`evaluation/`、`loaders/`、`apps/`、`examples/`。
+- 三个主域重组为 `pre_training/`、`post_training/`、`inference/`；当前结构与职责以
+  [architecture](../00-overview/architecture.md)、[repo-map](../00-overview/repo-map.md) 为准。
 - 分布式训练独立为 `tools/distributed/`；新增 `tools/profiling/`、`tools/checkpoint/`、`tools/data/`。
 - 删除空壳、重复实现和未接入的外部参考，详见 [reference-projects](reference-projects.md)。
-- 2026-10-21 后训练域修复（对照 LLMs-from-scratch ch06/07/附录E 与 reasoning-from-scratch）：
-    - 删除死代码树 `post_training/sft/data_provider/llmbox/`（LLaMA-Box 残缺复制：`Path` 未 import、`process` 签名不匹配、依赖 HF tokenizer 特性、全仓无引用）；
-    - 修复全模块 16 处 `utils.llm.*` / `models.gpt` stale import（真实模块在 `utils/` 平铺与 `models/gpt2/gpt2_124M.py`），新增缺失的 `utils/calc_accuracy.py`；
-    - 修复 3 个 run 入口崩溃（`set_seed` 先于 `args_parse`、`args.data` 不存在、`re.math` 笔误、`strtobool` 未导入、`required=True` 反模式、GPT-2 config 键名）；
-    - 修复 DPO 三处正确性问题：权重加载顺序颠倒（SFT checkpoint 被 HF 权重覆盖）、inference 变量互换、logprob 口径改为论文默认的序列求和（可 `--dpo_avg_logprobs 1` 切回平均）；
-    - `layers/lora.py`：LoRA 缩放改为标准 `alpha/rank`、支持 dropout 与目标层过滤、新增论文版 DoRA；`clf_head.py` 重写为四种清晰冻结策略；
-    - `post_training/reasoning/`：GRPO 补 completion mask 与梯度裁剪及多 prompt 批处理、新增 REINFORCE-with-baseline（reinforce.py）与推理轨迹蒸馏（distill_reasoning.py）、补全 Bradley-Terry / LLM-judge / MMLU first-token logprob 法；
-    - `instruction_follow/data_loader.py` 补齐 prompt-masking collate（custom_collate_fn_mask_out_instruction，对应书 ch07 exercise）。
-- 2026-10-18 预训练域归位：
-    - 解散 `pre_training/legacy/`：`run_llama.py` / `run_qwen.py` 修复后提升为根目录入口；
-    - 解散 `pre_training/analysis/`：`flops_analysis.py` 并入 `pre_training/examples/`（可复用 FLOPs/MFU 实现在 `tools/profiling/`）；
-    - 拆分 `data/pgcorpus_gutenberg/`：`pretraining_simple.py` → `examples/pgcorpus_pretraining_simple.py`，`tests.py` → `tests/integration/test_pgcorpus_gutenberg.py`（改为 unittest，缺上游包时跳过）；
-    - 删除无引用且无法导入的 `models/gpt2/gpt.py`；
-    - 修复 `layers/tokenizers/` 三个 demo 对已删除 `data_provider.data_loader` 的引用（改用 `utils.load_save_data.load_local_data`）。
-- 2026-10-18 数据层归位：删除根级 `data_provider/`（假约定的"共享数据层"，实际只剩 bert），
-  `bert/` 并入 `pre_training/data_provider/bert/`；`pre_training/data/` 更名为 `pre_training/data_provider/`，
-  与 post_training 各子域的 `data_provider/` 命名统一；通用数据算法集中在 `tools/data/`。
-- 2026-10-18 config/ 清理：
-    - `config/gpt2/model_cfgs.py` 去除 import 副作用（`device_setting()`、`torch.manual_seed(123)`、
-      tiktoken 下载），device/tokenizer 移到 5 个调用点本地获取；
-    - `config/qwen3/model_download.py` 移到 `inference/loaders/qwen3/model_download.py`（下载是 loader 职责），
-      并修复 `"instruction"` 分支重复 `"model"` 键的 bug；
-    - 全仓修复 `max_new_toknes` 拼写（含 `inference/examples/gpt2_inference.py` 一处运行即 TypeError 的调用）。
-- 2026-10-20 推断域清理（P1）：
-    - 删除死文件：`inference/loaders/qwen3/load_weights_moe.py`（与 load_weights.py 逐行重复且无引用）、
-      `inference/scripts/update_codes.sh`（旧仓子模块时代遗物）、`inference/scripts/rm_pyc.sh`（sudo 删除危险且冗余）；
-    - 修复 10 处 bug：app_orig 缺 import/None 下标、app_own decode 参数错、openai_evaluate stale import
-      （`utils.llm.` → `utils.`）、llama2/llama3 eos id 错误（50256 → 2 / 128001）、llama3 instruct 用错 repo_id、
-      llama2/3 下载缓存路径不一致、gemma3 权重误下载到 tokenizer 目录、qwen3 model_download 死分支、
-      gpt2_inference 的 `eos_id` kwarg 错误；
-    - `openai_gpt2_weights_load.py` 的 tensorflow 改为懒加载（未安装不影响其他加载路径）；
-    - `run_app_*.sh` 修复相对路径（脚本内 cd 到 inference/）；
-    - 修复断链调用方 `post_training/sft/exp/exp_finetune_gpt_instruction_flow_evaluate.py` 的双 stale import。
-- 2026-10-20 推断域合并（P2）：
-    - LLM judge 合并：新增 `inference/evaluation/judge.py`（`backend="ollama"|"openai"` 统一入口），
-      `ollama_evaluate.py` / `openai_evaluate.py` 改为兼容 shim（原签名不变，内部委托 judge.py）；
-    - Chainlit app 合并：新增 `inference/apps/app.py`（`GPT2_WEIGHTS=orig|own` 选择权重来源），
-      `app_orig.py` / `app_own.py` 改为兼容 shim（设置环境变量后 import app 注册 handler）；
-    - 启动脚本合并：`run_app_orig.sh` / `run_app_own.sh` 合并为 `run_app.sh`（接受 orig|own 参数），旧脚本已删除。
-- 2026-10-20 推断域通用化（P3）：
-    - 新增公共 API：`inference/registry.py`（MODEL_REGISTRY）、`inference/loading.py`（`load_model` 统一加载）、
-      `inference/generation.py`（`generate_text`/`generate_text_stream` 统一生成 facade）、
-      `inference/__init__.py`（PEP 562 懒加载导出）；
-    - nano_vllm 包化：库模块全部改相对 import、删除 sys.path 操作（不再遮蔽仓根 `config/` 等同名包），
-      新增包级 `__init__.py`（导出 LLM/Config/SamplingParams）与 `llm.py` 便捷入口，
-      入口脚本保留直跑/-m 双模式；
-    - 新增 `tests/unit/test_inference_registry.py`（注册表、load_model 错误路径、facade 离线生成、懒加载契约）。
-- 2026-10-20 layers/models 审查整改（Phase 0 修 bug + Phase 1 结构，见
-  [layers-models-audit](../60-reference/layers-models-audit/index.md)）：
-    - Phase 0 修复 11 组 P0 bug 与低成本 P1（attention 缩放指数、Qwen3-optimized 的 RoPE 张量与
-      layer_idx 条件反转、generate 双重索引、pos_embed 回退、embedding assert、FixPE 重复类、
-      GPT-2 cache 语义、llama d_ff/eos、Gemma3 权重 tying、tokenizer 系列、MoE 噪声/链式赋值、
-      RMSNorm fp32 上转、BPE rank 合并与互逆），新增 `tests/unit/test_layers_regression.py`；
-    - `layers/normailzation/` → `layers/normalization/`（拼写修正，全仓 import 同步）；
-    - `layers/inference.py` → `inference/generate_core.py`（生成逻辑归位推断域，17 处 import 更新）；
-    - 删除重复实现：`models/qwen3/qwen3_original.py`（与 qwen3.py 仅属性名不同）与
-      `TransformerBlockQwen3_original`；书本 checkpoint 用
-      `inference/loaders/qwen3/load_weights.py:remap_book_state_dict` 重映射加载；
-    - 删除 layers/、models/ 全部 37 处 `sys.path.append(Path.cwd())` hack（正式包导入）；
-    - `CasualAttention` → `CausalAttention`（保留旧名别名）；llama 模型 `nn.Sequential` → `ModuleList`
-      且 embedding 命名 `tok_emb` → `tok_embed`（与 qwen3/gpt2/gemma3 统一，两个 loader 同步）；
-    - transformer block 硬编码 `.to(torch.bfloat16)` 改为跟随 `cfg.dtype`；
-    - `layers/masking.py` 语义统一为 True=屏蔽（与 attention 一致），新增 `combine_causal_padding_mask`；
-    - 修复 `qwen3_batched.py` 的 `pos_id`/`pos_ids` 参数名不匹配（原前向必抛 TypeError）；
-    - Qwen3 三模型新增 RoPE 越界防护（超过 context_length 时抛明确 IndexError）。
-- 2026-10-20 layers/models 审查整改（Phase 2 补教学主题，见
-  [layers-models-audit](../60-reference/layers-models-audit/index.md)）：
-    - MLA 完整实现（`models/deepseek/mla.py`）+ `DeepSeekModel` 组装（`model.py`），
-      原占位删除；
-    - 推断域新增：`beam_search_generate`、`repetition_penalty`（`inference/generate_core.py`）；
-    - 预训练域新增：`layers/position_encoding/ALiBi.py`、`SlidingWindowAttention`、
-      `trim_kv_cache_window`、RoPE 的 NTK/YaRN 外推、MoE aux loss 与 shared expert；
-    - 后训练域新增：`layers/lora.py` 规范 LoRA/DoRA（`post_training/peft/layers/lora_dora.py`
-      转为兼容 shim）、GRPO from scratch（`post_training/reasoning/training/reinforcement_learning.py`）、
-      KL 蒸馏（`training/distillation.py`）、推断时扩展脚手架
-      （`reasoning/inference/voting_and_verification.py` / `advance_text_generation.py`，原占位实现）；
-    - 填充 `models/llama/llama31_8B.py`、`llama32_1B.py`（复用 Llama3 Model + 新 config），
-      `config/llama/model_cfgs.py` 新增 `LLAMA32_CONFIG_1B`。
-
-- 2026-10-24 `tools/distributed/` 重构（重排为 00–08 学习动线，见 [distributed](../70-tools/distributed.md)）：
-    - 删除：整个旧 `ddp/`（含 `DDP-script.py`、`nn_ddp/`）、旧 `dp/`、旧 `fsdp/`
-      （含 auto_wrapping/manual_wrapping）、`fairscale/`、旧 `deepspeed_zero/` 空壳、
-      `tensor_parallelism/`（含 461 行 torchtitan `llama2_model.py` 拷贝）、`log_utils.py`；
-    - 理由：空壳 / 过时 FSDP1 / 整段外部拷贝 / 零引用孤儿 / 名不副实；实质资产已迁入新单元结构；
-    - 新增：03/05/06/07 与单进程基线的数值等价验证（全部 PASS）、
-      `tests/unit/test_tools_distributed.py`（27 项，慢速层由 `TINYLLM_SLOW_TESTS=1` 启用）；
-    - 顺带修复 `utils/ddp_utils.py` 的 `wrap_model`：`device_ids` 由 global_rank 改为 local_rank。
+- 2026-10-25 tokenizers 模块清理与协议强制化（本轮）：
+    - Bug 修复：`bpe/llama3_8b_bpe.py` 默认路径锚定仓库根 `downloaded_models/`（原 CWD 相对），新增 `tokenizer_file_path=` 覆盖参数与 gated 仓库获取说明，`__all__` 由指向不存在类的 `["Tokenizer"]` 修正为 `["Llama38bTokenizer"]`；`bpe/openai_gpt2_bpe.py` 默认目录由不存在的 `layers/models/` 改锚 `downloaded_models/gpt2_model`；`bpe/simple_bpe.py` 落盘路径锚定 `layers/tokenizers/models/`（原 CWD 相对）；`sp/llama2_7b_sentencepiece.py` 的 `parents[4]` 越界修正（原解析到仓库外）与 `_download_tokenzier` 拼写修复（两个 bpe/sp 文件）。
+    - 删除死代码与孤儿资产：`bpe/hf_gpt2_bpe.py`（`HuffingFaceGPT2BPE`，零外部引用且未注册）、`chat.py` 的 `format_input_phi3`、`apply_chat_template` 与 `format_gemma3_chat`（前者的调用方均在 post_training，后二者零引用）、`gemma.py` 的 `apply_chat_template` 与 `tokenizer_download` 透传别名、`images/tokenizer.png`；`layers/tokenizers/.gitignore` 由 220 行 boilerplate 收缩为仅 `models/`。
+    - 对称化迁移（实现 = 子包）：`gemma.py` → `gemma3/gemma3_tokenizer.py`、`simple_custom.py` → `simple/simple_tokenizer.py`（类名与 registry key `"simple_custom"` 均不变，key 是 CLI 契约）。
+    - 协议强制化：教学实现补齐 `TokenizerProtocol` 属性（`SimpleTokenizer`/`UnigramTokenizer`/`BPETokenizerSimple` 的 eos/pad 置 `None`、BPE 补 `n_vocab` property，`ExtendedTokenizer` eos/pad 委托被包装 tokenizer）；`create_tokenizer` 实例化后校验协议，缺成员抛 `TypeError` 并列出缺失项；`choose_tokenizer` 对无 kwargs 调用按归一化名称缓存实例。详见 [tokenizers](../40-models/tokenizers.md)。
+- 2026-10-25 评测公共库上提与 references 分离（本轮；**所有兼容 shim 消亡**）：
+    - 新增顶层 `evaluation/` 公共库：`clients/{ollama,openai,openrouter}.py`（合并重复 Ollama 客户端）、
+      `verifiers/{math,parser}.py`（原 math_verifiers / advanced_parser）、
+      `judges/{llm_judges,ollama,qwen3,leaderboards}.py`（leaderboard 三文件合并，见 [评测公共库](../35-evaluation/index.md)）；
+    - 新增 `models/registry.py`（原 `inference/registry.py`；`pre_training/exp_basic.py` 硬编码注册表改为查它）、
+      `layers/quantization/nf4.py`（原 `peft/layers/nf4.py`）、`utils/online.py`（HF Hub / wandb 登录）、
+      `tools/data/io.py:read_text_label_tsv`（bert_sentiment 与 DAPT 共用）、`pre_training/__init__.py`；
+    - `inference/harness/{math500,mmlu}.py`（原 `inference/evaluation/harness` 与 `benchmarks/multiple_choice`）；
+      `post_training/sft/evaluation/judge.py`（原 `inference/evaluation/judge.py`，alpaca 指令打分）；
+    - 新增 `post_training/references/` 外部栈对照区（保持上游原貌，不接入 `run.py` 分发器）：
+      `trl_grpo/`（原 `preference/model_rlhf/grpo/` + bitsandbytes）、`trl_sft/`（原 `sft/run_sft.py` + peft 两组 QLoRA）、
+      `unsloth/`（原 `peft/model_peft/unsloth_exps/`）、`hf_peft/`（原 `run_peft.py` + `model_peft/` 其余子目录）；
+    - `post_training/rl/ppo.py`（原 `model_rlhf/ppo/main.py`）、`rl/reinforce.py`
+      （原 `reasoning/training/reinforce.py`，解开 rl↔reasoning 环）、
+      `preference/run/run_gpt_dpo.py`（原 `model_rlhf/dpo/`）、`peft/demos/`（lora_demo / prompt_tuning / scratch_exps）；
+    - `pre_training/examples/` 三分组：`components/`、`training/`、`analysis/`；
+      `pre_training/references/{gpt2_book,pgcorpus}/`（原 `examples/gpt2_book/` 与 `data_provider/pgcorpus_gutenberg/`）；
+    - 删除：`inference/{loaders,api,evaluation}/` 整目录、`inference/registry.py`、
+      `inference/strategies/llm_basic/`（qwen3_06B → `inference/examples/`）、
+      `inference/apps/{app_orig,app_own}.py`、`inference/evaluation/{ollama_evaluate,openai_evaluate}.py` 垫片、
+      `post_training/common/` 整目录（instruction_format/data_loader 垫片删、data_factory → trl_sft/sql_create_context 本地、
+      exp_basic → demos/scratch_exps 本地、旧 shell 删）、`post_training/preference/model_rlhf/`、
+      `post_training/peft/{model_peft,run}/`、`peft/layers/lora_dora.py`、
+      `peft/layers/merge_adapte_weights.py`（改名 `merge_adapter_weights.py`）、
+      `post_training/reasoning/{inference,evaluation}/` 别名目录与 `training/reinforcement_learning.py` 垫片、
+      `pre_training/experiments/bert/{data_load,tokenizer,curpos_process}.py`、`experiments/hparam_search.py`、
+      `data_provider/data_downloader.py`、`training/{metrics,distributed,optimization}.py`、
+      `training/callbacks/early_stopping.py`（零引用 re-export；`utils/early_stopping` 改为直接用 `tools.checkpoint.io`）、
+      `tests/unit/test_module_moves.py`（守卫测试，垫片全消亡后删除）、
+      `references/hf_peft/hf_finetuning/`（仅剩 env.sh 的空壳）、`docs/assets/LLM蒸馏综述.docx`
+      （二进制综述文档，经确认无需保留，彻底删除）；`.gitignore` 清除失效的
+      `pretraining/examples/gpt2_book/model.pth` 行（全局 `*.pth` 已覆盖）。
+- 2026-10-24 `tools/distributed/` 重构：重排为 00–08 学习动线，删除旧 `ddp/`、`dp/`、`fsdp/`、`fairscale/`、
+  `tensor_parallelism/` 等空壳与整段外部拷贝；新增数值等价验证与 `tests/unit/test_tools_distributed.py`；详见 [distributed](../70-tools/distributed.md)。
+- 2026-10-24 四阶段重构：新增 `training/` 与 `models/base.py`，统一 cache/config/tokenizer/checkpoint 契约，
+  预训练/SFT/DPO 共用 `training.Trainer`；当时保留的旧路径 shim 已在本轮全部消亡。
+- 2026-10-21 后训练域修复（对照 LLMs-from-scratch ch06/07/附录E）：删除 `sft/data_provider/llmbox/` 死代码树，
+  修复 stale import 与 run 入口崩溃、DPO 权重顺序/logprob 口径，`layers/lora.py` 规范化，GRPO completion mask、
+  REINFORCE-with-baseline、蒸馏与 judge/MMLU 补全；细节见 [rlhf](../20-post-training/rlhf.md)、[dpo](../20-post-training/dpo.md)。
+- 2026-10-20 推断域清理（P1 bug 修复与死文件删除）、合并（P2：judge → judge.py、Chainlit app → app.py、
+  启动脚本 → run_app.sh）与通用化（P3：registry/loading/generation 公共 API、nano_vllm 包化）。
+- 2026-10-20 layers/models 审查整改（Phase 0–2，见 [layers-models-audit](../60-reference/layers-models-audit/index.md)）：
+  11 组 P0 bug 修复、`layers/normalization` 拼写修正、`layers/inference.py` → `inference/generate_core.py`、
+  `sys.path` hack 清除、MLA / beam search / ALiBi / SWA / RoPE 外推 / MoE aux loss 等教学主题补全。
+- 2026-10-18 预训练域归位与 config 清理：解散 `legacy/` 与 `analysis/`、数据层归位 `data_provider/`、
+  config 副作用移除、`max_new_toknes` 全仓拼写修复；详见 [refactor-2026-10-18-domains](../60-reference/refactor-2026-10-18-domains.md)。
+- 2026-10-25 输出产物路径规范化：MATH-500 报告 `results/math500/`、checkpoint 统一 `results/checkpoints/`，
+  判据与入口默认值见 [outputs](outputs.md)。
 
 ## 2. 数据
 
 - `dataset/` 从约 76 GB 清理到约 5.8 GB。
-- 删除重复压缩包、HF cache、MMLU 辅助训练、IMDB 原始目录、DISC-Law QA 子集、CLUENER、通用 SFT 大语料、mobvoi 原始 JSONL 等。
+- 删除重复压缩包、HF cache、MMLU auxiliary_train、IMDB 原始目录、DISC-Law QA 子集、CLUENER、通用 SFT 大语料等。
 - 保留并归类为 `pretraining/`、`finetuning/`、`evaluation/`；布局与代码路径见 [datasets](datasets.md)。
 
 ## 3. 文档
@@ -112,35 +78,16 @@
 
 ## 4. 仍存在的遗留
 
-- `post_training/sft/run_sft.py` 的 `TrlParser` 用法与当前 `trl` 版本不兼容（`tokenizer=` 已弃用改 `processing_class`）。
-- `post_training/peft/.../lora_dora_from_scratch.py` 引用不存在的 `data_provider.lora`（四重断链，整体不可运行）。
-- `post_training/peft/run_peft.py` 是教程拼接（TrainingArguments/Trainer 未导入、数据集未定义），会尝试下载 HF 模型，离线/受限环境不可直接运行。
-- `post_training/preference/model_rlhf/grpo/` 的部分 TRL 参考脚本仍需按各自依赖与 import 方式修复，不属于默认主链路。
-- `post_training/peft/model_peft/` 的部分外部框架实验需要单独依赖和数据，不属于默认可运行入口。
+- `post_training/references/trl_sft/run_sft.py` 的 `TrlParser` 用法与当前 `trl` 版本不兼容（`tokenizer=` 已弃用改 `processing_class`）。
+- `post_training/peft/demos/scratch_exps/lora_dora_from_scratch.py` 引用不存在的 `data_provider.lora`（四重断链，整体不可运行）。
+- `post_training/references/hf_peft/run_peft.py` 是教程拼接（TrainingArguments/Trainer 未导入、数据集未定义），
+  会尝试下载 HF 模型，离线/受限环境不可直接运行。
+- `post_training/references/` 其余外部栈脚本（trl_grpo / unsloth / hf_peft 各子目录）需按各自依赖与数据单独修复，
+  不属于默认主链路。
 
 ## 5. 验证
 
 ```bash
-python -m unittest discover -s tests -v   # 85 项（2026-10-20）
-python run_gpt2_124M.py --help            # OK
+python -m unittest discover -s tests -v   # 557 项（2026-10-25）
 python scripts/check_docs.py              # OK
 ```
-
-## 6. 2026-10-21 追加（本轮）
-
-- `layers/tokenizers/bpe/tiktoken_bpe.py`：`encode` 透传 `allowed_special`（修端到端暴露的 TypeError）；
-- `inference/loaders/gpt2/`：base_config 补 `d_ff`（4×embed_dim）与 `dtype`（layers/feed_forward.py 需要）；
-- 空壳补全：`preference/model_rlhf/ppo/main.py`（最小 PPO）、`peft/model_peft/prompt_tuning/main.py`（自研 SoftPromptGPT）、新增 `peft/layers/nf4.py`（NF4 量化原语）；
-- 端到端验证：`run_gpt_clf_sft.py` 全链路冒烟通过（130/19/38 批次与书一致，随机权重 30 步 loss 0.699→0.663、valid acc 58.3%>50%、checkpoint 保存 198 keys）；
-  HF 权重下载（548MB）在本会话网络下反复 IncompleteRead/停滞（hf-mirror 仅 ~60KB/s），真实权重训练未能在会话内完成——属网络环境问题，代码链路已验证到下载前一步。
-
-- 2026-10-24 四阶段重构：新增 `training/` 与 `models/base.py`，统一 cache/config/tokenizer/checkpoint 契约。
-  - 权重实现 `inference/loaders/` → `models/io/`；reasoning 推断/评测 → `inference/strategies/`、`inference/evaluation/`。
-  - GRPO 核 → `post_training/rl/`，PPO/GRPO 共用 objective；chat template → `layers/tokenizers/chat.py`；旧路径保留 shim。
-  - 修复 DDP、nano_vllm RoPE/config、SFT/DPO 数据与评估、MoE eval、生成 facade；预训练/SFT/DPO 共用 `training.Trainer`。
-  - 删除危险历史 `scripts/update_codes.sh`；`scripts/config.json` → `config.example.json`；移除 Flask 并增加 CI。
-  - 新增 tiny 预训练 resume、SFT、DPO 集成测试及模块契约测试；CUDA/NCCL 与真实外部服务不在离线验收范围。
-
-- 2026-10-25 输出产物路径规范化（判据与入口默认值见 [outputs](outputs.md)）：
-    - MATH-500 报告默认 `logs/math500/` → `results/math500/`（harness CLI 与批量脚本 OUTDIR 同步），4 份报告 JSON 已迁移，service 日志原地保留；
-    - checkpoint 统一到 `results/checkpoints/`：GRPO（`results/models/`）、qwen-scheduler 推断（`results/<model>`）、DeepSeek LoRA（`results/finetuned_models/`）、pgcorpus（`results/model_checkpoints/` → `results/checkpoints/pgcorpus`）、app.py 自训权重（仓根 `model.pth` → `results/checkpoints/gpt2/model.pth`，`GPT2_CHECKPOINT` 覆盖不变）；旧目录磁盘上均不存在，无需迁移文件。

@@ -2,7 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from layers.tokenizers.tokenization import text_to_token_ids, token_ids_to_text
+from layers.tokenizers.base import TokenizerProtocol
+from layers.tokenizers.registry import create_tokenizer
+from layers.tokenizers.tokenization import choose_tokenizer, text_to_token_ids, token_ids_to_text
 from layers.tokenizers.unigram.unigram import UnigramTokenizer
 
 
@@ -16,6 +18,50 @@ class TestTokenizer(unittest.TestCase):
         self.assertGreater(ids.shape[1], 0)
         text = token_ids_to_text(ids)
         self.assertIn("TinyLLM", text)
+
+
+class TestTokenizerProtocol(unittest.TestCase):
+    """registry.create_tokenizer 返回的实例必须满足 TokenizerProtocol。"""
+
+    def test_registry_instances_satisfy_protocol(self):
+        # simple_custom 的语料是构造参数，其余可无参实例化
+        cases = {
+            "simple_custom": {"text": "Hello, world. This is a test."},
+            "unigram": {},
+            "simple_bpe": {},
+        }
+        for key, kwargs in cases.items():
+            with self.subTest(key=key):
+                tok = create_tokenizer(key, **kwargs)
+                self.assertIsInstance(tok, TokenizerProtocol)
+
+    def test_tiktoken_instances_satisfy_protocol(self):
+        # tiktoken 首次使用需下载 GPT-2 词表，不可用则跳过
+        for key in ("tiktoken_gpt2_bpe", "gpt2"):
+            with self.subTest(key=key):
+                try:
+                    tok = create_tokenizer(key)
+                except Exception as exc:
+                    self.skipTest(f"tokenizer unavailable: {exc}")
+                self.assertIsInstance(tok, TokenizerProtocol)
+
+
+class TestChooseTokenizerCache(unittest.TestCase):
+    """choose_tokenizer 对字符串名称返回缓存的单例。"""
+
+    def test_same_instance_for_repeated_calls(self):
+        try:
+            tokenizer = choose_tokenizer("gpt2")
+        except Exception as exc:
+            self.skipTest(f"tokenizer unavailable: {exc}")
+        self.assertIs(choose_tokenizer("gpt2"), tokenizer)
+        self.assertIs(choose_tokenizer("GPT2 "), tokenizer)
+
+    def test_kwargs_calls_are_not_cached(self):
+        # 带 kwargs 的调用绕过缓存：同样参数两次实例化返回不同实例
+        tok1 = choose_tokenizer("simple_custom", text="a b c")
+        tok2 = choose_tokenizer("simple_custom", text="a b c")
+        self.assertIsNot(tok1, tok2)
 
 
 class TestUnigramTokenizer(unittest.TestCase):

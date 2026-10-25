@@ -124,7 +124,7 @@ class TestPhiWeightLoading(unittest.TestCase):
         self.assertTrue(torch.isfinite(logits).all())
 
     def test_registry_entry(self):
-        from inference.registry import get_model_spec, list_models
+        from models.registry import get_model_spec, list_models
 
         self.assertIn("phi-15", list_models())
         spec = get_model_spec("phi-15")

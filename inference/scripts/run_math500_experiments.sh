@@ -35,9 +35,9 @@ echo | tee -a "$MAIN_LOG"
 for STRATEGY in greedy cot self-consistency best-of-n self-refinement; do
     OUT_JSON="$OUTDIR/${MODEL}_${STRATEGY}_subset${SUBSET}.json"
     echo "=== strategy: $STRATEGY -> $OUT_JSON" | tee -a "$MAIN_LOG"
-    echo "Command: $PYTHON -m inference.evaluation.harness.math500 --model $MODEL --strategy $STRATEGY --n $N --subset $SUBSET" | tee -a "$MAIN_LOG"
+    echo "Command: $PYTHON -m inference.harness.math500 --model $MODEL --strategy $STRATEGY --n $N --subset $SUBSET" | tee -a "$MAIN_LOG"
 
-    PYTHONUNBUFFERED=1 "$PYTHON" -m inference.evaluation.harness.math500 \
+    PYTHONUNBUFFERED=1 "$PYTHON" -m inference.harness.math500 \
         --model "$MODEL" \
         --strategy "$STRATEGY" \
         --n "$N" \

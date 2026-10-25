@@ -183,6 +183,14 @@ class ExtendedTokenizer:
     def n_vocab(self) -> int:
         return self._n_vocab
 
+    @property
+    def eos_token_id(self):
+        return getattr(self.base_tokenizer, "eos_token_id", None)
+
+    @property
+    def pad_token_id(self):
+        return getattr(self.base_tokenizer, "pad_token_id", None)
+
     def encode(self, text: str) -> List[int]:
         if self._pattern is None:
             return list(self.base_tokenizer.encode(text))

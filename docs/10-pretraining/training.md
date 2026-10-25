@@ -24,7 +24,7 @@ BERT 使用 `run_bert.py` 的独立 MLM+NSP 流程，但 checkpoint 使用同一
 - 周期 resume 与 best checkpoint 共用统一字段，保留历史 checkpoint 兼容读取。
 - CPU Dataset + 可选 pin_memory + batch 阶段设备传输，支持 DataLoader workers。
 
-`training.Trainer` 统一 AMP、梯度累积/裁剪、DDP 同步和 optimizer step。`torch.compile` 是实验基类内部能力，未作为公开 CLI 能力承诺；`hparam_search.py` 仍是实验代码，不属于默认可用主链路。
+`training.Trainer` 统一 AMP、梯度累积/裁剪、DDP 同步和 optimizer step。`torch.compile` 是实验基类内部能力，未作为公开 CLI 能力承诺。GPT-2/Llama/Qwen 实验基类（`exp_pretrain_gpt2_124M.py` 等）继承 `exp_basic.py`：模型实现经 `models.registry.MODEL_REGISTRY` 解析（`model_name` → registry 键 → family/config_key → 模型模块），不再各自硬编码注册表。
 
 ## 恢复训练
 
@@ -54,4 +54,4 @@ python run_bert.py --help
 - [data](data.md)
 - [测试](../50-development/testing.md)
 - [checkpoint 工具](../70-tools/checkpoint.md)
-- [权重 IO](../30-inference/loaders.md)
+- [权重 IO（models/io）](../30-inference/loaders.md)

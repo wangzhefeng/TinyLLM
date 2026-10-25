@@ -4,6 +4,11 @@
 
 > 工作量口径：**S** ≈ 0.5–1 天，**M** ≈ 2–3 天，**L** ≈ 1 周以上（按熟悉 PyTorch、能复用现有代码估算）。
 
+> **历史快照说明（2026-10-25 追加）**：本清单为 2026-10 早期分析，多数 P0/P1 缺口此后已落地
+> （SFT/DPO/LoRA/MLA/SWA/KV 共享/DeltaNet/DSA/OLMo3/Aya/Qwen3.5/Gemma4 等）；
+> “建议落点”列的 `qwen3_reasoning/`、`exp/` 等为历史路径，现为
+> `evaluation/` 公共库、`post_training/` 各子域与 `pre_training/experiments/`。
+
 ### P0：补齐“书的后半本”，形成完整闭环
 
 | 优先级 | 缺口 | 为什么重要 | 建议落点 | 工作量 |

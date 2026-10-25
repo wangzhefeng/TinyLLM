@@ -7,9 +7,9 @@
 # * Date        : 2026-10-20
 # * Version     : 1.0.102020
 # * Description : 统一权重加载入口 load_model()。
-# *               按 MODEL_REGISTRY 的 family 分派到 inference/loaders/ 下
-# *               各族加载库；重依赖（torch/transformers/huggingface_hub）全部
-# *               在函数内懒加载。返回 (model, config, extras)。
+# *               按 models.registry.MODEL_REGISTRY 的 family 分派到本模块
+# *               各族 _load_* 加载函数；重依赖（torch/transformers/
+# *               huggingface_hub）全部在函数内懒加载。返回 (model, config, extras)。
 # * Requirement   : torch；按 source 需要 transformers / safetensors / tensorflow
 # ***************************************************
 
@@ -24,7 +24,7 @@ ROOT = str(Path.cwd())
 if ROOT not in sys.path:
     sys.path.append(ROOT)
 
-from inference.registry import get_model_spec
+from models.registry import get_model_spec
 
 # global variable
 LOGGING_LABEL = Path(__file__).name[:-3]
@@ -136,7 +136,7 @@ def _load_gemma3(spec, weights_dir: str, device: str):
     from config.gemma3.model_cfgs import GEMMA3_CONFIG_270M
     from models.gemma3.Gemma3_270M import Model
     from models.io.gemma3 import download_weights, load_weights_into_gemma
-    from layers.tokenizers.gemma import ensure_gemma_tokenizer
+    from layers.tokenizers.gemma3.gemma3_tokenizer import ensure_gemma_tokenizer
     from utils.args_tools import DotDict
 
     config = DotDict(GEMMA3_CONFIG_270M)

@@ -109,7 +109,7 @@ def main(argv=None):
     import torch
     from inference.generate_core import _resolve_ctx_len
     from inference.loading import load_model
-    from inference.registry import get_model_spec
+    from models.registry import get_model_spec
     from layers.tokenizers.tokenization import choose_tokenizer
 
     if torch.cuda.is_available():

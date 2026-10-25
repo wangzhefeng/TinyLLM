@@ -8,7 +8,7 @@
 # * Version     : 1.1.102121
 # * Description : LoRA / DoRA 参数高效微调层（LLMs-from-scratch 附录 E）。
 # *               规范实现放在 layers/（供任意 models/ 模型即插即用）；
-# *               post_training/peft/layers/lora_dora.py 为兼容 shim。
+# *               （原 post_training/peft/layers/lora_dora.py 兼容 shim 已移除）
 # *               v1.1 变更（对照附录 E 最新版 notebook）：
 # *               1. 缩放改为标准 alpha/rank（LoRA 论文与 HF peft 惯例，
 # *                  换 rank 无需重调学习率）
@@ -311,6 +311,8 @@ def merge_lora_weights(module):
         "DoRA 的合并是 m·V 权重重建而非简单加 ΔW，请保留模块原样推断，"
         "或参考 https://arxiv.org/abs/2402.09353 Alg. 1 手工合并"
     )
+
+
 
 
 # 测试代码 main 函数

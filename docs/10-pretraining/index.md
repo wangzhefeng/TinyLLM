@@ -30,10 +30,13 @@ bash pre_training/scripts/pretrain_gpt2_124M_DDP.sh
 
 ```text
 pre_training/
-├── data_provider/   # 语料加载、Gutenberg 数据准备、bert/ 数据层
-├── experiments/     # 实验类、超参搜索、bert/ 预训练实验脚本
-├── examples/        # 书本示例（非测试）、FLOPs 分析、Gutenberg 独立训练
-├── references/      # nanotron 参考
+├── data_provider/   # data_loader.py 语料加载；bert/ 数据层（DAPT TSV）
+├── experiments/     # exp_basic.py（经 models/registry 解析模型）、GPT-2 预训练实验、bert/dapt_data.py
+├── examples/        # 教材示例三分组（非测试）
+│   ├── components/  # attention / layernorm / FFN / 残差 / embedding
+│   ├── training/    # 预训练 demo、训练循环模板、模型检查
+│   └── analysis/    # FLOPs 分析
+├── references/      # 外部参考（单向离线）：gpt2_book/、pgcorpus/、nanotron/
 └── scripts/         # 启动脚本
 ```
 

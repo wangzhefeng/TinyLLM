@@ -26,7 +26,7 @@
    - ch07 的指令微调（SFT）没有训练闭环；
    - DPO、LoRA（通用 GPT-2 LoRA）、数据集工具、LLM-as-judge 评测、合成数据生成均缺失或只有占位。
 4. **架构侧还有 5 个明确的空白**：MLA（只有空类）、独立 SWA、Gated DeltaNet、DSA、跨层 KV 共享；模型 zoo 还缺 OLMo3、Tiny Aya、Qwen3.5、Gemma4。
-5. **工程健康度需要先修**：`run_llama.py` / `run_qwen.py` 与 `Model_Pretrain` 签名不匹配，`run_gemma.py` 是空壳，`test/` 下大量脚本仍引用重构前的 `models.gpt2_model_cfg` 路径，`qwen3_reasoning` 的 13 个模块中有 9 个是占位。因此在“补内容”之前，建议先做一次入口与导入路径清理。
+5. **工程健康度需要先修**：`run_llama.py` / `run_qwen.py` 与 `Model_Pretrain` 签名不匹配，`run_gemma.py` 是空壳，`test/` 下大量脚本仍引用重构前的 `models.gpt2_model_cfg` 路径，`qwen3_reasoning` 的 13 个模块中有 9 个是占位。因此在“补内容”之前，建议先做一次入口与导入路径清理。（2026-10-25 注：这是当时快照——入口与路径清理已由 2026-10-18/24/25 三轮重构完成，`qwen3_reasoning` 已并入 `post_training/reasoning/` 与 `evaluation/` 公共库。）
 
 **按本报告拆分的 53 个内容单元统计**：
 

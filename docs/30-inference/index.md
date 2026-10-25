@@ -2,40 +2,41 @@
 
 > 所属：[TinyLLM Docs](../README.md)
 
-统一模型加载、文本生成、推断策略、serving、评测与 UI。
+统一模型加载、文本生成、推断策略、serving、评测循环与 UI。
 
 ## 分页
 
 | 页面 | 内容 |
 |---|---|
-| [loaders.md](loaders.md) | `models/io` 权重加载与旧路径兼容 |
+| [loaders.md](loaders.md) | 权重 IO（`models/io`）与 HF 导出 |
 | [serving.md](serving.md) | 推断原理、API 客户端、服务化 |
 | [nano-vllm.md](nano-vllm.md) | 分页 KV + continuous batching |
-| [evaluation.md](evaluation.md) | benchmark、judge、leaderboard |
+| [evaluation.md](evaluation.md) | 评测 harness 与公共库分工 |
 | [reasoning-scaling.md](reasoning-scaling.md) | 推断时扩展与相关概念 |
 
 ## 代码结构
 
 ```text
 inference/
-├── registry.py       # 模型注册表
-├── loading.py        # load_model 统一门面，调用 models/io
+├── __init__.py       # PEP 562 懒加载导出门面
+├── loading.py        # load_model 统一加载（注册表在 models/registry.py）
 ├── generation.py     # generate_text / generate_text_stream
 ├── generate_core.py  # 教材解码与实验后端
+├── harness/          # 生成侧评测循环：math500.py、mmlu.py
 ├── strategies/       # self-consistency / Best-of-N / self-refinement / 投机解码
-├── serving/          # nano_vllm
-├── api/              # Ollama / OpenAI 客户端
-├── evaluation/       # benchmarks / judges / leaderboards / 统一 judge
-├── apps/             # Chainlit UI
-├── loaders/          # 旧权重路径兼容 shim，新代码勿用作实现位置
-├── examples/
-└── scripts/
+├── serving/nano_vllm/
+├── apps/app.py       # Chainlit UI
+├── examples/         # gpt2_inference / qwen3_06B / bert_fill_mask
+└── scripts/          # run_app.sh / run_math500_experiments.sh / benchmark_compile.py
 ```
+
+评测基础设施（客户端/验证器/judge/排行榜）在顶层公共库 `evaluation/`，见 [评测公共库](../35-evaluation/index.md)。
 
 ## 公共 API
 
 ```python
-from inference import list_models, load_model, generate_text
+from inference import load_model, generate_text
+from models.registry import list_models
 
 list_models()
 model, cfg, extras = load_model("qwen3-0.6b")
@@ -57,10 +58,11 @@ python models/io/qwen3/qwen3_06B_load.py
 python inference/examples/bert_fill_mask.py --text1 '今天天气[MASK]好'
 ```
 
-OpenAI 客户端从 `OPENAI_API_KEY` 读取凭证，`OPENAI_BASE_URL` 可选；不再读取根目录 `config.json`。
+OpenAI 客户端从 `OPENAI_API_KEY` 读取凭证，`OPENAI_BASE_URL` 可选（见 [评测公共库](../35-evaluation/index.md)）；不再读取根目录 `config.json`。
 
 ## 相关
 
+- [评测公共库](../35-evaluation/index.md)
 - [模型](../40-models/index.md)
 - [reasoning 训练](../20-post-training/reasoning.md)
 - [测试](../50-development/testing.md)

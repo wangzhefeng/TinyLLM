@@ -27,6 +27,6 @@
 - **Ch8**：推理蒸馏（Ollama/OpenRouter 生成数据 + 蒸馏训练）。
 - **附录 C–G**：Qwen3 源码、更大 LLM、batching/throughput、评测方法（MMLU、Elo/Bradley-Terry、LLM judge）、聊天界面。
 
-**对本项目**：`qwen3_reasoning/` 的目录命名与这本书高度对应（评测、推断时、RL、蒸馏），但只有数学验证器、选择题评测、leaderboard 骨架与 Qwen3 推断 demo 是真实代码，RL/蒸馏/推断时扩展/LLM judge 等主线仍是空壳。如果项目想继续“推理模型”方向，这是一条清晰的补全路线。
+**对本项目**：`qwen3_reasoning/` 的目录命名与这本书高度对应（评测、推断时、RL、蒸馏），但只有数学验证器、选择题评测、leaderboard 骨架与 Qwen3 推断 demo 是真实代码，RL/蒸馏/推断时扩展/LLM judge 等主线仍是空壳。如果项目想继续“推理模型”方向，这是一条清晰的补全路线。（历史状态注，2026-10-25：上述空壳现已补齐并重组——`qwen3_reasoning/` 已消亡，RL 见 `post_training/rl/`、蒸馏见 `post_training/reasoning/`、judge/排行榜见 `evaluation/` 公共库、推断时扩展见 `inference/strategies/`。）
 
 ---

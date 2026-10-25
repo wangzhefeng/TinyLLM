@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import torch
 
-from post_training.preference.model_rlhf.ppo.main import (
+from post_training.rl.ppo import (
     CriticValueHead,
     compute_advantages_ppo,
     compute_critic_loss,

@@ -84,7 +84,7 @@ def _load_dataset(args, tokenizer, context_length):
     """读取 verified JSONL 并编码为 (prompt_ids, completion_ids) 列表。"""
     import torch
 
-    from inference.evaluation.benchmarks.math_verifiers import render_prompt
+    from evaluation.verifiers.math import render_prompt
 
     data_path = Path(args.data)
     if not data_path.exists():
