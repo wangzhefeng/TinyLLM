@@ -1,7 +1,7 @@
 # 清理记录
 
 > 所属：[TinyLLM Docs](../README.md) › [Development](index.md)
-> 更新时间：2026-10-21。本文只记录**当前仍然成立**的清理结果。
+> 更新时间：2026-10-25。本文只记录**当前仍然成立**的清理结果。
 
 ## 1. 代码与目录
 
@@ -11,21 +11,13 @@
 - 分布式训练独立为 `tools/distributed/`；新增 `tools/profiling/`、`tools/checkpoint/`、`tools/data/`。
 - 删除空壳、重复实现和未接入的外部参考，详见 [reference-projects](reference-projects.md)。
 - 2026-10-21 后训练域修复（对照 LLMs-from-scratch ch06/07/附录E 与 reasoning-from-scratch）：
-    - 删除死代码树 `post_training/sft/data_provider/llmbox/`（LLaMA-Box 残缺复制：
-      `Path` 未 import、`process` 签名不匹配、依赖 HF tokenizer 特性、全仓无引用）；
-    - 修复全模块 16 处 `utils.llm.*` / `models.gpt` stale import（真实模块在
-      `utils/` 平铺与 `models/gpt2/gpt2_124M.py`），新增缺失的 `utils/calc_accuracy.py`；
-    - 修复 3 个 run 入口崩溃（`set_seed` 先于 `args_parse`、`args.data` 不存在、
-      `re.math` 笔误、`strtobool` 未导入、`required=True` 反模式、GPT-2 config 键名）；
-    - 修复 DPO 三处正确性问题：权重加载顺序颠倒（SFT checkpoint 被 HF 权重覆盖）、
-      inference 变量互换、logprob 口径改为论文默认的序列求和（可 `--dpo_avg_logprobs 1` 切回平均）；
-    - `layers/lora.py`：LoRA 缩放改为标准 `alpha/rank`、支持 dropout 与目标层过滤、
-      新增论文版 DoRA；`clf_head.py` 重写为四种清晰冻结策略；
-    - `post_training/reasoning/`：GRPO 补 completion mask 与梯度裁剪及多 prompt 批处理、
-      新增 REINFORCE-with-baseline（reinforce.py）与推理轨迹蒸馏（distill_reasoning.py）、
-      补全 Bradley-Terry / LLM-judge / MMLU first-token logprob 法；
-    - `instruction_follow/data_loader.py` 补齐 prompt-masking collate
-      （custom_collate_fn_mask_out_instruction，对应书 ch07 exercise）。
+    - 删除死代码树 `post_training/sft/data_provider/llmbox/`（LLaMA-Box 残缺复制：`Path` 未 import、`process` 签名不匹配、依赖 HF tokenizer 特性、全仓无引用）；
+    - 修复全模块 16 处 `utils.llm.*` / `models.gpt` stale import（真实模块在 `utils/` 平铺与 `models/gpt2/gpt2_124M.py`），新增缺失的 `utils/calc_accuracy.py`；
+    - 修复 3 个 run 入口崩溃（`set_seed` 先于 `args_parse`、`args.data` 不存在、`re.math` 笔误、`strtobool` 未导入、`required=True` 反模式、GPT-2 config 键名）；
+    - 修复 DPO 三处正确性问题：权重加载顺序颠倒（SFT checkpoint 被 HF 权重覆盖）、inference 变量互换、logprob 口径改为论文默认的序列求和（可 `--dpo_avg_logprobs 1` 切回平均）；
+    - `layers/lora.py`：LoRA 缩放改为标准 `alpha/rank`、支持 dropout 与目标层过滤、新增论文版 DoRA；`clf_head.py` 重写为四种清晰冻结策略；
+    - `post_training/reasoning/`：GRPO 补 completion mask 与梯度裁剪及多 prompt 批处理、新增 REINFORCE-with-baseline（reinforce.py）与推理轨迹蒸馏（distill_reasoning.py）、补全 Bradley-Terry / LLM-judge / MMLU first-token logprob 法；
+    - `instruction_follow/data_loader.py` 补齐 prompt-masking collate（custom_collate_fn_mask_out_instruction，对应书 ch07 exercise）。
 - 2026-10-18 预训练域归位：
     - 解散 `pre_training/legacy/`：`run_llama.py` / `run_qwen.py` 修复后提升为根目录入口；
     - 解散 `pre_training/analysis/`：`flops_analysis.py` 并入 `pre_training/examples/`（可复用 FLOPs/MFU 实现在 `tools/profiling/`）；
@@ -148,3 +140,7 @@ python scripts/check_docs.py              # OK
   - 修复 DDP、nano_vllm RoPE/config、SFT/DPO 数据与评估、MoE eval、生成 facade；预训练/SFT/DPO 共用 `training.Trainer`。
   - 删除危险历史 `scripts/update_codes.sh`；`scripts/config.json` → `config.example.json`；移除 Flask 并增加 CI。
   - 新增 tiny 预训练 resume、SFT、DPO 集成测试及模块契约测试；CUDA/NCCL 与真实外部服务不在离线验收范围。
+
+- 2026-10-25 输出产物路径规范化（判据与入口默认值见 [outputs](outputs.md)）：
+    - MATH-500 报告默认 `logs/math500/` → `results/math500/`（harness CLI 与批量脚本 OUTDIR 同步），4 份报告 JSON 已迁移，service 日志原地保留；
+    - checkpoint 统一到 `results/checkpoints/`：GRPO（`results/models/`）、qwen-scheduler 推断（`results/<model>`）、DeepSeek LoRA（`results/finetuned_models/`）、pgcorpus（`results/model_checkpoints/` → `results/checkpoints/pgcorpus`）、app.py 自训权重（仓根 `model.pth` → `results/checkpoints/gpt2/model.pth`，`GPT2_CHECKPOINT` 覆盖不变）；旧目录磁盘上均不存在，无需迁移文件。

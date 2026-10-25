@@ -60,6 +60,9 @@ class Model(nn.Module):
         self.final_norm = RMSNorm_Qwen3(cfg.embed_dim)
         # output head linear
         self.out_head = nn.Linear(cfg.embed_dim, cfg.vocab_size, bias=False, dtype=cfg.dtype)
+        # weight tying：官方 Qwen3 0.6B/1.7B/4B out_head 与 tok_embed 共享权重
+        if getattr(cfg, "tie_word_embeddings", False):
+            self.out_head.weight = self.tok_embed.weight
         # head dim
         if cfg.head_dim is None:
             head_dim = cfg.embed_dim // cfg.n_heads

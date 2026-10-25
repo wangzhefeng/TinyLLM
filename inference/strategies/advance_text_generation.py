@@ -52,7 +52,7 @@ def generate_with_self_refinement(model, token_ids, refine_fn,
                                   max_new_tokens=64, max_rounds=3,
                                   context_length=None, temperature=0.7,
                                   top_k=None, top_p=None, eos_token_id=None,
-                                  decode_fn=None):
+                                  decode_fn=None, generate_fn=None):
     """Self-Refinement 主循环（reasoning ch05）。
 
     流程：生成初稿 -> ``refine_fn(draft) -> (feedback, revised)`` -> 用修订稿
@@ -67,6 +67,9 @@ def generate_with_self_refinement(model, token_ids, refine_fn,
             - feedback_prompt_ids：下一轮的（prompt+反馈）token ids；
               为 None 时直接结束并返回当前稿
         decode_fn: token 张量 -> 文本（调试默认为 join ids）
+        generate_fn: callable[token_ids, str]；None 时走 _sample_sequence。
+            注入时 refine_fn 收到的 draft_token_ids 为 None（每轮生成只回传
+            文本），且返回值首元素（final_token_ids）为 None
 
     Returns:
         (final_token_ids, rounds_used, [每轮 (text, accepted)])
@@ -76,9 +79,13 @@ def generate_with_self_refinement(model, token_ids, refine_fn,
     current = token_ids
     used = 0
     for used in range(1, max_rounds + 1):
-        draft = _sample_sequence(model, current, max_new_tokens, context_length,
-                                 temperature, top_k, top_p, eos_token_id)
-        draft_text = decode_fn(draft)
+        if generate_fn is not None:
+            draft = None
+            draft_text = generate_fn(current)
+        else:
+            draft = _sample_sequence(model, current, max_new_tokens, context_length,
+                                     temperature, top_k, top_p, eos_token_id)
+            draft_text = decode_fn(draft)
         accepted, next_prompt, revised = refine_fn(draft, draft_text)
         rounds_log.append((draft_text, accepted))
         if accepted:

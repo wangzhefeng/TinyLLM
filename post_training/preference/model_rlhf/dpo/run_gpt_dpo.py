@@ -83,7 +83,7 @@ def args_parse():
                         help="pretrained model path")
     parser.add_argument("--pretrained_model_source", type=str, required=False, default="huggingface_gpt2",
                         help="pretrained model source")
-    parser.add_argument("--finetuned_model_path", type=str, required=False, default="./results/finetuned_models/tiny_gpt_instruction_sft_gpt_finetune_instruction_instruction-dat_cl1024_te10_bs8/0/gpt2-medium355M-sft.pth",
+    parser.add_argument("--finetuned_model_path", type=str, required=False, default="./results/checkpoints/sft/tiny_gpt_instruction_sft_gpt_finetune_instruction_instruction-dat_cl1024_te10_bs8/0/gpt2-medium355M-sft.pth",
                         help="finetuned model path")
     parser.add_argument("--tokenizer_model", type=str, required=False, default="gpt2",
                         help="tokenizer model")
@@ -118,10 +118,10 @@ def args_parse():
     parser.add_argument("--dpo_avg_logprobs", type=int, default=0,
                         help="DPO logprob 口径：0=序列求和（论文公式7，默认）；1=逐token平均（长度归一化，仅对比实验）")
     parser.add_argument("--checkpoints", type=str,
-                        default="./results/finetuned_models",
+                        default="./results/checkpoints/dpo",
                         help="checkpoints path")
     parser.add_argument("--model_path", type=str,
-                        default="./results/finetuned_models",
+                        default="./results/checkpoints/dpo",
                         help="model path")
     parser.add_argument("--test_results", type=str, default="./results/test_results",
                         help="test results path")

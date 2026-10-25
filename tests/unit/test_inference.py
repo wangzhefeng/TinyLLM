@@ -125,5 +125,49 @@ class TestGenerate(unittest.TestCase):
         self.assertLessEqual(out.shape[1], 6)
 
 
+class TestBatchedGenerateQwen3(unittest.TestCase):
+    """批量右填充生成与逐条生成（贪心）逐 token 一致——掩码/取位语义契约。"""
+
+    def setUp(self):
+        from models.qwen3.qwen3 import Model as Qwen3Model
+        torch.manual_seed(0)
+        self.cfg = SimpleNamespace(
+            vocab_size=128, context_length=32, embed_dim=32, n_heads=4,
+            n_kv_groups=2, head_dim=8, n_layers=2, dtype=torch.bfloat16,
+            qk_norm=True, qkv_bias=False, rope_base=10000, rope_freq=None,
+            num_experts=0, query_pre_attn_scalar=None, kv_window_size=32,
+            dropout=0.0, is_train=False, d_ff=64,
+        )
+        self.model = Qwen3Model(self.cfg).eval()
+
+    def test_batched_padding_matches_serial_greedy(self):
+        from inference.generate_core import (
+            generate_qwen3,
+            generate_qwen3_batched_cache,
+        )
+        prompt_a = torch.randint(0, self.cfg.vocab_size, (1, 5))
+        prompt_b = torch.randint(0, self.cfg.vocab_size, (1, 8))
+        pad_id = 0
+        token_ids = torch.full((2, 8), pad_id, dtype=torch.long)
+        token_ids[0, :5] = prompt_a[0]
+        token_ids[1] = prompt_b[0]
+        attn_mask = torch.tensor(
+            [[1] * 5 + [0] * 3, [1] * 8], dtype=torch.bool,
+        )
+        batched = generate_qwen3_batched_cache(
+            self.model, token_ids, max_new_tokens=6, context_length=32,
+            eos_token_id=None, attn_mask=attn_mask, pad_id=pad_id,
+        )
+        for prompt, row in ((prompt_a, batched[0]), (prompt_b, batched[1])):
+            serial = generate_qwen3(
+                self.model, prompt.clone(), max_new_tokens=6,
+                context_length=32, use_cache=True,
+            )
+            self.assertTrue(
+                torch.equal(serial[0], row),
+                f"batched row diverged from serial: {serial[0].tolist()} vs {row.tolist()}",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -32,8 +32,8 @@ def load_weights_hf(gpt, gpt_hf, CONFIG):
     d = gpt_hf.state_dict()
 
     # embedding
-    gpt.pos_emb.weight = assign_check(gpt.pos_emb.weight, d["wpe.weight"])
-    gpt.tok_emb.weight = assign_check(gpt.tok_emb.weight, d["wte.weight"])
+    gpt.pos_embed.weight = assign_check(gpt.pos_embed.weight, d["wpe.weight"])
+    gpt.tok_embed.weight = assign_check(gpt.tok_embed.weight, d["wte.weight"])
     # other layers
     for b in range(CONFIG["n_layers"]):
         q_w, k_w, v_w = np.split(d[f"h.{b}.attn.c_attn.weight"], 3, axis=-1)

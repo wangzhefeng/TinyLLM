@@ -10,7 +10,9 @@
 # *               1. Method 1（字母匹配）：生成后逐字符找 A/B/C/D（书实测最弱）
 # *               2. Method 2（first-token logprob）：比较 prompt 后第一个新
 # *                  token 位置各选项字母的 log-softmax 值（推荐）
-# *               3. evaluate_mmlu 评测循环 + 随机猜测二项基线
+# *               3. Method 3（teacher-forcing）：对每个选项的 continuation
+# *                  "X. <choice>" 计算平均 NLL，取最小者为预测（书 3_teacher_forcing.py）
+# *               4. evaluate_mmlu 评测循环 + 随机猜测二项基线
 # *               模型/数据集依赖一律延迟到函数内（import 零副作用，可单测）。
 # * Link        : https://github.com/rasbt/reasoning-from-scratch/tree/main/chF/02_mmlu
 # * Requirement : torch
@@ -23,6 +25,8 @@ __all__ = [
     "common_prefix_len",
     "first_new_token_id",
     "predict_choice_logprob",
+    "avg_logprob_teacher_forced",
+    "predict_choice_teacher_forcing",
     "evaluate_mmlu",
     "random_guess_baseline",
     "gold_letter",
@@ -189,6 +193,96 @@ def predict_choice_logprob(model, tokenizer, prompt_token_ids,
 
 
 # ------------------------------
+# Method 3: teacher-forcing（书 chF/02 的 3_teacher_forcing.py）
+# ------------------------------
+def _avg_logprob_continuation(model, prompt_fmt, answer_ids):
+    """teacher forcing 下 continuation token 序列的平均 log-prob。
+
+    一次前向拿到 ``prompt + answer_ids[:-1]`` 全部位置的 log-softmax，
+    再 gather 出模型在每个 answer token 位置上的平均 log-prob。
+    NLL = -avg_logprob，故平均 log-prob 最大即 NLL 最小。
+    """
+    device = prompt_fmt.device
+    if len(answer_ids) == 0:
+        return float("-inf")
+
+    answer_prefix = torch.tensor(answer_ids[:-1], dtype=torch.long,
+                                 device=device).unsqueeze(0)
+    combined = torch.cat([prompt_fmt, answer_prefix], dim=1)
+
+    with torch.no_grad():
+        scores = model(combined).squeeze(0)
+        logp = torch.log_softmax(scores, dim=-1)
+
+    prompt_len = prompt_fmt.shape[1]
+    steps = logp[prompt_len - 1:prompt_len - 1 + len(answer_ids), :]
+    targets = torch.tensor(answer_ids, dtype=torch.long,
+                           device=device).unsqueeze(1)
+    return steps.gather(dim=1, index=targets).mean().item()
+
+
+def avg_logprob_teacher_forced(model, tokenizer, prompt_fmt, prompt, prompt_ids,
+                               letter, choice_text):
+    """teacher forcing 下单个选项 ``X. <choice>`` continuation 的平均 log-prob
+    （书 chF/02 原版辅助函数）。
+
+    把 continuation 接在 prompt 后编码，取其新 token id（公共前缀对齐，
+    处理 BPE 合并差异），再交 :func:`_avg_logprob_continuation` 打分。
+    """
+    answer_text = f"{letter}. {choice_text}"
+    ids_full = tokenizer.encode(prompt + answer_text)
+    j = common_prefix_len(ids_full, prompt_ids)
+    if j >= len(ids_full):
+        raise ValueError("Continuation produced no new tokens.")
+    return _avg_logprob_continuation(model, prompt_fmt, ids_full[j:])
+
+
+def predict_choice_teacher_forcing(model, tokenizer, prompt_fmt, choices=None,
+                                   prompt=None, prompt_ids=None, letters="ABCD"):
+    """Teacher-forcing 法（Method 3，书 chF/02 的 3_teacher_forcing.py）。
+
+    对每个选项计算 continuation ``X. <choice>`` 的平均 NLL（实现为平均
+    log-prob 取最大，等价于 NLL 最小），取最小者为预测选项。相比
+    Method 2 只看第一个字母 token，teacher-forcing 利用了选项全文的
+    似然信息（书 chF/02 实测两者准确率相当，Method 2 更快）。
+
+    Args:
+        model: forward(x) 返回 (B, T, V) logits 的模型
+        tokenizer: 带 encode/decode 的分词器
+        prompt_fmt: (1, T) prompt token 张量
+        choices: 选项文本列表；None 时退化为只对字母 token 做 teacher
+            forcing（打分面与 Method 2 相同），便于无选项上下文复用与
+            evaluate_mmlu 的 predict_fn(model, tokenizer, prompt_fmt) 约定
+        prompt: prompt 原文；None 时用 tokenizer.decode(prompt_ids) 还原
+        prompt_ids: prompt id 列表；None 时取 prompt_fmt[0].tolist()
+        letters: 候选字母序列（默认 MMLU 四选一）
+
+    Returns:
+        (pred_letter, scores)：scores 为 {字母: 平均 logprob} 字典
+    """
+    if prompt_ids is None:
+        prompt_ids = prompt_fmt[0].tolist()
+    if prompt is None:
+        prompt = tokenizer.decode(prompt_ids)
+
+    scores = {}
+    for letter in letters:
+        if choices is None:
+            ids_full = tokenizer.encode(prompt + letter)
+            j = common_prefix_len(ids_full, prompt_ids)
+            if j >= len(ids_full):
+                raise ValueError("Continuation produced no new tokens.")
+            scores[letter] = _avg_logprob_continuation(model, prompt_fmt, ids_full[j:])
+        else:
+            scores[letter] = avg_logprob_teacher_forced(
+                model, tokenizer, prompt_fmt, prompt, prompt_ids, letter,
+                choices[ord(letter) - ord("A")],
+            )
+    pred = max(scores, key=scores.get)
+    return pred, scores
+
+
+# ------------------------------
 # MMLU 评测循环
 # ------------------------------
 def gold_letter(ans, letters="ABCD"):
@@ -208,7 +302,8 @@ def evaluate_mmlu(model, tokenizer, data, predict_fn, max_examples=None,
         tokenizer: 带 encode/decode 的分词器
         data: MMLU 格式条目迭代器（question/choices/answer；answer 兼容 int 与 str）
         predict_fn: callable(model, tokenizer, prompt_fmt) -> 预测字母，
-            例如 Method 1 的 predict_choice，或包装 predict_choice_logprob 的闭包
+            例如 Method 1 的 predict_choice、包装 predict_choice_logprob 或
+            predict_choice_teacher_forcing 的闭包
         max_examples: 最多评多少条（None = 全量）
         verbose_every: 每多少条打印一次进度
 
@@ -327,6 +422,11 @@ def main():
         max_examples=None, verbose_every=0,
     )
     logger.info(f"Method 2 (logprob) on mock data: {results}")
+
+    # Method 3（teacher-forcing）：mock 数据无独立选项上下文，
+    # choices=None 退化为字母 token teacher forcing（打分面同 Method 2）
+    tf_pred, tf_scores = predict_choice_teacher_forcing(model, tokenizer, get_prompt(format_prompt(data[0]), tokenizer, "cpu"))
+    logger.info(f"Method 3 (teacher-forcing) first example: pred={tf_pred} scores={tf_scores}")
 
     baseline = random_guess_baseline(num_questions=100, num_choices=4, seed=123)
     logger.info(f"random guess baseline: {baseline}")

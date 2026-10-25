@@ -170,15 +170,16 @@ def load_weights_into_qwen(model, param_config, params):
     # ------------------------------
     # output head
     # ------------------------------
-    if "lm_head.weight" in params:
+    if param_config.get("tie_word_embeddings", False):
+        # Model uses weight tying: 加载过程把 tok_embed.weight 替换成了新
+        # Parameter，此处重新建立 out_head 与 tok_embed 的共享（不再读 lm_head）
+        print("Model uses weight tying.")
+        model.out_head.weight = model.tok_embed.weight
+    elif "lm_head.weight" in params:
         model.out_head.weight = assign(model.out_head.weight, params["lm_head.weight"], "lm_head.weight")
     else:
-        # version 1
-        # model.out_head.weight = model.tok_embed.weight
-        # logger.info("Model uses weight tying.")
-        # version 2
-        # Model uses weight tying, hence we reuse the embedding layer weights here
-        print("Model uses weight tying.")
+        # 未 tie 且 checkpoint 无独立 lm_head：复制 embedding 到 out_head
+        # （等效于逐值共享，但两者仍是独立 Parameter）
         model.out_head.weight = assign(
             model.out_head.weight, params["model.embed_tokens.weight"], "model.embed_tokens.weight"
         )

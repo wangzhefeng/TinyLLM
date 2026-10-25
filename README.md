@@ -30,7 +30,7 @@ python run_bert.py --help
 python run_llama.py --help
 python run_qwen.py --help
 
-# 后训练统一入口；任务：sft_clf / sft_ins / dpo
+# 后训练统一入口；任务：sft_clf / sft_ins / dpo / grpo / reinforce / distill_reasoning
 python post_training/run.py --task sft_ins --help
 
 # 测试与文档检查

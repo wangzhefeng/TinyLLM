@@ -62,8 +62,9 @@ class Model(nn.Module):
         x = tok_embeds
         # tokenized text shape
         batch_size, num_tokens = x.shape[0], x.shape[1]
-        if attn_mask is None:
-            attn_mask = attention_mask
+        if attn_mask is None and attention_mask is not None:
+            # attention_mask 按统一约定 True=屏蔽；内部 attn_mask 维持 1=keep
+            attn_mask = ~attention_mask.to(torch.bool)
         if position_ids is not None:
             pos_start = int(position_ids[0, 0].item())
         elif cache is not None:

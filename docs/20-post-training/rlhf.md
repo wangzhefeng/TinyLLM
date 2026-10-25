@@ -7,7 +7,7 @@
 | 方法 | 实现 | 状态 |
 |---|---|---|
 | REINFORCE / with-baseline | `post_training/reasoning/training/reinforce.py` | ✅ from scratch |
-| GRPO（RLVR 主线） | `post_training/rl/core.py` + `objectives.py` | ✅ from scratch（completion mask + clip + 可选 KL + 多 prompt 批处理） |
+| GRPO（RLVR 主线） | `post_training/rl/`（core + objectives + batched + grpo_variants） | ✅ from scratch（completion mask + clip-higher + k1/k3 KL + Dr.GRPO 归一 + 批量采样；真实训练入口 `--task grpo`，见 [reasoning](reasoning.md)） |
 | DPO | `post_training/preference/`（自研）+ `model_rlhf/grpo/*`（TRL 参考） | ✅ 自研可运行 |
 | PPO | `post_training/preference/model_rlhf/ppo/main.py` | ✅ from scratch（序列级 bandit：critic 价值基线 + clip + 可选 k3 KL；与 GRPO 对照——GRPO 用组归一化优势替代 critic） |
 | Reward Model（RLHF 一阶段） | `post_training/preference/rm/`（2026-10-24） | ✅ from scratch（价值头 + BT 成对损失） |
@@ -43,5 +43,7 @@
 
 - [Qwen Scheduler GRPO](https://huggingface.co/anakin87/qwen-scheduler-7b-grpo)
 - DeepSeekMath/GRPO: https://arxiv.org/abs/2402.03300
+- ch07 改进变体（DeepSeek V3.2 style / OLMo3 style（DAPO·Dr.GRPO）/ GDPO）移植于
+  `post_training/rl/grpo_variants.py`，各函数 docstring 注明原文路径；
 - 教学链对照：REINFORCE → REINFORCE-with-baseline → GRPO（组归一化优势 + PPO clip），
   见 [reasoning](reasoning.md)。

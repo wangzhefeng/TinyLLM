@@ -30,8 +30,8 @@ def load_weights_hf_safetensors(gpt, params):
         return torch.nn.Parameter(right.detach())
     
     # embedding
-    gpt.pos_emb.weight = assign(gpt.pos_emb.weight, params["wpe.weight"])
-    gpt.tok_emb.weight = assign(gpt.tok_emb.weight, params["wte.weight"])
+    gpt.pos_embed.weight = assign(gpt.pos_embed.weight, params["wpe.weight"])
+    gpt.tok_embed.weight = assign(gpt.tok_embed.weight, params["wte.weight"])
     # other layers
     for b in range(len(gpt.trf_blocks)):
         q_w, k_w, v_w = torch.chunk(params[f"h.{b}.attn.c_attn.weight"], 3, axis=-1)

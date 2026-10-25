@@ -18,7 +18,7 @@ python -u ./post_training/sft/run/run_gpt_clf_sft.py \
     --pretrained_model 'gpt2-small (124M)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
     --pretrained_model_source huggingface_gpt2 \
-    --finetuned_model_path ./results/finetuned_models \
+    --finetuned_model_path ./results/checkpoints/sft \
     --finetune_method simple \
     --tokenizer_model gpt2 \
     --seed 123 \
@@ -28,7 +28,7 @@ python -u ./post_training/sft/run/run_gpt_clf_sft.py \
     --learning_rate 0.00005 \
     --lradj type1 \
     --weight_decay 0.1 \
-    --checkpoints ./results/finetuned_models \
+    --checkpoints ./results/checkpoints/sft \
     --test_results ./results/test_results \
     --num_workers 0 \
     --use_gpu 1 \

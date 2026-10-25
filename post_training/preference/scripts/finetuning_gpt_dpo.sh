@@ -23,7 +23,7 @@ python -u ./post_training/preference/model_rlhf/dpo/run_gpt_dpo.py \
     --pretrained_model 'gpt2-medium (355M)' \
     --pretrained_model_path ./downloaded_models/gpt2_model \
     --pretrained_model_source huggingface_gpt2 \
-    --finetuned_model_path ./results/finetuned_models/tiny_gpt_instruction_sft_gpt_finetune_instruction_instruction-dat_cl1024_te10_bs8/0/gpt2-medium355M-sft.pth \
+    --finetuned_model_path ./results/checkpoints/sft/tiny_gpt_instruction_sft_gpt_finetune_instruction_instruction-dat_cl1024_te10_bs8/0/gpt2-medium355M-sft.pth \
     --tokenizer_model gpt2 \
     --seed 123 \
     --iters 1 \
@@ -34,8 +34,8 @@ python -u ./post_training/preference/model_rlhf/dpo/run_gpt_dpo.py \
     --max_new_tokens 256 \
     --temperature 1.0 \
     --top_k 2 \
-    --checkpoints ./results/finetuned_models \
-    --model_path ./results/finetuned_models \
+    --checkpoints ./results/checkpoints/dpo \
+    --model_path ./results/checkpoints/dpo \
     --test_results ./results/test_results \
     --num_workers 0 \
     --use_gpu 1 \

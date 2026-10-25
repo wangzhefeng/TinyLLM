@@ -36,6 +36,7 @@ if ROOT not in sys.path:
 import re
 import json
 import warnings
+from tokenize import TokenError
 warnings.filterwarnings("ignore")
 
 from sympy.parsing import sympy_parser as spp
@@ -51,24 +52,16 @@ from utils.log_util import logger
 # ------------------------------
 # Extract final answer box
 # ------------------------------
-def get_last_boxed(text):
-    # Find the last occurrence of "\boxed"
-    boxed_start_idx = text.rfind(r"\boxed")
-    if boxed_start_idx == -1:
-        return None
-
-    # Get position after "\boxed"
+def _parse_boxed_at(text, boxed_start_idx):
+    """解析 text[boxed_start_idx:] 处的 \\boxed{...}；未闭合/畸形返回 None。"""
     current_idx = boxed_start_idx + len(r"\boxed")
 
-    # Skip any whitespace after "\boxed"
     while current_idx < len(text) and text[current_idx].isspace():
         current_idx += 1
 
-    # Expect an opening brace "{"
     if current_idx >= len(text) or text[current_idx] != "{":
         return None
 
-    # Parse the braces with nesting
     current_idx += 1
     brace_depth = 1
     content_start_idx = current_idx
@@ -81,12 +74,27 @@ def get_last_boxed(text):
             brace_depth -= 1
         current_idx += 1
 
-    # Account for unbalanced braces
     if brace_depth != 0:
         return None
 
-    # Extract content inside the outermost braces
-    return text[content_start_idx:current_idx-1]
+    return text[content_start_idx:current_idx - 1]
+
+
+def get_last_boxed(text):
+    """取最后一个完整闭合的 \\boxed{...} 内容。
+
+    生成被 max_tokens 截断在未闭合的 \\boxed 上时，向前回退到上一个
+    完整 boxed，而不是直接返回 None（重复作答型输出的常见形态）。
+    """
+    search_from = len(text)
+    while True:
+        boxed_start_idx = text.rfind(r"\boxed", 0, search_from)
+        if boxed_start_idx == -1:
+            return None
+        content = _parse_boxed_at(text, boxed_start_idx)
+        if content is not None:
+            return content
+        search_from = boxed_start_idx
 
 
 def extract_final_candidate(text, fallback="number_then_full"):
@@ -259,6 +267,10 @@ def sympy_parser(expr):
         )
     except (SympifyError, SyntaxError, TypeError, IndexError):
         return None
+    except TokenError:
+        # 全文回退的候选文本可能含不可打印字符，tokenize 直接抛
+        # TokenError；按解析失败处理而非让整轮评测崩溃
+        return None
 
 
 def equality_check(expr_gtruth, expr_pred):
@@ -406,13 +418,25 @@ def load_math500_data(
 # ------------------------------
 # Evaluating Model
 # ------------------------------
-def render_prompt(prompt):
+COT_SUFFIX = (
+    " \n\nExplain step by step."
+)
+
+
+def render_prompt(prompt, cot=False):
+    """渲染 MATH-500 提示模板（reasoning ch03）。
+
+    cot=True 时在模板末尾追加思维链指令（对应书 ch04 的 prompt_suffix
+    机制：prompt = render_prompt(...) + cot_suffix）；默认行为不变。
+    """
     template = (
         "You are a helpful math assistant.\n"
         "Answer the question and write the final result on a new line as:\n"
         "\\boxed{ANSWER}\n\n"
         f"Question:\n{prompt}\n\nAnswer:"
     )
+    if cot:
+        template += COT_SUFFIX
     return template
 
 

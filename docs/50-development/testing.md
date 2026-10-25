@@ -68,6 +68,31 @@ CI 位于 `.github/workflows/tests.yml`：pull request 运行 unit、integration
 - `test_olmo3` / `test_qwen3_5`：官方配置锁定、参数量解析校验、滑窗窗外
   不变性、delta net 因果性与分块一致、cache 增量=整段、CausalLM 协议。
 
+2026-10-24 新增（对照 reasoning-from-scratch 补缺）：
+
+- `test_math500_harness`：端到端评测循环的 accuracy/报告结构/落盘往返、CoT 模板、
+  加权 self-consistency（scorer 偏向与全零退化）、generate_fn 注入、批量评测替身；
+- `test_grpo`（扩展）：clip-higher 不对称截断、k1/k3 数值、seq_sum_mean 归一、
+  诊断量、rewards、clip fraction、MetricsTracker CSV、batched 与串行采样一致；
+- `test_distillation`（扩展）：`distill_sft_epoch` 批量 CE、pad 不影响 loss；
+- `test_hf_export`：导出 safetensors 键名/数值往返、config 字段、MoE 拒绝、wrapper allclose；
+- `test_weight_tying`（扩展 Qwen3）：真共享参数、参数量差、tie 加载路径重绑定；
+- `test_inference_time_scaling`（扩展）：advanced parser、teacher-forcing MMLU；
+- `test_args_tools`：DotDict 契约（getattr 默认值生效、缺键抛 AttributeError、
+  下标访问仍 KeyError、deepcopy 语义）；
+- `test_gpt2_loading`：三个 gpt2 加载器（HF/safetensors/官方 TF）合成权重
+  映射到现行 `tok_embed/pos_embed` 命名，本地缓存存在时 `load_model("gpt2-124m")`
+  真实加载+生成冒烟。
+
+2026-10-25 新增（真实 0.6B 评测链运行抓出的缺陷回归）：
+
+- `test_inference`（扩展）：`generate_qwen3_batched_cache` 右填充 batch 与
+  逐条生成贪心逐 token 一致（attention_mask True=屏蔽 语义、prefill 按
+  各行真实末位取 logits 而非统一 `[:, -1]`）；
+- `test_inference_time_scaling`（扩展）：max_tokens 截断在未闭合 `\boxed`
+  时回退取上一个完整 boxed；advanced parser 断言按 antlr4 有无自适应
+  （FiniteSet 集合多重集比较、sympify 优先于 LaTeX 解析）。
+
 ## 集成测试约定
 
 - `test_tiny_pretrain_resume.py` 使用合成文本真实执行两轮训练与 latest 恢复。

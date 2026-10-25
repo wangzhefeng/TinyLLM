@@ -11,6 +11,26 @@
 | `models/io/gemma3/` | Gemma3 270M | safetensors 下载与映射（已闭环，2026-10-24：属性名对齐模型、tying 分支、`_load_gemma3` 接入 registry） |
 | `models/io/llama/` | Llama 2 / 3 | Meta/HF 权重加载（Llama 3.2 1B tying 支持） |
 | `models/io/phi/` | Phi-1.5 | HF safetensors 下载与 Wqkv 拆分映射（2026-10-24） |
+| `models/io/export/` | Qwen3 -> HF | 本地权重导出 HF Transformers 目录（2026-10-24，reasoning ch08） |
+
+## HF 导出（models/io/export）
+
+`export_to_hf(model, out_dir, cfg, tokenizer_dir=None)` 把本地 Qwen3 state_dict 键名
+反向映射到 HF Qwen3 命名（`load_weights_into_qwen` 的逆映射，见
+`local_to_hf_state_dict`），safetensors 落 `model.safetensors`，并生成 HF 格式
+`config.json`（Qwen3ForCausalLM 字段，从 cfg 推导）与 `generation_config.json`
+（eos/pad 优先取 `tokenizer_dir/tokenizer.json`）。仅支持 dense（MoE 显式拒绝）。
+
+```python
+from models.io.export import hf_export
+
+hf_export.export_to_hf(model, "results/hf_export", config, tokenizer_dir="downloaded_models/qwen3_model/Qwen3-0.6B-base-for-reasoning")
+```
+
+wrapper 方案 `hf_export.TinyLLMForCausalLM`（`TinyLLMConfig`）继承
+`transformers.PreTrainedModel` 包住本地 Model 的 forward（input_ids -> logits），
+transformers 懒加载（未安装时模块导入不受影响）。参考上游
+rasbt/reasoning-from-scratch `ch08/06_use_via_huggingface`。
 
 ## 使用约定
 

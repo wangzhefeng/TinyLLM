@@ -96,7 +96,7 @@ conversations = [ex["prompt"] for ex in ds]
 # Perform inference and save the results
 outputs = llm.chat(conversations, sampling_params=SamplingParams(max_tokens=2000))
 
-path = f"results/{MODEL_NAME.split('/')[-1]}"
+path = f"results/checkpoints/{MODEL_NAME.split('/')[-1]}"
 os.makedirs(path, exist_ok=True)
 
 for i, output in enumerate(outputs):

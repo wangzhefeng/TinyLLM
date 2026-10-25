@@ -17,13 +17,13 @@ TinyLLM/
 ├── layers/                # 共享层、cache、tokenizer、chat template
 ├── config/、utils/        # typed config 与通用工具
 ├── tools/                 # 独立工具库
-├── dataset/、results/     # 输入与输出（gitignored）
+├── dataset/、results/、logs/  # 数据与输出（gitignored）
 ├── tests/                 # unit / integration
 ├── docs/、scripts/
 └── run_*.py               # 预训练薄入口
 ```
 
-所有训练和推断产出统一写入 `results/`。旧 `inference/loaders/` 与 reasoning 旧路径只承担兼容转发。
+所有训练和推断产出统一写入 `results/`（结论性产物），过程性输出（服务日志、metrics）写入 `logs/`，判据见 [outputs](../50-development/outputs.md)。旧 `inference/loaders/` 与 reasoning 旧路径只承担兼容转发。
 
 ## 2. 三个主域
 
@@ -46,8 +46,8 @@ GPT-2/Llama/Qwen 入口复用根 parser 和实验流程；BERT 使用独立 enco
 | `sft/` | 分类微调、指令 SFT、BERT 情感分类 |
 | `peft/` | LoRA/QLoRA/adapter/prefix/prompt 与参考实验 |
 | `preference/` | DPO/PPO 及偏好数据 |
-| `reasoning/training/` | 推理能力训练、蒸馏 |
-| `rl/` | GRPO/PPO/REINFORCE 共享采样、logprob、mask、clipped objective |
+| `reasoning/` | 推理能力训练、蒸馏、教师数据生成（`data_gen.py`）与蒸馏训练入口 |
+| `rl/` | GRPO/PPO/REINFORCE 采样、logprob、mask、clipped objective；rewards/tracking/batched、GRPO 变体与训练入口 |
 | `common/` | 少量共享数据工具；chat template 已下沉 layers |
 
 统一入口：
@@ -56,6 +56,9 @@ GPT-2/Llama/Qwen 入口复用根 parser 和实验流程；BERT 使用独立 enco
 python post_training/run.py --task sft_clf --help
 python post_training/run.py --task sft_ins --help
 python post_training/run.py --task dpo --help
+python post_training/run.py --task grpo --help
+python post_training/run.py --task reinforce --help
+python post_training/run.py --task distill_reasoning --help
 ```
 
 ### 2.3 `inference/`
@@ -66,8 +69,8 @@ python post_training/run.py --task dpo --help
 | `generation.py`、`generate_core.py` | 统一生成 facade 与教材解码 |
 | `strategies/` | self-consistency、best-of-n、self-refinement、投机解码 |
 | `serving/nano_vllm/` | 独立 serving 优化栈 |
-| `api/` | Ollama / OpenAI 客户端 |
-| `evaluation/` | benchmarks、judges、leaderboards 与统一 judge |
+| `api/` | Ollama / OpenAI / OpenRouter 客户端 |
+| `evaluation/` | benchmarks（含 advanced parser）、judges、leaderboards、MATH-500 harness（`evaluation/harness/`）与统一 judge |
 | `apps/`、`examples/`、`scripts/` | Chainlit UI 与示例 |
 
 批量与流式 facade 均只返回新增文本；GPT-2/Qwen3 默认使用外部 KV cache。`generate_core.py` 中 batched/optimized 变体属于实验后端，不是默认公开链路。
@@ -81,7 +84,7 @@ python post_training/run.py --task dpo --help
 | `training/distributed.py` | 主链路分布式兼容接口 |
 | `training/callbacks/` | early stopping、采样等可选回调 |
 | `models/base.py` | CausalLM/EncoderLM 轻量协议 |
-| `models/io/` | GPT-2/Qwen3/Llama/Gemma3/Phi-1.5 权重加载唯一实现 |
+| `models/io/` | GPT-2/Qwen3/Llama/Gemma3/Phi-1.5 权重加载与 HF 导出（`export/`）唯一实现 |
 | `layers/` | attention、block、FFN、norm、RoPE、MoE、cache、tokenizers |
 | `config/` | `ModelConfig`、`TrainConfig`、`GenerationConfig` 与兼容适配 |
 | `tools/` | checkpoint、data、profiling、distributed；不依赖三个主域 |

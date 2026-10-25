@@ -7,12 +7,18 @@
 # * Date        : 2026-10-20
 # * Version     : 1.0.102000
 # * Description : Chainlit 聊天 UI（合并原 app_orig.py / app_own.py）。
-#               用环境变量 GPT2_WEIGHTS=orig|own（默认 own）选择权重来源：
-#                 - orig：官方 GPT-2 124M 权重（下载到 downloaded_models/gpt2）
-#                 - own ：自训 checkpoint（环境变量 GPT2_CHECKPOINT，默认仓根下 model.pth）
+#               用环境变量 APP_MODEL=gpt2|qwen3（默认 gpt2）选择模型：
+#                 - gpt2：GPT-2 124M，权重来源用 GPT2_WEIGHTS=orig|own（默认 own）
+#                   - orig：官方 GPT-2 124M 权重（下载到 downloaded_models/gpt2）
+#                   - own ：自训 checkpoint（环境变量 GPT2_CHECKPOINT，默认 results/checkpoints/gpt2/model.pth）
+#                 - qwen3：经 inference.loading.load_model 加载（默认 key qwen3-0.6b，
+#                   QWEN3_MODEL_KEY 可覆盖），format_qwen3_chat 组 prompt，
+#                   generate_text_stream 流式输出，<think>...</think> 与回答分离渲染
+#               （qwen3 模式 UI 提供 thinking 开关；shim 入口 app_orig/app_own 不变）
 # * Link        : link
 # * Requirement : pip install chainlit（可选依赖，不在主 requirements 中）；
-#               orig 模式另需 tensorflow（仅读官方 TF checkpoint 时需要）
+#               gpt2 orig 模式另需 tensorflow（仅读官方 TF checkpoint 时需要）；
+#               qwen3 模式另需下载好的 Qwen3 权重与 tokenizer.json
 # ***************************************************
 
 __all__ = []
@@ -53,7 +59,12 @@ LOGGING_LABEL = Path(__file__).name[:-3]
 os.environ['LOG_NAME'] = LOGGING_LABEL
 from utils.log_util import logger
 
-# 权重来源：orig = 官方 GPT-2 124M 权重；own = 自训 checkpoint
+# 模型选择：gpt2（默认）| qwen3
+APP_MODEL = os.environ.get("APP_MODEL", "gpt2").lower()
+if APP_MODEL not in ("gpt2", "qwen3"):
+    raise ValueError(f"APP_MODEL must be 'gpt2' or 'qwen3', got: {APP_MODEL}")
+
+# 权重来源（仅 gpt2 生效）：orig = 官方 GPT-2 124M 权重；own = 自训 checkpoint
 WEIGHTS_SOURCE = os.environ.get("GPT2_WEIGHTS", "own").lower()
 if WEIGHTS_SOURCE not in ("orig", "own"):
     raise ValueError(f"GPT2_WEIGHTS must be 'orig' or 'own', got: {WEIGHTS_SOURCE}")
@@ -62,7 +73,67 @@ if WEIGHTS_SOURCE not in ("orig", "own"):
 device = device_setting(verbose=True)
 
 
-def get_model_and_tokenizer():
+# ------------------------------
+# <think>...</think> 流式分离
+# ------------------------------
+THINK_OPEN = "<think>"
+THINK_CLOSE = "</think>"
+
+
+class _ThinkSplitter:
+    """把流式生成的文本 fragment 按 <think>/</think> 标签分成两条通道。
+
+    feed(text) 返回 (thinking_text, answer_text)：本次应分别追加到
+    thinking 与正式回答的片段；跨 fragment 切开的半个标签会先扣留，
+    待下一 fragment 拼齐后再判定（</think> 之后全部归入回答通道）。
+    """
+
+    def __init__(self):
+        self.in_think = False
+        self.closed = False
+        self._pending = ""
+
+    def feed(self, text):
+        self._pending += text
+        out_think, out_answer = "", ""
+        while self._pending:
+            if self.closed:
+                out_answer += self._pending
+                self._pending = ""
+                break
+            marker = THINK_CLOSE if self.in_think else THINK_OPEN
+            idx = self._pending.find(marker)
+            if idx >= 0:
+                chunk = self._pending[:idx]
+                if self.in_think:
+                    out_think += chunk
+                else:
+                    out_answer += chunk
+                self._pending = self._pending[idx + len(marker):]
+                if self.in_think:
+                    self.in_think = False
+                    self.closed = True
+                else:
+                    self.in_think = True
+                continue
+            # 无完整标签：扣留可能是标签前缀的尾部
+            keep = 0
+            for k in range(min(len(marker) - 1, len(self._pending)), 0, -1):
+                if marker.startswith(self._pending[-k:]):
+                    keep = k
+                    break
+            emit = self._pending[:len(self._pending) - keep]
+            if emit:
+                if self.in_think:
+                    out_think += emit
+                else:
+                    out_answer += emit
+                self._pending = self._pending[len(emit):]
+            break
+        return out_think, out_answer
+
+
+def _load_gpt2_for_app():
     # model config (gpt2-small 124M)
     model_config = {
         "vocab_size": 50257,     # Vocabular size
@@ -100,8 +171,8 @@ def get_model_and_tokenizer():
         model = Model(model_config)
         load_weights_download(model, params)
     else:
-        # 自训 checkpoint（路径可用环境变量 GPT2_CHECKPOINT 覆盖，默认仓根下 model.pth）
-        model_path = Path(os.environ.get("GPT2_CHECKPOINT", str(Path(ROOT) / "model.pth")))
+        # 自训 checkpoint（路径可用环境变量 GPT2_CHECKPOINT 覆盖，默认 results/checkpoints/gpt2/model.pth）
+        model_path = Path(os.environ.get("GPT2_CHECKPOINT", str(Path(ROOT) / "results/checkpoints/gpt2/model.pth")))
         if not model_path.exists():
             logger.info(f"Could not find the {model_path} file.")
             sys.exit()
@@ -111,12 +182,107 @@ def get_model_and_tokenizer():
     model.to(device)
     model.eval()
 
-    return tokenizer, model, model_config
+    return tokenizer, model, model_config, {}
+
+
+def _load_qwen3_for_app():
+    """Qwen3：经 inference.loading.load_model 加载（registry key 可用环境变量覆盖）。"""
+    from inference.loading import load_model
+    from inference.registry import get_model_spec
+
+    model_key = os.environ.get("QWEN3_MODEL_KEY", "qwen3-0.6b")
+    get_model_spec(model_key)
+    model, config, extras = load_model(model_key, device=str(device))
+    tokenizer = choose_tokenizer("qwen3", tokenizer_file_path=extras["tokenizer_file_path"])
+    gen_config = DotDict({
+        "tokenizer_model": "qwen3",
+        "context_length": config.context_length,
+        "max_new_tokens": 2048,
+        "temperature": 0.6,
+        "top_k": None,
+        "top_p": 0.95,
+        "eos_id": tokenizer.eos_token_id,
+        "use_cache": True,
+    })
+    return tokenizer, model, gen_config, extras
+
+
+def get_model_and_tokenizer():
+    if APP_MODEL == "qwen3":
+        return _load_qwen3_for_app()
+    return _load_gpt2_for_app()
 
 
 if chainlit is not None:
     # Obtain the necessary tokenizer and model files for the chainlit function below
-    tokenizer, model, model_config = get_model_and_tokenizer()
+    tokenizer, model, model_config, load_extras = get_model_and_tokenizer()
+    logger.info(f"[app.py] APP_MODEL={APP_MODEL} loaded")
+
+
+    @chainlit.on_chat_start
+    async def on_chat_start():
+        """会话初始化：qwen3 模式提供 thinking 开关（写入 user_session）。"""
+        chainlit.user_session.set("add_thinking", False)
+        if APP_MODEL == "qwen3":
+            settings = await chainlit.ChatSettings([
+                chainlit.input_widget.Switch(
+                    "add_thinking", "启用 thinking（生成 <think>...</think> 后再回答）",
+                    initial=False,
+                ),
+            ]).send()
+            chainlit.user_session.set("add_thinking", settings["add_thinking"])
+
+
+    @chainlit.on_settings_update
+    async def on_settings_update(settings):
+        chainlit.user_session.set("add_thinking", settings["add_thinking"])
+
+
+    async def _run_qwen3_stream(content, add_thinking):
+        """qwen3：chat 模板组 prompt -> generate_text_stream 流式输出。
+
+        <think>...</think> 段写入 author="Thinking" 的独立消息，
+        正式回答写入默认助手消息，两者随生成逐 token 更新。
+        """
+        from inference.generation import generate_text_stream
+        from layers.tokenizers.chat import format_qwen3_chat
+
+        prompt = format_qwen3_chat(
+            content, add_generation_prompt=True, add_thinking=add_thinking,
+        )
+        stream = generate_text_stream(
+            model,
+            prompt,
+            family="qwen3",
+            tokenizer_file_path=load_extras.get("tokenizer_file_path"),
+            device=str(device),
+            max_new_tokens=model_config.max_new_tokens,
+            context_length=model_config.context_length,
+            temperature=model_config.temperature,
+            top_k=model_config.top_k,
+            top_p=model_config.top_p,
+            eos_token_id=model_config.eos_id,
+            use_cache=model_config.use_cache,
+        )
+
+        splitter = _ThinkSplitter()
+        answer_msg = chainlit.Message(content="")
+        await answer_msg.send()
+        think_msg = None
+        try:
+            for fragment in stream:
+                think_text, answer_text = splitter.feed(fragment)
+                if think_text:
+                    if think_msg is None:
+                        think_msg = chainlit.Message(content="", author="Thinking")
+                        await think_msg.send()
+                    await think_msg.stream_token(think_text)
+                if answer_text:
+                    await answer_msg.stream_token(answer_text)
+        finally:
+            if think_msg is not None:
+                await think_msg.update()
+            await answer_msg.update()
 
 
     # 测试代码 main 函数
@@ -125,10 +291,16 @@ if chainlit is not None:
         """
         The Main Chainlit function
         """
+        if APP_MODEL == "qwen3":
+            await _run_qwen3_stream(
+                message.content,
+                add_thinking=chainlit.user_session.get("add_thinking") or False,
+            )
+            return
         token_ids = generate(
             model=model,
             token_ids=text_to_token_ids(
-                message.content, 
+                message.content,
                 tokenizer_model=model_config.tokenizer_model
             ).to(device),
             max_new_tokens=model_config.max_new_tokens,
@@ -146,7 +318,7 @@ else:
     def main(*args, **kwargs):
         raise RuntimeError(
             "chainlit 未安装，无法启动聊天 UI。请先 pip install chainlit，"
-            "再用 inference/scripts/run_app.sh [orig|own] 启动。"
+            "再用 inference/scripts/run_app.sh [orig|own] [gpt2|qwen3] 启动。"
         )
 
 if __name__ == "__main__":

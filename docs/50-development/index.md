@@ -10,6 +10,7 @@
 |---|---|
 | [testing.md](testing.md) | 单元测试、运行方式、测试目录约定 |
 | [datasets.md](datasets.md) | `dataset/` 布局与代码路径 |
+| [outputs.md](outputs.md) | `logs/` 与 `results/` 输出产物路径约定 |
 | [utils.md](utils.md) | 共享训练/日志/设备工具 |
 | [cleanup-log.md](cleanup-log.md) | 已清理内容与当前遗留 |
 | [reference-projects.md](reference-projects.md) | 已移除外部项目的上游链接 |

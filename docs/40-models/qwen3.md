@@ -22,6 +22,22 @@
 - 支持 KV cache 与 batched/streaming 生成；计算精度跟随 `cfg.dtype`（不再硬编码 bf16）
 - RoPE 越界防护：cache 位置超过 `context_length` 时抛出明确的 IndexError
 
+## Weight tying
+
+`config/base.ModelConfig.tie_word_embeddings` 控制输出头与词嵌入共享：
+
+- 官方 Qwen3 尺寸：**0.6B / 1.7B / 4B 为 `True`**，8B / 14B / 32B / 30B-A3B 为 `False`
+  （Qwen3.5-4B 亦为 `True`）；
+- `models/qwen3/qwen3.py`：`Model.__init__` 中 tie 开启时
+  `self.out_head.weight = self.tok_embed.weight`（真共享同一 Parameter，
+  `state_dict` 两个键指向同一份物理存储）；
+- `models/io/qwen3/load_weights.py`：`load_weights_into_qwen` 在 tie 时
+  跳过 `lm_head.weight` 覆盖，并在 embed 加载后重新绑定共享
+  （`assign` 会把 `tok_embed.weight` 替换成新 Parameter）；未 tie 且
+  checkpoint 无独立 lm_head 时保留"复制 embedding"兼容路径；
+- tie 模型的唯一参数量比未 tie 少 `vocab_size × embed_dim`
+  （`utils/model_memory.py` 的 `total_params_normalized` 自动扣除）。
+
 ## 相关
 
 - [推断 loaders](../30-inference/loaders.md)

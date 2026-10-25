@@ -16,6 +16,7 @@
 
 __all__ = [
     "self_consistency",
+    "weighted_self_consistency",
     "best_of_n",
     "extract_boxed_answer",
 ]
@@ -84,9 +85,10 @@ def _majority_vote(answers, return_counts=False):
 
 
 def self_consistency(model, token_ids, num_samples=8, extract_answer=None,
-                     decode_fn=None, max_new_tokens=64, context_length=None,
-                     temperature=0.8, top_k=None, top_p=None, eos_token_id=None,
-                     return_all=False, return_counts=False):
+                     decode_fn=None, generate_fn=None, max_new_tokens=64,
+                     context_length=None, temperature=0.8, top_k=None,
+                     top_p=None, eos_token_id=None, return_all=False,
+                     return_counts=False):
     """Self-Consistency（自洽性投票，reasoning ch04）。
 
     对同一 prompt 采样 ``num_samples`` 条生成，用 ``extract_answer``
@@ -101,6 +103,9 @@ def self_consistency(model, token_ids, num_samples=8, extract_answer=None,
         num_samples: 采样条数
         extract_answer: callable[str, object]；None 时按完整生成文本投票
         decode_fn: callable[tensor, str]；None 时用调试用默认解码
+        generate_fn: callable[token_ids, str]；None 时走 _generate_one 采样
+            路径；传入则每条样本改由它生成（返回解码后文本），便于评测
+            harness 注入批量/替身生成
         return_counts: True 时在返回值末尾附带票数 Counter（诊断平票用）
 
     Returns:
@@ -111,9 +116,12 @@ def self_consistency(model, token_ids, num_samples=8, extract_answer=None,
     decode_fn = decode_fn or _default_decode_fn
     answers = []
     for _ in range(num_samples):
-        out = _generate_one(model, token_ids, max_new_tokens, context_length,
-                            temperature, top_k, top_p, eos_token_id)
-        text = decode_fn(out)
+        if generate_fn is not None:
+            text = generate_fn(token_ids)
+        else:
+            out = _generate_one(model, token_ids, max_new_tokens, context_length,
+                                temperature, top_k, top_p, eos_token_id)
+            text = decode_fn(out)
         answer = extract_answer(text) if extract_answer is not None else text
         answers.append((text, answer))
 
@@ -127,13 +135,69 @@ def self_consistency(model, token_ids, num_samples=8, extract_answer=None,
     return majority
 
 
+def weighted_self_consistency(model, token_ids, scorer_fn, num_samples=8,
+                              extract_answer=None, decode_fn=None,
+                              generate_fn=None, max_new_tokens=64,
+                              context_length=None, temperature=0.8, top_k=None,
+                              top_p=None, eos_token_id=None, return_all=False):
+    """Weighted Self-Consistency（加权自洽投票，reasoning ch05）。
+
+    采样 ``num_samples`` 条生成 -> ``scorer_fn(text) -> float`` 逐条打分 ->
+    以分数为权重对规范化答案加权投票；所有分数为 0 时退化为普通多数投票
+    （:func:`_majority_vote`，含首次出现最早的平票规则）。与 self_consistency
+    的区别：答案质量由外部打分器（启发式/验证器/平均 logprob）塑形，
+    而非每票等权。
+
+    Args:
+        scorer_fn: callable[str, float]；对每条完整生成文本打分
+        extract_answer: callable[str, object]；None 时按完整文本投票
+        generate_fn: callable[token_ids, str]；None 时走 _generate_one 采样
+
+    Returns:
+        return_all=False: 加权票最高的答案
+        return_all=True: (答案, [(text, answer, score), ...])
+    """
+    decode_fn = decode_fn or _default_decode_fn
+    samples = []
+    for _ in range(num_samples):
+        if generate_fn is not None:
+            text = generate_fn(token_ids)
+        else:
+            out = _generate_one(model, token_ids, max_new_tokens, context_length,
+                                temperature, top_k, top_p, eos_token_id)
+            text = decode_fn(out)
+        answer = extract_answer(text) if extract_answer is not None else text
+        samples.append((text, answer, float(scorer_fn(text))))
+
+    weighted = Counter()
+    for _, answer, score in samples:
+        weighted[answer] += score
+    best_score = max(weighted.values(), default=0.0)
+    if best_score > 0:
+        winner = None
+        for answer, score in weighted.items():    # 首次出现顺序遍历，平票取最早
+            if score == best_score:
+                winner = answer
+                break
+    else:
+        winner = _majority_vote([a for _, a, _ in samples])
+
+    if return_all:
+        return winner, samples
+    return winner
+
+
 def best_of_n(model, token_ids, reward_fn, num_samples=8, decode_fn=None,
-              max_new_tokens=64, context_length=None, temperature=0.8,
-              top_k=None, top_p=None, eos_token_id=None, return_all=False):
+              generate_fn=None, max_new_tokens=64, context_length=None,
+              temperature=0.8, top_k=None, top_p=None, eos_token_id=None,
+              return_all=False):
     """Best-of-N（reasoning ch05）：采样 N 条，按 ``reward_fn(text) -> float`` 选最高分。
 
     与 self_consistency 的区别：BoN 需要外部 reward/验证器（如数学答案比对），
     适合有客观标准的任务；self-consistency 只需答案可规范化。
+
+    Args:
+        generate_fn: callable[token_ids, str]；None 时走 _generate_one 采样
 
     Returns:
         return_all=False: (best_text, best_reward)
@@ -142,9 +206,12 @@ def best_of_n(model, token_ids, reward_fn, num_samples=8, decode_fn=None,
     decode_fn = decode_fn or _default_decode_fn
     scored = []
     for _ in range(num_samples):
-        out = _generate_one(model, token_ids, max_new_tokens, context_length,
-                            temperature, top_k, top_p, eos_token_id)
-        text = decode_fn(out)
+        if generate_fn is not None:
+            text = generate_fn(token_ids)
+        else:
+            out = _generate_one(model, token_ids, max_new_tokens, context_length,
+                                temperature, top_k, top_p, eos_token_id)
+            text = decode_fn(out)
         scored.append((text, float(reward_fn(text))))
 
     scored.sort(key=lambda x: x[1], reverse=True)

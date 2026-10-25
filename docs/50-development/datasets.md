@@ -21,6 +21,7 @@ dataset/
 │   ├── sentiment/ + sentiment.zip     # 中文情感分类（text\tlabel，train/valid/test）
 │   ├── medical/AI-ModelScope/       # 医疗 reasoning SFT
 │   ├── math/{orca,gsm8k}/
+│   ├── math_distill/train.jsonl     # ch08 蒸馏教师数据（verified JSONL）
 │   ├── sql/SQL-Create-Context-SFT/
 │   ├── legal/DISC-Law/
 │   ├── lora/llama3_1_8B_instruct_lora/
@@ -39,6 +40,7 @@ dataset/
 | `post_training/sft/bert_sentiment/` | `dataset/finetuning/sentiment/sentiment.{train,valid,test}.data` |
 | `post_training/sft/data_provider/text_clf/data_config.py` | `dataset/finetuning/sms_spam_collection[.zip]` |
 | `post_training/peft/model_peft/deepseek_lora/` | `dataset/finetuning/medical/AI-ModelScope/...` |
+| `post_training/reasoning/{data_gen,run}.py` | `dataset/finetuning/math_distill/train.jsonl`（ch08 蒸馏教师数据） |
 | `post_training/preference/model_rlhf/grpo/qwen_gsm8k_grpo/` | `dataset/finetuning/math/gsm8k/...` |
 | `inference/evaluation/benchmarks/math_verifiers.py` | `dataset/evaluation/math500/math500_test.json` |
 

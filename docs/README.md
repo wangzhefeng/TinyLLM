@@ -38,6 +38,7 @@
 - [代码→文档映射](00-overview/repo-map.md)
 - [测试](50-development/testing.md)
 - [数据集](50-development/datasets.md)
+- [输出产物路径约定](50-development/outputs.md)
 - [清理记录](50-development/cleanup-log.md)
 - [layers/models 审查（2026-10-20）](60-reference/layers-models-audit/index.md)
 - [LLMs-from-scratch 分析](60-reference/llms-from-scratch/index.md)

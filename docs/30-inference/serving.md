@@ -120,6 +120,28 @@ decode 是显存带宽密集型（memory-bound）：每步读取全部权重和 
 * vLLM
 * llama.cpp
 
+## 聊天界面（Chainlit）
+
+`inference/apps/app.py` + `inference/scripts/run_app.sh` 提供本地聊天 UI，
+用法 `bash inference/scripts/run_app.sh [orig|own] [gpt2|qwen3]`：
+
+- **qwen3 模式**：`inference.loading.load_model` 加载（默认 key
+  `qwen3-0.6b`，`QWEN3_MODEL_KEY` 可换），Qwen3 tokenizer，
+  `format_qwen3_chat(..., add_thinking=...)` 组 prompt；
+- **thinking 开关**：Chainlit ChatSettings Switch，开启时模型生成
+  `<think>...</think>` 再回答；
+- **流式输出**：走 `inference/generation.generate_text_stream`（KV cache），
+  `<think>` 段与正式回答分离渲染（thinking 消息独立 author）；
+- gpt2 模式与兼容 shim `app_orig.py` / `app_own.py` 行为不变；
+- chainlit 为可选依赖（`pip install chainlit`）。
+
+## 推断吞吐对比脚本
+
+`inference/scripts/benchmark_compile.py`：eager vs `torch.compile` 的
+tokens/s 对比（`--model` / `--max-new-tokens` / `--repeat`）。设备感知：
+仅 CUDA 跑 compile 对比（Inductor），MPS/CPU 打印说明后只跑 eager；
+每轮用 `generate_stats` 报告 Time / tokens/sec，末尾汇总加速比。
+
 # 资料
 
 * [LLM Inference in Production](https://bentoml.com/llm/)

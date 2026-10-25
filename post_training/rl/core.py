@@ -96,11 +96,17 @@ def generate_group_samples(model, prompt_ids, group_size=4, max_new_tokens=32,
         generated = 0
         for _ in range(max_new_tokens):
             logits = model(seq[:, -ctx_len:])
-            next_idx = sample_next_token(logits[:, -1, :], temperature=temperature,
-                                         top_k=top_k, top_p=top_p)
-            seq = torch.cat([seq, next_idx], dim=1)
-            generated += 1
-            if eos_token_id is not None and bool((next_idx == eos_token_id).all()):
+            last = logits[:, -1, :]
+            if bool(torch.isfinite(last).all()):
+                next_idx = sample_next_token(last, temperature=temperature,
+                                             top_k=top_k, top_p=top_p)
+                seq = torch.cat([seq, next_idx], dim=1)
+                generated += 1
+                if eos_token_id is not None and bool((next_idx == eos_token_id).all()):
+                    break
+            else:
+                # 退化 rollout（NaN/inf logits）：提前截断，避免 NaN 扩散进
+                # 训练（RL 框架处理退化采样的常见做法）
                 break
         samples.append(seq)
         comp_lens.append(generated)
@@ -131,7 +137,10 @@ def compute_group_advantages(rewards: torch.Tensor, eps: float = 1e-8) -> torch.
 
 def compute_grpo_loss(model, samples, old_logprobs, advantages, prompt_len,
                       clip_eps: float = 0.2, kl_beta: float = 0.0,
-                      ref_model=None, completion_lengths=None):
+                      ref_model=None, completion_lengths=None,
+                      clip_eps_high=None, kl_estimator: str = "k3",
+                      loss_norm: str = "token_mean",
+                      return_diagnostics: bool = False):
     """GRPO clipped loss（PPO 式比率裁剪 + 可选 KL 惩罚）。
 
     ``L = -masked_mean( min(ratio·A, clip(ratio, 1±eps)·A) ) + kl_beta · masked_mean(KL)``
@@ -148,6 +157,10 @@ def compute_grpo_loss(model, samples, old_logprobs, advantages, prompt_len,
         completion_lengths: (G,) 每条生成的真实 completion 长度；
             提供时只对真实生成 token 计损（padding 位不进入梯度与 KL），
             None 时退化为全位置参与（旧教学行为）
+        clip_eps_high: clip-higher 上裁剪半径（None 时对称 1+clip_eps）
+        kl_estimator: KL 估计器 "k3" / "k1"
+        loss_norm: "token_mean" / "seq_sum_mean"（Dr.GRPO 式）
+        return_diagnostics: True 时返回 (loss, {"clip_frac", "kl", "ratio_mean"})
     """
     from .objectives import compute_clipped_policy_loss
 
@@ -155,14 +168,18 @@ def compute_grpo_loss(model, samples, old_logprobs, advantages, prompt_len,
         model, samples, old_logprobs, advantages, prompt_len,
         clip_eps=clip_eps, kl_beta=kl_beta, ref_model=ref_model,
         completion_lengths=completion_lengths,
+        clip_eps_high=clip_eps_high, kl_estimator=kl_estimator,
+        loss_norm=loss_norm, return_diagnostics=return_diagnostics,
     )
 
 
 def grpo_update_step(model, optimizer, prompt_ids, reward_fn,
                      group_size=4, max_new_tokens=32, context_length=None,
                      temperature=1.0, top_k=None, top_p=None, eos_token_id=None,
-                     clip_eps=0.2, kl_beta=0.0, ref_model=None, decode_fn=None,
-                     max_grad_norm: float = 1.0, use_completion_mask: bool = True):
+                     clip_eps=0.2, clip_eps_high=None, kl_beta=0.0,
+                     kl_estimator="k3", loss_norm="token_mean", ref_model=None,
+                     decode_fn=None, max_grad_norm: float = 1.0,
+                     use_completion_mask: bool = True):
     """单步 GRPO 更新（reasoning ch06 训练循环的原子操作）。
 
     流程：采样 G 条 -> reward_fn 打分 -> 组内优势 -> clipped PG loss -> 反传更新。
@@ -192,7 +209,8 @@ def grpo_update_step(model, optimizer, prompt_ids, reward_fn,
     loss = compute_grpo_loss(
         model, samples, old_logprobs, advantages,
         prompt_len=prompt_ids.shape[1], clip_eps=clip_eps,
-        kl_beta=kl_beta, ref_model=ref_model,
+        clip_eps_high=clip_eps_high, kl_beta=kl_beta, ref_model=ref_model,
+        kl_estimator=kl_estimator, loss_norm=loss_norm,
         completion_lengths=completion_lengths if use_completion_mask else None,
     )
     loss.backward()
@@ -211,8 +229,10 @@ def grpo_update_step(model, optimizer, prompt_ids, reward_fn,
 def grpo_update_epoch(model, optimizer, prompt_ids_list, reward_fn,
                       group_size=4, max_new_tokens=32, context_length=None,
                       temperature=1.0, top_k=None, top_p=None, eos_token_id=None,
-                      clip_eps=0.2, kl_beta=0.0, ref_model=None, decode_fn=None,
-                      max_grad_norm: float = 1.0):
+                      clip_eps=0.2, clip_eps_high=None, kl_beta=0.0,
+                      kl_estimator="k3", loss_norm="token_mean", ref_model=None,
+                      decode_fn=None, max_grad_norm: float = 1.0,
+                      return_diagnostics: bool = False):
     """一批 prompt 的 GRPO 更新（reasoning ch07 的 batched 工作流）。
 
     对 batch 内每个 prompt 各自采样 group、计算组内优势与 clipped loss，
@@ -221,6 +241,8 @@ def grpo_update_epoch(model, optimizer, prompt_ids_list, reward_fn,
 
     Args:
         prompt_ids_list: [(1, T_i), ...] 一批 prompt 的 token ids（长度可不同）
+        return_diagnostics: True 时结果额外携带 clip_frac / kl / ratio_mean
+            （批内各 prompt 平均）与 mean_completion_len
 
     Returns:
         dict(loss=批内平均 loss, mean_reward=批内平均 reward,
@@ -228,6 +250,8 @@ def grpo_update_epoch(model, optimizer, prompt_ids_list, reward_fn,
     """
     optimizer.zero_grad()
     losses, all_rewards = [], []
+    diags = []
+    comp_len_sum, n_rows = 0.0, 0
     for prompt_ids in prompt_ids_list:
         samples, old_logprobs, completion_lengths = generate_group_samples(
             model, prompt_ids, group_size=group_size, max_new_tokens=max_new_tokens,
@@ -243,9 +267,16 @@ def grpo_update_epoch(model, optimizer, prompt_ids_list, reward_fn,
         loss = compute_grpo_loss(
             model, samples, old_logprobs, advantages,
             prompt_len=prompt_ids.shape[1], clip_eps=clip_eps,
-            kl_beta=kl_beta, ref_model=ref_model,
+            clip_eps_high=clip_eps_high, kl_beta=kl_beta, ref_model=ref_model,
+            kl_estimator=kl_estimator, loss_norm=loss_norm,
             completion_lengths=completion_lengths,
+            return_diagnostics=return_diagnostics,
         )
+        if return_diagnostics:
+            loss, diag = loss
+            diags.append(diag)
+            comp_len_sum += float(completion_lengths.sum())
+            n_rows += len(completion_lengths)
         # 梯度累积（除以批大小，保持与单步等价的学习率语义）
         (loss / len(prompt_ids_list)).backward()
         losses.append(float(loss.item()))
@@ -255,12 +286,20 @@ def grpo_update_epoch(model, optimizer, prompt_ids_list, reward_fn,
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
     optimizer.step()
 
-    return {
+    result = {
         "loss": sum(losses) / len(losses),
         "mean_reward": sum(all_rewards) / len(all_rewards),
         "rewards": all_rewards,
         "num_prompts": len(prompt_ids_list),
     }
+    if return_diagnostics:
+        result.update({
+            "clip_frac": sum(d["clip_frac"] for d in diags) / len(diags),
+            "kl": sum(d["kl"] for d in diags) / len(diags),
+            "ratio_mean": sum(d["ratio_mean"] for d in diags) / len(diags),
+            "mean_completion_len": comp_len_sum / n_rows,
+        })
+    return result
 
 
 # 测试代码 main 函数

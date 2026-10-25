@@ -9,7 +9,7 @@
 # * Description : 【已合并到 app.py，本文件仅为兼容保留】
 #               自训 checkpoint 的 Chainlit UI 入口。
 #               等价于：GPT2_WEIGHTS=own chainlit run ./apps/app.py
-#               （checkpoint 路径用环境变量 GPT2_CHECKPOINT 覆盖，默认 ./model.pth）
+#               （checkpoint 路径用环境变量 GPT2_CHECKPOINT 覆盖，默认 results/checkpoints/gpt2/model.pth）
 #               兼容机制说明：chainlit 的 @chainlit.on_message 装饰器把 handler
 #               注册到 chainlit 的全局回调（config.code.on_message），不绑定
 #               入口文件本身，因此本 shim 只需设置 GPT2_WEIGHTS=own 后 import

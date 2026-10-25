@@ -17,11 +17,13 @@
 | `post_training/preference/` | [dpo](../20-post-training/dpo.md)、[rlhf](../20-post-training/rlhf.md) |
 | `post_training/rl/` | [rlhf](../20-post-training/rlhf.md)、[reasoning](../20-post-training/reasoning.md) |
 | `post_training/reasoning/training/` | [reasoning](../20-post-training/reasoning.md) |
+| `post_training/reasoning/data_gen.py`、`run.py` | [distillation](../20-post-training/distillation.md) |
 | `inference/registry.py`、`loading.py`、`generation.py`、`generate_core.py` | [inference](../30-inference/index.md) |
 | `inference/strategies/` | [reasoning](../20-post-training/reasoning.md)、[inference](../30-inference/index.md) |
 | `inference/serving/`、`inference/api/` | [serving](../30-inference/serving.md) |
 | `inference/evaluation/` | [evaluation](../30-inference/evaluation.md)、[datasets](../50-development/datasets.md) |
-| `models/io/`、`inference/loaders/`（兼容 shim） | [loaders](../30-inference/loaders.md) |
+| `inference/evaluation/harness/` | [evaluation](../30-inference/evaluation.md) |
+| `models/io/`、`models/io/export/`、`inference/loaders/`（兼容 shim） | [loaders](../30-inference/loaders.md) |
 | `models/` | [models](../40-models/index.md) 下对应页面 |
 | `layers/` | [architecture](../40-models/architecture.md)、[tokenizers](../40-models/tokenizers.md) |
 | `config/` | [architecture](architecture.md)、对应模型页 |
@@ -33,6 +35,7 @@
 | `tests/`、`.github/workflows/` | [testing](../50-development/testing.md) |
 | `dataset/` | [datasets](../50-development/datasets.md) |
 | `results/` | [architecture](architecture.md) |
+| `logs/`、`results/` 产物约定 | [outputs](../50-development/outputs.md) |
 | 文档结构 | [docs-maintenance](../50-development/docs-maintenance.md)、[AGENTS](../../AGENTS.md) |
 
 ## 规则

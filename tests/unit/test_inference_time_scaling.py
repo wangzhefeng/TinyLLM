@@ -1,4 +1,5 @@
-"""推断时扩展脚手架测试：self-consistency / Best-of-N / self-refinement（Phase 2 推断域）。"""
+"""推断时扩展脚手架测试：self-consistency / Best-of-N / self-refinement（Phase 2 推断域）。
+Phase 4 扩展：advanced_parser（混合 LaTeX 解析器）与 MMLU teacher-forcing 评测。"""
 import unittest
 from types import SimpleNamespace
 
@@ -126,6 +127,24 @@ class TestBoxedExtraction(unittest.TestCase):
     def test_fallback_number(self):
         self.assertEqual(extract_boxed_answer("3 + 4 = 7"), "7")
         self.assertIsNone(extract_boxed_answer("no numbers"))
+
+
+    def test_boxed_truncated_tail_falls_back_to_previous_complete(self):
+        """max_tokens 截断在未闭合 \\boxed 上时，回退取上一个完整 boxed。"""
+        from inference.evaluation.benchmarks.math_verifiers import (
+            extract_final_candidate,
+            get_last_boxed,
+        )
+        text = r"Answer: $\boxed{(3, \frac{\pi}{3})}$ repeat $\boxed{(3, \frac{\pi}{3})}$ $\boxed{(3"
+        self.assertEqual(get_last_boxed(text), r"(3, \frac{\pi}{3})")
+        self.assertEqual(extract_final_candidate(text), r"(3, \frac{\pi}{3})")
+
+    def test_boxed_all_truncated_returns_none(self):
+        from inference.evaluation.benchmarks.math_verifiers import (
+            get_last_boxed,
+        )
+        self.assertIsNone(get_last_boxed(r"$\boxed{1"))
+        self.assertIsNone(get_last_boxed("no boxed at all"))
 
 
 class TestMajorityVoteTieRule(unittest.TestCase):
@@ -312,6 +331,239 @@ class TestMultipleChoiceLogprob(unittest.TestCase):
         self.assertEqual(gold_letter(2), "C")
         self.assertEqual(gold_letter("b"), "B")
         self.assertEqual(gold_letter("D"), "D")
+
+
+class TestAdvancedParser(unittest.TestCase):
+    """advanced_parser（bonus/parser.py 移植）离线用例。
+
+    本环境未安装 antlr4-python3-runtime：parse_latex 调用失败返回 None，
+    latex 命令类输入经 parse_and_verify_answer 回退 basic grade_answer；
+    断言只覆盖两条路径下都确定成立的行为。
+    """
+
+    def test_numeric_equivalence(self):
+        from inference.evaluation.benchmarks.advanced_parser import (
+            parse_and_verify_answer,
+        )
+        self.assertTrue(parse_and_verify_answer("2/3", "4/6"))
+        self.assertTrue(parse_and_verify_answer("0.5", "1/2"))
+        self.assertTrue(parse_and_verify_answer("13/4", "3.25"))
+        self.assertTrue(parse_and_verify_answer("2**3", "8"))
+        self.assertTrue(parse_and_verify_answer("sqrt(2)", "2**(1/2)"))
+        self.assertFalse(parse_and_verify_answer("1/2", "1/3"))
+        self.assertFalse(parse_and_verify_answer("2", "3"))
+
+    def test_text_answer_format(self):
+        from inference.evaluation.benchmarks.advanced_parser import (
+            normalize_text_hybrid,
+            parse_and_verify_answer,
+            sympy_parser_hybrid,
+        )
+        self.assertTrue(parse_and_verify_answer(r"\text{42}", "42"))
+        self.assertTrue(parse_and_verify_answer(r"\mbox{seven}", "SEVEN"))
+        self.assertEqual(normalize_text_hybrid(r"\text{42}"), "42")
+        self.assertIsInstance(sympy_parser_hybrid(r"\text{42}"), str)
+        self.assertIsNone(sympy_parser_hybrid(""))
+
+    def test_latex_falls_back_to_basic_grader(self):
+        """\\frac 等 latex 命令：无 antlr 时解析失败回退 basic 评分；
+        有 antlr 时直接解析为 sympy 对象（ Rational(14, 3)）。"""
+        import sympy
+        from inference.evaluation.benchmarks.advanced_parser import (
+            parse_and_verify_answer,
+            sympy_parser_hybrid,
+        )
+        try:
+            from sympy.parsing.latex import parse_latex  # noqa: F401
+
+            has_antlr = True
+        except ImportError:
+            has_antlr = False
+        if has_antlr:
+            self.assertEqual(
+                sympy_parser_hybrid(r"\frac{14}{3}"), sympy.Rational(14, 3),
+            )
+        else:
+            self.assertIsNone(sympy_parser_hybrid(r"\frac{14}{3}"))
+        self.assertTrue(parse_and_verify_answer(r"\frac{14}{3}", "14/3"))
+        self.assertTrue(parse_and_verify_answer(r"\frac{3}{4}", "0.75"))
+        self.assertTrue(parse_and_verify_answer(r"\sqrt{8}", "sqrt(8)"))
+
+    def test_tuple_and_interval_like_formats(self):
+        """元组/区间风格输入：括号容器经 sympify 结构比较；开放性差异交给 basic。"""
+        from inference.evaluation.benchmarks.advanced_parser import (
+            normalize_text_hybrid,
+            parse_and_verify_answer,
+        )
+        self.assertTrue(parse_and_verify_answer("(0, 1)", "(0,1)"))
+        self.assertFalse(parse_and_verify_answer("(0, 1)", "(0,2)"))
+        self.assertFalse(parse_and_verify_answer("(1, 2)", "(2, 1)"))
+        self.assertEqual(normalize_text_hybrid("(0, 1)"), "(0, 1)")
+        # 区间开放性（开/闭端点）语义需要 antlr4；未安装时两条路径都归 basic
+        # 分部比较（忽略开闭），此处仅断言不抛异常且可给出布尔结果
+        self.assertIsInstance(
+            parse_and_verify_answer("[0, 1)", "(0,1]"), bool,
+        )
+
+    def test_multi_answer_comma_formats(self):
+        """多答案逗号列表可比较；\\{..\\} 集合在有 antlr 时解析为 set 并与
+        逗号列表按多重集等价；缺失时两侧解析失败确定判 False（降级行为）。"""
+        from inference.evaluation.benchmarks.advanced_parser import (
+            parse_and_verify_answer,
+        )
+        try:
+            from sympy.parsing.latex import parse_latex  # noqa: F401
+
+            has_antlr = True
+        except ImportError:
+            has_antlr = False
+        self.assertTrue(parse_and_verify_answer("1, 2", "1,2"))
+        self.assertTrue(parse_and_verify_answer("1, 2", "1, 2"))
+        self.assertFalse(parse_and_verify_answer("1, 2", "1, 3"))
+        if has_antlr:
+            self.assertTrue(parse_and_verify_answer(r"\{1, 2\}", "1, 2"))
+        else:
+            self.assertFalse(parse_and_verify_answer(r"\{1, 2\}", "1, 2"))
+        self.assertFalse(parse_and_verify_answer(r"\{1, 2\}", "1, 3"))
+
+    def test_none_and_empty_inputs(self):
+        from inference.evaluation.benchmarks.advanced_parser import (
+            normalize_text_hybrid,
+            parse_and_verify_answer,
+        )
+        self.assertFalse(parse_and_verify_answer(None, "4"))
+        self.assertFalse(parse_and_verify_answer("4", None))
+        self.assertFalse(parse_and_verify_answer("", ""))
+        self.assertEqual(normalize_text_hybrid(""), "")
+
+    def test_hybrid_parser_types(self):
+        """sympy_parser_hybrid 返回类型契约：Rational/float/str/sympify 表达式。"""
+        import sympy
+        from inference.evaluation.benchmarks.advanced_parser import (
+            sympy_parser_hybrid,
+        )
+        self.assertEqual(sympy_parser_hybrid("2/3"), sympy.Rational(2, 3))
+        self.assertIsInstance(sympy_parser_hybrid(r"\$1,234.5"), float)
+        self.assertEqual(sympy_parser_hybrid("2**3"), sympy.Integer(8))
+        self.assertIsNone(sympy_parser_hybrid("not parseable ??"))
+
+
+class TestTeacherForcing(unittest.TestCase):
+    """Method 3（teacher-forcing，书 chF/02 的 3_teacher_forcing.py）。"""
+
+    PROMPT = "Q\nA. 1\nB. 2\nC. 3\nD. 4\nAnswer: "
+
+    def _rigged(self):
+        return _RiggedLM(vocab_size=32, favored_token_id=2)   # chr('B')=66 -> 66%32=2
+
+    def test_predicts_favored_letter_and_scores_shape(self):
+        from inference.evaluation.benchmarks.multiple_choice import (
+            predict_choice_teacher_forcing,
+        )
+        model = self._rigged()
+        tokenizer = _MockCharTokenizer(vocab_size=32)
+        prompt_fmt = torch.tensor(tokenizer.encode(self.PROMPT)).unsqueeze(0)
+
+        pred, scores = predict_choice_teacher_forcing(model, tokenizer, prompt_fmt)
+        self.assertEqual(pred, "B")
+        self.assertEqual(set(scores), set("ABCD"))
+        for value in scores.values():
+            self.assertTrue(-1e6 < value < 0.0)     # logprob 必为负且有限
+
+    def test_choices_path_scores_full_continuation(self):
+        """choices 路径：continuation "X. <choice>" 逐 token teacher forcing。"""
+        from inference.evaluation.benchmarks.multiple_choice import (
+            avg_logprob_teacher_forced,
+            predict_choice_teacher_forcing,
+        )
+        model = self._rigged()
+        tokenizer = _MockCharTokenizer(vocab_size=32)
+        prompt_fmt = torch.tensor(tokenizer.encode(self.PROMPT)).unsqueeze(0)
+        choices = ["1", "2", "3", "4"]
+
+        pred, scores = predict_choice_teacher_forcing(
+            model, tokenizer, prompt_fmt, choices=choices,
+        )
+        self.assertEqual(pred, "B")
+        self.assertEqual(set(scores), set("ABCD"))
+        # rigged 模型分布与位置无关：多 token continuation 的平均 logprob
+        # 应等于 favored token 的 logprob 与其他 token logprob 的混合，仍为负
+        prompt_ids = tokenizer.encode(self.PROMPT)
+        single = avg_logprob_teacher_forced(
+            model, tokenizer, prompt_fmt, self.PROMPT, prompt_ids, "B", "2",
+        )
+        self.assertLess(single, 0.0)
+        self.assertGreater(single, float("-inf"))
+
+    def test_consistent_with_letter_logprob_method(self):
+        """choices=None（单字母 continuation）时打分面与 Method 2 一致。"""
+        from inference.evaluation.benchmarks.multiple_choice import (
+            predict_choice_logprob,
+            predict_choice_teacher_forcing,
+        )
+        torch.manual_seed(7)
+        cfg = SimpleNamespace(
+            vocab_size=32, context_length=64, embed_dim=32, d_ff=64,
+            n_heads=4, n_layers=2, dropout=0.0, qkv_bias=True,
+            dtype=torch.float32, is_train=False,
+        )
+        model = Model(cfg).eval()
+        tokenizer = _MockCharTokenizer(vocab_size=32)
+        prompt_fmt = torch.tensor(tokenizer.encode(self.PROMPT)).unsqueeze(0)
+
+        _, tf_scores = predict_choice_teacher_forcing(model, tokenizer, prompt_fmt)
+        _, lp_scores = predict_choice_logprob(model, tokenizer, prompt_fmt)
+        for letter in "ABCD":
+            self.assertAlmostEqual(tf_scores[letter], lp_scores[letter], places=5)
+        # 同分则同预测
+        self.assertEqual(
+            max(tf_scores, key=tf_scores.get),
+            max(lp_scores, key=lp_scores.get),
+        )
+
+    def test_evaluate_mmlu_with_teacher_forcing_predict_fn(self):
+        """兼容 evaluate_mmlu 的 predict_fn(model, tokenizer, prompt_fmt) 约定。"""
+        from inference.evaluation.benchmarks.multiple_choice import (
+            evaluate_mmlu,
+            predict_choice_teacher_forcing,
+        )
+        model = self._rigged()
+        tokenizer = _MockCharTokenizer(vocab_size=32)
+        data = [
+            {"question": "1 + 1 = ?", "choices": ["1", "2", "3", "4"], "answer": 1},
+            {"question": "2 * 3 = ?", "choices": ["5", "6", "7", "8"], "answer": "B"},
+        ]
+        results = evaluate_mmlu(
+            model, tokenizer, data,
+            predict_fn=lambda m, t, p: predict_choice_teacher_forcing(m, t, p)[0],
+            verbose_every=0,
+        )
+        self.assertEqual(results["num_examples"], 2)
+        self.assertEqual(results["num_correct"], 2)
+        self.assertEqual(results["accuracy"], 1.0)
+
+    def test_empty_continuation_raises(self):
+        """continuation 编码被 prompt 公共前缀完全吞掉时应显式报错（书原版契约）。"""
+        from inference.evaluation.benchmarks.multiple_choice import (
+            avg_logprob_teacher_forced,
+        )
+
+        class _AbsorbingTokenizer:
+            """encode 恒返回同一 id 序列（公共前缀 == 全长）的退化分词器。"""
+
+            def encode(self, text):
+                return [1, 2, 3]
+
+            def decode(self, ids):
+                return ""
+
+        model = self._rigged()
+        tokenizer = _AbsorbingTokenizer()
+        prompt_fmt = torch.tensor([[1, 2, 3]])
+        with self.assertRaises(ValueError):
+            avg_logprob_teacher_forced(
+                model, tokenizer, prompt_fmt, "Answer: ", [1, 2, 3], "A", "2",
+            )
 
 
 if __name__ == "__main__":

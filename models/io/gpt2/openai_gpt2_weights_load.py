@@ -195,9 +195,9 @@ def load_weights_download(gpt, params):
     # assign
     # ------------------------------ 
     # token embedding
-    gpt.tok_emb.weight = _assign(gpt.tok_emb.weight, params["wte"])
+    gpt.tok_embed.weight = _assign(gpt.tok_embed.weight, params["wte"])
     # position embedding
-    gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])
+    gpt.pos_embed.weight = _assign(gpt.pos_embed.weight, params["wpe"])
     # transformer block
     for b in range(len(params["blocks"])):
         q_w, k_w, v_w = np.split((params["blocks"][b]["attn"]["c_attn"])["w"], 3, axis = -1)

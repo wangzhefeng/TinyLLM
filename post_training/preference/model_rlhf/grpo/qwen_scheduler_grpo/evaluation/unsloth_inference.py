@@ -98,7 +98,7 @@ ds = ds.map(
 
 
 # Perform inference and save the results
-path = f"results/{MODEL_NAME.split('/')[-1]}"
+path = f"results/checkpoints/{MODEL_NAME.split('/')[-1]}"
 os.makedirs(path, exist_ok=True)
 
 for i, ex in enumerate(ds):

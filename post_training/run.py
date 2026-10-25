@@ -1,11 +1,19 @@
 import argparse
 import sys
+from pathlib import Path
+
+ROOT = str(Path.cwd())
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
 
 
 TASKS = {
     "sft_clf": "post_training.sft.run.run_gpt_clf_sft",
     "sft_ins": "post_training.sft.run.run_gpt_instruction_sft",
     "dpo": "post_training.preference.model_rlhf.dpo.run_gpt_dpo",
+    "grpo": "post_training.rl.run",
+    "reinforce": "post_training.rl.run",
+    "distill_reasoning": "post_training.reasoning.run",
 }
 
 

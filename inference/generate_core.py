@@ -324,6 +324,18 @@ def generate_qwen3_optimized(model, token_ids: torch.tensor, max_new_tokens: int
             # return token_ids[:, input_len:]
 
 
+def _prefill_last_logits(logits_full, attn_mask, batch_size):
+    """Prefill 后取各行的"下一个 token" logits。
+
+    右填充 batch 中短行的最后位置是 pad 位，统一取 [:, -1] 会让首 token
+    从 pad 位置预测；按 attn_mask 各行真实末位 gather 保证与逐条生成一致。
+    """
+    if attn_mask is not None:
+        real_last = attn_mask.long().sum(dim=1) - 1
+        return logits_full[torch.arange(batch_size, device=logits_full.device), real_last]
+    return logits_full[:, -1]
+
+
 @torch.inference_mode()
 def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens: int, context_length: int,
                                  temperature: float=0.0, top_k: int=None, top_p: float=None, eos_token_id: int=None,
@@ -355,7 +367,7 @@ def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens:
         # Crop current context if it exceeds the supported context size
         cond_idx = token_ids[:, -ctx_len:]
         # Prefill(Get the predictions)
-        logits = model(cond_idx, cache=cache, attn_mask=attn_mask)[:, -1]
+        logits = _prefill_last_logits(model(cond_idx, cache=cache, attention_mask=(None if attn_mask is None else ~attn_mask.bool())), attn_mask, batch_size)
         # Track which sequences have already producted EOS
         if eos_token_id is not None:
             # If a prompt already ends with EOS, consider it finished
@@ -378,7 +390,7 @@ def generate_qwen3_batched_cache(model, token_ids: torch.tensor, max_new_tokens:
                 ones = torch.ones((batch_size, 1), dtype=cur_attn.dtype, device=device)
                 cur_attn = torch.cat([cur_attn, ones], dim=1)
             # Advance one token with KV cache
-            logits = model(next_idx, cache=cache, attn_mask=cur_attn)[:, -1]
+            logits = model(next_idx, cache=cache, attention_mask=(None if cur_attn is None else ~cur_attn.bool()))[:, -1]
             token_ids = torch.cat([token_ids, next_idx], dim=1)
             # Update finished mask after appending this step's token
             if eos_token_id is not None:
@@ -418,7 +430,7 @@ def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_
         # Crop current context if it exceeds the supported context size
         cond_idx = token_ids[:, -ctx_len:]
         # Prefill(Get the predictions)
-        logits = model(cond_idx, cache=cache, attn_mask=attn_mask)[:, -1]
+        logits = _prefill_last_logits(model(cond_idx, cache=cache, attention_mask=(None if attn_mask is None else ~attn_mask.bool())), attn_mask, batch_size)
         # Decode
         cur_attn = attn_mask
         for _ in range(max_new_tokens):
@@ -434,7 +446,7 @@ def generate_qwen3_batched_stream_cache(model, token_ids: torch.tensor, max_new_
                 ones = torch.ones((batch_size, 1), dtype=cur_attn.dtype, device=device)
                 cur_attn = torch.cat([cur_attn, ones], dim=1)
             # Advance one token with KV cache
-            logits = model(next_idx, cache=cache, attn_mask=cur_attn)[:, -1]
+            logits = model(next_idx, cache=cache, attention_mask=(None if cur_attn is None else ~cur_attn.bool()))[:, -1]
             token_ids = torch.cat([token_ids, next_idx], dim=1)
 
 
@@ -479,7 +491,7 @@ def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_n
         # Crop current context if it exceeds the supported context size
         cond_idx = token_ids[:, -ctx_len:]
         # Prefill(Get the predictions)
-        logits = model(cond_idx, cache=cache, attn_mask=attn_mask)[:, -1]  # (B, V)
+        logits = _prefill_last_logits(model(cond_idx, cache=cache, attention_mask=(None if attn_mask is None else ~attn_mask.bool())), attn_mask, batch_size)  # (B, V)
 
         finished_full = torch.zeros(batch_size, dtype=torch.bool, device=device)
         active_idx = torch.arange(batch_size, device=device)  # active rows -> original rows
@@ -532,7 +544,7 @@ def generate_text_basic_batched_cache_stop(model, token_ids: torch.tensor, max_n
             shrink_kv_cache_inplace(cache, keep_mask_active, model.cfg.n_layers)
 
             # Advance one token for survivors only
-            logits = model(next_token_survivors, cache=cache, attn_mask=cur_attn_active)[:, -1]
+            logits = model(next_token_survivors, cache=cache, attention_mask=~cur_attn_active.bool())[:, -1]
 
         # Concatenate per-step tensors; return only the generated part
         if generated_full_steps:
@@ -553,7 +565,7 @@ def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor
     ctx_len = _resolve_ctx_len(model, context_length)
 
     device = token_ids.device
-    batch_batch, input_len = token_ids.shape
+    batch_size, input_len = token_ids.shape
 
     if attn_mask is None and pad_id is not None:
         attn_mask = (token_ids != pad_id)
@@ -567,10 +579,10 @@ def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor
         # Crop current context if it exceeds the supported context size
         cond_idx = token_ids[:, -ctx_len:]
         # Prefill(Get the predictions)
-        logits = model(cond_idx, cache=cache, attn_mask=attn_mask)[:, -1]  # (B, V)
+        logits = _prefill_last_logits(model(cond_idx, cache=cache, attention_mask=(None if attn_mask is None else ~attn_mask.bool())), attn_mask, batch_size)  # (B, V)
 
-        finished_full = torch.zeros(batch_batch, dtype=torch.bool, device=device)
-        active_idx = torch.arange(batch_batch, device=device)
+        finished_full = torch.zeros(batch_size, dtype=torch.bool, device=device)
+        active_idx = torch.arange(batch_size, device=device)
         cur_attn_active = attn_mask
         for _ in range(max_new_tokens):
             next_token_active = sample_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)  # (B_active, 1)
@@ -578,7 +590,7 @@ def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor
             # Build full-sized step to yield
             fill_val = int(eos_token_id) if eos_token_id is not None else 0
             step_full = torch.full(
-                (batch_batch, 1), fill_value=fill_val,dtype=token_ids.dtype, device=device
+                (batch_size, 1), fill_value=fill_val,dtype=token_ids.dtype, device=device
             )
             step_full.index_copy_(0, active_idx, next_token_active)
 
@@ -617,7 +629,7 @@ def generate_text_basic_batched_stream_cache_stop(model, token_ids: torch.Tensor
 
             shrink_kv_cache_inplace(cache, keep_mask_active, model.cfg.n_layers)
 
-            logits = model(next_token_survivors, cache=cache, attn_mask=cur_attn_active)[:, -1]
+            logits = model(next_token_survivors, cache=cache, attention_mask=~cur_attn_active.bool())[:, -1]
 
 
 def generate_stats(output_token_ids, tokenizer, start_time, end_time):

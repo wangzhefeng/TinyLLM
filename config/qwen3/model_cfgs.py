@@ -35,6 +35,7 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "rope_base": 1_000_000.0,        # The base in RoPE's "theta"
             "dtype": torch.bfloat16,         # Lower-precision dtype to reduce memory usage
             "num_experts": 0,
+            "tie_word_embeddings": True,     # 官方 0.6B out_head 与 tok_embed 共享权重
         }
     elif CHOOSE_MODEL == "1.7B":
         QWEN3_CONFIG = {
@@ -50,6 +51,7 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "rope_base": 1_000_000.0,
             "dtype": torch.bfloat16,
             "num_experts": 0,
+            "tie_word_embeddings": True,     # 官方 1.7B 开启 tying
         }
     elif CHOOSE_MODEL == "4B":
         QWEN3_CONFIG = {
@@ -65,7 +67,8 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "rope_base": 1_000_000.0,
             "dtype": torch.bfloat16,
             "num_experts": 0,
-        }  
+            "tie_word_embeddings": True,     # 官方 4B 开启 tying
+        }
     elif CHOOSE_MODEL == "8B":
         QWEN3_CONFIG = {
             "vocab_size": 151_936,
@@ -80,7 +83,8 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "rope_base": 1_000_000.0,
             "dtype": torch.bfloat16,
             "num_experts": 0,
-        } 
+            "tie_word_embeddings": False,    # 官方 8B 不共享，checkpoint 含独立 lm_head
+        }
     elif CHOOSE_MODEL == "14B":
         QWEN3_CONFIG = {
             "vocab_size": 151_936,
@@ -95,12 +99,13 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "rope_base": 1_000_000.0,
             "dtype": torch.bfloat16,
             "num_experts": 0,
-        } 
+            "tie_word_embeddings": False,    # 官方 14B 不共享
+        }
     elif CHOOSE_MODEL == "32B":
         QWEN3_CONFIG = {
             "vocab_size": 151_936,
             "context_length": 40_960,
-            "embed_dim": 5120,                
+            "embed_dim": 5120,
             "n_heads": 64,                   # 60% larger than above
             "n_layers": 64,                  # 60% larger than above
             "d_ff": 25600,                   # 47% larger than above
@@ -110,6 +115,7 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "rope_base": 1_000_000.0,
             "dtype": torch.bfloat16,
             "num_experts": 0,
+            "tie_word_embeddings": False,    # 官方 32B 不共享
         }
     elif CHOOSE_MODEL == "30B-A3B":
         # Same config for
@@ -120,7 +126,7 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
         QWEN3_CONFIG = {
             "vocab_size": 151_936,
             "context_length": 262_144,
-            "embed_dim": 2048,                
+            "embed_dim": 2048,
             "n_heads": 32,
             "n_layers": 48,
             # MoE 模型无 d_ff，FFN 维度见 moe_intermediate_size
@@ -132,6 +138,7 @@ def get_cfgs(CHOOSE_MODEL = "0.6B"):
             "num_experts": 128,
             "num_experts_per_tok": 8,
             "moe_intermediate_size": 768,
+            "tie_word_embeddings": False,    # 官方 30B-A3B 不共享
         }
     elif CHOOSE_MODEL == "Qwen3.5-4B":
         # 官方 config.json 已核实：https://huggingface.co/Qwen/Qwen3.5-4B（text_config）
