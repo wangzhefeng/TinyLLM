@@ -21,7 +21,7 @@
 
 - `tools/distributed/`：分布式并行教学参考（DP/DDP/ZeRO/FSDP2/TP/PP/组合 + accelerate/DeepSpeed 对照）；Megatron-LM / torchtitan 上游导读见 [distributed-frameworks](../70-tools/distributed-frameworks.md)。
 - `pre_training/references/`：`nanotron/` 配置参考、`gpt2_book/`（LLMs-from-scratch ch05 standalone）、`pgcorpus/`（Gutenberg 独立预训练）。
-- `post_training/references/`：外部栈对照实验区——`trl_sft/`、`trl_grpo/`（TRL）、`unsloth/`、`hf_peft/`（HF peft/Transformers 教程）；保持上游原貌，不接入分发器，见 [peft](../20-post-training/peft.md)。
+- `post_training/references/`：外部栈对照实验区——`trl_sft/`、`trl_grpo/`（TRL）、`unsloth/`、`hf_peft/`（HF peft/Transformers 教程）、`lighteval/`（lighteval+vLLM 评测演示，原 TinyLLMInference 快照后新增，2026-10-25 随旧仓库下线抢救迁入）；保持上游原貌，不接入分发器，见 [peft](../20-post-training/peft.md)。
 
 ## 说明
 

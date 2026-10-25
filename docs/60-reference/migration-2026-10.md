@@ -98,6 +98,12 @@
 - 两个仓库的工作区已清空，仅保留 `.git`。
 - 如需完全删除，请确认后再执行（本次不删除 `.git`）。
 
+> **闭环（2026-10-25）**：两个旧仓库确认下线。逐文件核对结果——TinyLLMInference 仅
+> `evaluate/lighteval_demo.py`（快照 `b01be3b` 之后新增）无对应，已抢救迁入
+> `post_training/references/lighteval/`；TinyLLMFinetuning 的 `model_tts/`（语音微调实验）
+> 经确认不再保留，随仓库一并下线；两份提示工程 PDF 此前已随 `ba3ffa5` 移入外部参考库。
+> 本地 `.git` 备份已删除，GitHub 端由维护者自行删除。
+
 ## 6. 已知遗留
 
 1. `post_training/finetuning/` 保留原 `TinyLLMFinetuning` 的绝对导入，部分脚本需要 `PYTHONPATH` 才能运行。

@@ -25,7 +25,7 @@ post_training/
 ├── preference/   # DPO（run/run_gpt_dpo.py）、RM（rm/）、偏好数据
 ├── reasoning/    # 蒸馏训练、教师数据生成（data_gen.py）
 ├── rl/           # GRPO/PPO/REINFORCE 共享实现与训练入口
-└── references/   # 外部栈对照实验区：trl_sft/、trl_grpo/、hf_peft/、unsloth/
+└── references/   # 外部栈对照实验区：trl_sft/、trl_grpo/、hf_peft/、unsloth/、lighteval/
 ```
 
 预训练、分类 SFT、指令 SFT、DPO 已共用 `training.Trainer` 与统一 checkpoint。规范 LoRA/DoRA 位于 `layers/lora.py`。
@@ -48,7 +48,7 @@ python post_training/preference/run/run_gpt_dpo.py
 
 ## references/ 的定位
 
-`post_training/references/` 收纳**外部栈对照实验**（TRL SFT/GRPO、bitsandbytes、Unsloth、HF peft 教程），
+`post_training/references/` 收纳**外部栈对照实验**（TRL SFT/GRPO、bitsandbytes、Unsloth、HF peft 教程、lighteval 评测框架演示），
 
 - 保持上游原貌，便于对照自研实现；
 - **不接入 `run.py` 分发器**，不是可运行主链路；
