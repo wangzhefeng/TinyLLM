@@ -8,6 +8,8 @@
 
 - [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch/tree/main)
 - [MiniMind](https://github.com/jingyaogong/minimind)
+- [NamiGPT：零基础手写 GPT-2（中文，15+5+5 篇）](https://github.com/aa1143/NamiGPT)（图文版见 [nano-ai.tech](https://nano-ai.tech/articles/)；本仓库借鉴记录见 [reference-projects](../50-development/reference-projects.md)）
+- [nano-ai.tech 大模型学习路线图（8 阶段 51 知识点）](https://nano-ai.tech/map/)与[论文研读](https://nano-ai.tech/papers/)（本仓库对应页：[学习路线图](../00-overview/learning-path.md)、[论文映射](paper-map.md)）
 
 #### Transformer
 

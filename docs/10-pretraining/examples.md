@@ -8,11 +8,15 @@
 
 | 文件 | 用途 |
 |---|---|
+| `tokenizer_bpe.py` | 词级 SimpleTokenizer 编码-解码往返 vs BPE 子词分词 |
 | `attention_walkthrough.py` | 自注意力/因果掩码/MHA 逐步实现 |
 | `layernorm.py` | LayerNorm 与 PyTorch 对比 |
 | `feed_forward.py` | ReLU/GELU/SiLU FFN |
+| `activation_gelu.py` | GELU 精确版 vs tanh 近似版（与 HF 对齐的陷阱之一） |
 | `text_embedding.py` | token/position embedding、embedding≈matmul |
+| `pos_encoding.py` | 可学习位置嵌入 vs 正弦固定编码 |
 | `residual_connections.py` | 残差连接与梯度 |
+| `block_assembly.py` | 手动组装 GPT-2 并与 Model 参数量对账、外推 124M |
 
 ## training/（训练主线示例）
 

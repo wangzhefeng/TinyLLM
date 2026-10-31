@@ -11,6 +11,7 @@
 | [data.md](data.md) | 数据预处理、tokenizer 选择、数据集 |
 | [training.md](training.md) | 训练循环、实验类、DP/DDP、超参 |
 | [examples.md](examples.md) | 书本 walkthrough、GPT-2 示例 |
+| [ablation.md](ablation.md) | 组件升级消融实验（RMSNorm/SwiGLU/RoPE/GQA） |
 | [gutenberg.md](gutenberg.md) | Gutenberg 语料准备 |
 | [extras.md](extras.md) | nanotron 参考等扩展 |
 
@@ -31,9 +32,9 @@ bash pre_training/scripts/pretrain_gpt2_124M_DDP.sh
 ```text
 pre_training/
 ├── data_provider/   # data_loader.py 语料加载；bert/ 数据层（DAPT TSV）
-├── experiments/     # exp_basic.py（经 models/registry 解析模型）、GPT-2 预训练实验、bert/dapt_data.py
+├── experiments/     # exp_basic.py（经 models/registry 解析模型）、GPT-2 预训练实验、exp_component_ablation.py、bert/dapt_data.py
 ├── examples/        # 教材示例三分组（非测试）
-│   ├── components/  # attention / layernorm / FFN / 残差 / embedding
+│   ├── components/  # tokenizer / attention / layernorm / FFN / GELU / embedding / 位置编码 / 残差 / block 组装
 │   ├── training/    # 预训练 demo、训练循环模板、模型检查
 │   └── analysis/    # FLOPs 分析
 ├── references/      # 外部参考（单向离线）：gpt2_book/、pgcorpus/、nanotron/

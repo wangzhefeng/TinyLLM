@@ -11,6 +11,9 @@
 #                 - gpt2：GPT-2 124M，权重来源用 GPT2_WEIGHTS=orig|own（默认 own）
 #                   - orig：官方 GPT-2 124M 权重（下载到 downloaded_models/gpt2）
 #                   - own ：自训 checkpoint（环境变量 GPT2_CHECKPOINT，默认 results/checkpoints/gpt2/model.pth）
+#                   - 教学模式（设置开关 show_trace）：生成后用
+#                     inference/interpretability.trace_generation 展示每步
+#                     top-k 候选概率与熵（author="Trace" 的 markdown 表）
 #                 - qwen3：经 inference.loading.load_model 加载（默认 key qwen3-0.6b，
 #                   QWEN3_MODEL_KEY 可覆盖），format_qwen3_chat 组 prompt，
 #                   generate_text_stream 流式输出，<think>...</think> 与回答分离渲染
@@ -221,21 +224,30 @@ if chainlit is not None:
 
     @chainlit.on_chat_start
     async def on_chat_start():
-        """会话初始化：qwen3 模式提供 thinking 开关（写入 user_session）。"""
+        """会话初始化：qwen3 提供 thinking 开关，gpt2 提供教学模式开关。"""
         chainlit.user_session.set("add_thinking", False)
+        chainlit.user_session.set("show_trace", False)
+        widgets = []
         if APP_MODEL == "qwen3":
-            settings = await chainlit.ChatSettings([
-                chainlit.input_widget.Switch(
-                    "add_thinking", "启用 thinking（生成 <think>...</think> 后再回答）",
-                    initial=False,
-                ),
-            ]).send()
-            chainlit.user_session.set("add_thinking", settings["add_thinking"])
+            widgets.append(chainlit.input_widget.Switch(
+                "add_thinking", "启用 thinking（生成 <think>...</think> 后再回答）",
+                initial=False,
+            ))
+        else:
+            widgets.append(chainlit.input_widget.Switch(
+                "show_trace", "教学模式：生成后展示每步 top-k 候选概率与熵",
+                initial=False,
+            ))
+        settings = await chainlit.ChatSettings(widgets).send()
+        for key in ("add_thinking", "show_trace"):
+            if key in settings:
+                chainlit.user_session.set(key, settings[key])
 
 
     @chainlit.on_settings_update
     async def on_settings_update(settings):
-        chainlit.user_session.set("add_thinking", settings["add_thinking"])
+        for key, value in settings.items():
+            chainlit.user_session.set(key, value)
 
 
     async def _run_qwen3_stream(content, add_thinking):
@@ -297,12 +309,36 @@ if chainlit is not None:
                 add_thinking=chainlit.user_session.get("add_thinking") or False,
             )
             return
+        token_ids = text_to_token_ids(
+            message.content,
+            tokenizer_model=model_config.tokenizer_model
+        ).to(device)
+        if chainlit.user_session.get("show_trace"):
+            # 教学模式：trace_generation 逐步记录 top-k/熵（无 cache 教学路径）
+            from inference.interpretability import render_trace_md, trace_generation
+
+            records, out_ids = trace_generation(
+                model,
+                token_ids,
+                max_new_tokens=model_config.max_new_tokens,
+                context_length=model_config.context_length,
+                temperature=model_config.temperature,
+                top_k=model_config.top_k,
+                eos_token_id=model_config.eos_id,
+                k=5,
+                tokenizer=tokenizer,
+            )
+            text = token_ids_to_text(
+                out_ids, tokenizer_model=model_config.tokenizer_model
+            )
+            await chainlit.Message(content=f"{text}").send()
+            await chainlit.Message(
+                content=render_trace_md(records), author="Trace",
+            ).send()
+            return
         token_ids = generate(
             model=model,
-            token_ids=text_to_token_ids(
-                message.content,
-                tokenizer_model=model_config.tokenizer_model
-            ).to(device),
+            token_ids=token_ids,
             max_new_tokens=model_config.max_new_tokens,
             context_length=model_config.context_length,
             temperature=model_config.temperature,

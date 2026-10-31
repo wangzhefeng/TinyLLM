@@ -133,7 +133,10 @@ class MultiHeadAttention(nn.Module):
         self.register_buffer("cache_v", None, persistent=False)
         # self.ptr_current_pos = 0
     
-    def forward(self, x, use_cache=False, cache=None, attention_mask=None, return_cache=False):
+    def forward(self, x, use_cache=False, cache=None, attention_mask=None, return_cache=False,
+                output_attentions=False):
+        if return_cache and output_attentions:
+            raise ValueError("return_cache 与 output_attentions 暂不支持同时开启")
         # shape: [batch_size, num_tokens, d_model]
         batch_size, num_tokens, embed_dim = x.shape
         # Query, Key, Value
@@ -214,6 +217,8 @@ class MultiHeadAttention(nn.Module):
             causal_mask = causal_mask | attention_mask
         attn_scores = attn_scores.masked_fill(causal_mask, -torch.inf)
         attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
+        if output_attentions:
+            weights_out = attn_weights
         attn_weights = self.dropout(attn_weights)
         context_vec = (attn_weights @ values).transpose(1, 2)
         context_vec = context_vec.contiguous().view(batch_size, num_tokens, self.d_out)
@@ -221,6 +226,8 @@ class MultiHeadAttention(nn.Module):
 
         if return_cache:
             return context_vec, new_cache
+        if output_attentions:
+            return context_vec, weights_out
         return context_vec
     
     def reset_cache(self):

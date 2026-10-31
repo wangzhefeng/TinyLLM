@@ -19,6 +19,7 @@
 
 ## 当前参考项目
 
+- [NamiGPT / nano-ai.tech](https://github.com/aa1143/NamiGPT)（仅链接，不 clone）：零基础 GPT-2 从零手写中文教程。借鉴点已落地——HF 对齐双档测试法（`test_gpt2_hf_alignment`）、章节式示例与学习路线图（[learning-path](../00-overview/learning-path.md)）、每步 top-k 概率的教学演示（[interpretability](../30-inference/interpretability.md)）、组件替换消融（[ablation](../10-pretraining/ablation.md)）。
 - `tools/distributed/`：分布式并行教学参考（DP/DDP/ZeRO/FSDP2/TP/PP/组合 + accelerate/DeepSpeed 对照）；Megatron-LM / torchtitan 上游导读见 [distributed-frameworks](../70-tools/distributed-frameworks.md)。
 - `pre_training/references/`：`nanotron/` 配置参考、`gpt2_book/`（LLMs-from-scratch ch05 standalone）、`pgcorpus/`（Gutenberg 独立预训练）。
 - `post_training/references/`：外部栈对照实验区——`trl_sft/`、`trl_grpo/`（TRL）、`unsloth/`、`hf_peft/`（HF peft/Transformers 教程）、`lighteval/`（lighteval+vLLM 评测演示，原 TinyLLMInference 快照后新增，2026-10-25 随旧仓库下线抢救迁入）；保持上游原貌，不接入分发器，见 [peft](../20-post-training/peft.md)。

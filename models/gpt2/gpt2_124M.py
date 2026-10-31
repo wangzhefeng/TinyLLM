@@ -51,7 +51,9 @@ class Model(nn.Module):
             self.out_head.weight = self.tok_embed.weight
 
     def forward(self, x, use_cache=False, cache=None, attention_mask=None, position_ids=None,
-                output_hidden_states=False):
+                output_hidden_states=False, output_attentions=False):
+        if output_attentions and (use_cache or cache is not None):
+            raise ValueError("output_attentions 暂不支持与 KV cache 同时使用")
         _, seq_len = x.shape
         external_cache = cache is not None
         if position_ids is not None:
@@ -68,6 +70,7 @@ class Model(nn.Module):
             pos_id = torch.arange(pos_start, pos_start + seq_len, device=x.device, dtype=torch.long)
         x = self.tok_embed(x) + self.pos_embed(pos_id).unsqueeze(0)
         x = self.drop_embed(x)
+        attentions = [] if output_attentions else None
         for layer_idx, block in enumerate(self.trf_blocks):
             if external_cache:
                 x, new_cache = block(
@@ -78,12 +81,24 @@ class Model(nn.Module):
                 )
                 cache.update(layer_idx, new_cache)
             else:
-                x = block(x, use_cache=use_cache, attention_mask=attention_mask)
+                x = block(
+                    x,
+                    use_cache=use_cache,
+                    attention_mask=attention_mask,
+                    output_attentions=output_attentions,
+                )
+                if output_attentions:
+                    x, attn_weights = x
+                    attentions.append(attn_weights)
         if external_cache:
             cache.advance(seq_len)
         elif use_cache:
             self.ptr_current_pos += seq_len
         final_hidden = self.final_norm(x)
+        if output_attentions:
+            if output_hidden_states:
+                return self.out_head(final_hidden), final_hidden, attentions
+            return self.out_head(final_hidden), attentions
         if output_hidden_states:
             return self.out_head(final_hidden), final_hidden
         return self.out_head(final_hidden)

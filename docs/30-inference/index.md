@@ -13,6 +13,7 @@
 | [nano-vllm.md](nano-vllm.md) | 分页 KV + continuous batching |
 | [evaluation.md](evaluation.md) | 评测 harness 与公共库分工 |
 | [reasoning-scaling.md](reasoning-scaling.md) | 推断时扩展与相关概念 |
+| [interpretability.md](interpretability.md) | 教学可解释性：每步 top-k/熵追踪、attention 捕获 |
 
 ## 代码结构
 
@@ -22,11 +23,12 @@ inference/
 ├── loading.py        # load_model 统一加载（注册表在 models/registry.py）
 ├── generation.py     # generate_text / generate_text_stream
 ├── generate_core.py  # 教材解码与实验后端
+├── interpretability.py # 教学可解释性：trace/attention 捕获与渲染
 ├── harness/          # 生成侧评测循环：math500.py、mmlu.py
 ├── strategies/       # self-consistency / Best-of-N / self-refinement / 投机解码
 ├── serving/nano_vllm/
 ├── apps/app.py       # Chainlit UI
-├── examples/         # gpt2_inference / qwen3_06B / bert_fill_mask
+├── examples/         # gpt2_inference / gpt2_load_generate（加载+生成+trace）/ qwen3_06B / bert_fill_mask
 └── scripts/          # run_app.sh / run_math500_experiments.sh / benchmark_compile.py
 ```
 

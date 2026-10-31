@@ -13,6 +13,7 @@
 | [migration-2026-10.md](migration-2026-10.md) | 两仓库合并与目录重构记录 |
 | [refactor-2026-10-18-domains.md](refactor-2026-10-18-domains.md) | 2026-10-18 三域内部结构重构 |
 | [learning-resources.md](learning-resources.md) | 教程、Agent、技巧、资料链接 |
+| [paper-map.md](paper-map.md) | 论文 → 本仓库实现/测试映射 |
 
 ## 归档
 

@@ -21,9 +21,10 @@ TinyLLM 是一个以“从零实现 + 小型实验”为主的 LLM 学习仓库�
 ## 推荐阅读顺序
 
 1. [环境搭建](environment.md)
-2. [仓库架构](architecture.md) + [代码→文档映射](repo-map.md)
-3. 按兴趣进入三个域
-4. 需要背景时看 [LLMs-from-scratch 分析](../60-reference/llms-from-scratch/index.md)
+2. [学习路线图](learning-path.md)（按学习顺序的知识点索引）
+3. [仓库架构](architecture.md) + [代码→文档映射](repo-map.md)
+4. 按兴趣进入三个域
+5. 需要背景时看 [LLMs-from-scratch 分析](../60-reference/llms-from-scratch/index.md)
 
 ## 相关
 

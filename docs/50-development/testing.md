@@ -101,6 +101,15 @@ CI 位于 `.github/workflows/tests.yml`：pull request 运行 unit、integration
 - 删除守卫测试 `test_module_moves.py`：旧路径兼容 shim 已全部消亡，
   “新旧模块同源”断言不再成立（契约由 `test_model_contracts` 等继续覆盖）。
 
+2026-10-28 新增（对照 NamiGPT 对齐测试法补缺）：
+
+- `test_gpt2_hf_alignment`：GPT-2 与 HF 官方实现端到端对齐——随机权重（tiny 配置）
+  logits 逐位一致 + 逐步贪心 argmax 一致；本地缓存存在时真实 124M 权重
+  logits（atol 1e-4）与 8 步贪心续写逐 token 一致。
+- `test_interpretability`：trace_generation 贪心与 `generate` 逐 token 一致、
+  topk/熵/eos 契约、batch>1 拒绝；GPT-2 `output_attentions` opt-in 契约
+  （形状/因果/行和、默认路径不变、与 cache 互斥）；markdown 渲染器。
+
 ## 集成测试约定
 
 - `test_tiny_pretrain_resume.py` 使用合成文本真实执行两轮训练与 latest 恢复。

@@ -72,7 +72,8 @@ class TransformerBlockGPT2_124M(nn.Module):
         self.norm2 = LayerNorm(cfg.embed_dim)
         self.drop_shortcut = nn.Dropout(cfg.dropout)
     
-    def forward(self, x, use_cache=False, cache=None, attention_mask=None, return_cache=False):
+    def forward(self, x, use_cache=False, cache=None, attention_mask=None, return_cache=False,
+                output_attentions=False):
         shortcut = x
         x = self.norm1(x)
         attention = self.attn(
@@ -81,9 +82,12 @@ class TransformerBlockGPT2_124M(nn.Module):
             cache=cache,
             attention_mask=attention_mask,
             return_cache=return_cache,
+            output_attentions=output_attentions,
         )
         if return_cache:
             x, new_cache = attention
+        elif output_attentions:
+            x, attn_weights = attention
         else:
             x = attention
         x = self.drop_shortcut(x)
@@ -95,6 +99,8 @@ class TransformerBlockGPT2_124M(nn.Module):
         x = shortcut + x
         if return_cache:
             return x, new_cache
+        if output_attentions:
+            return x, attn_weights
         return x
 
 

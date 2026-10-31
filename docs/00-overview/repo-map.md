@@ -7,7 +7,7 @@
 | 代码区域 | 文档 |
 |---|---|
 | `pre_training/data_provider/`（含 `bert/`） | [data](../10-pretraining/data.md)、[datasets](../50-development/datasets.md) |
-| `pre_training/experiments/`（`exp_basic.py`、`bert/dapt_data.py`）、根 `run_*.py` | [training](../10-pretraining/training.md) |
+| `pre_training/experiments/`（`exp_basic.py`、`exp_component_ablation.py`、`bert/dapt_data.py`）、根 `run_*.py` | [training](../10-pretraining/training.md)、[ablation](../10-pretraining/ablation.md) |
 | `pre_training/examples/{components,training,analysis}/` | [examples](../10-pretraining/examples.md) |
 | `pre_training/references/{gpt2_book,pgcorpus,nanotron}/` | [extras](../10-pretraining/extras.md)、[gutenberg](../10-pretraining/gutenberg.md) |
 | BERT 数据/模型/实验与示例 | [bert](../40-models/bert.md) |
@@ -20,6 +20,7 @@
 | `post_training/references/`（trl_sft/trl_grpo/hf_peft/unsloth） | [peft](../20-post-training/peft.md)、[cleanup-log](../50-development/cleanup-log.md) |
 | `evaluation/clients/`、`verifiers/`、`judges/` | [评测公共库](../35-evaluation/index.md) |
 | `inference/loading.py`、`generation.py`、`generate_core.py`、`models/registry.py` | [inference](../30-inference/index.md) |
+| `inference/interpretability.py` | [interpretability](../30-inference/interpretability.md) |
 | `inference/harness/`（math500/mmlu） | [evaluation](../30-inference/evaluation.md)、[评测公共库](../35-evaluation/index.md) |
 | `inference/strategies/` | [reasoning](../20-post-training/reasoning.md)、[scaling](../30-inference/reasoning-scaling.md) |
 | `inference/serving/`、`inference/apps/`、`inference/scripts/` | [serving](../30-inference/serving.md)、[nano-vllm](../30-inference/nano-vllm.md) |
